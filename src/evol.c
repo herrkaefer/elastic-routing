@@ -535,9 +535,9 @@ static void evol_assess_diversity_locally (evol_t *self, s_indiv_t *indiv) {
     }
 
     double total_distance = 0.0;
-    s_indiv_t *neighbor = NULL;
-    list4x_iterator_t iter = list4x_iter_init (stranger->neighbors, true);
-    while ((neighbor = (s_indiv_t *) list4x_iter (stranger->neighbors, &iter))
+    s_neighbor_t *neighbor = NULL;
+    list4x_iterator_t iter = list4x_iter_init (indiv->neighbors, true);
+    while ((neighbor = (s_neighbor_t *) list4x_iter (indiv->neighbors, &iter))
             != NULL)
         total_distance += neighbor->distance;
 
@@ -635,10 +635,12 @@ static void evol_update_assessment_by_comer (evol_t *self, s_indiv_t *comer) {
     list4x_iterator_t iter = list4x_iter_init (comer->neighbors, true);
     while ((neighbor = (s_neighbor_t *) list4x_iter (comer->neighbors, &iter))
             != NULL) {
-
         s_indiv_t *indiv = neighbor->indiv;
-        list4x_append (indiv->as_neighbors, iter.handle);
+        // Add comer to indiv's as_neighbors list
+        list4x_append (indiv->as_neighbors,
+                       s_asneighbor_new (comer, iter.handle));
 
+        // Try to add comer to indiv's neighbors
         s_neighbor_t *as_neighbor = s_neighbor_new (comer, neighbor->distance);
         void *handle_in_neighbor =
             list4x_insert_sorted (indiv->neighbors, as_neighbor);
@@ -647,15 +649,19 @@ static void evol_update_assessment_by_comer (evol_t *self, s_indiv_t *comer) {
         if (list4x_size (indiv->neighbors) > self->max_neighbors) {
             s_neighbor_t *farmost = list4x_last (indiv->neighbors);
             if (farmost) {
+                // It is possible that comer is too far to become a neighbor
                 if (farmost->indiv == comer)
                     neighbors_changed = false;
                 list4x_remove_last (indiv->neighbors);
             }
         }
 
-        // If comer becomed indiv's neighbor
+        // If comer becomes indiv's neighbor
         if (neighbors_changed) {
-            list4x_append (comer->as_neighbors, handle_in_neighbor);
+            // Add indiv to comer's as_neighbors list
+            list4x_append (comer->as_neighbors,
+                           s_asneighbor_new (indiv, handle_in_neighbor));
+            // Re-assess indiv's diversity and score
             evol_assess_diversity_locally (self, indiv);
             list4x_reorder (self->livings_rank_div, indiv->handle_livings_div);
             evol_assess_score (self, indiv);
@@ -670,7 +676,8 @@ static void evol_update_assessment_by_comer (evol_t *self, s_indiv_t *comer) {
 static void evol_update_assessment_by_goner (evol_t *self, s_indiv_t *goner) {
     s_asneighbor_t *as_neighbor = NULL;
     list4x_iterator_t iter = list4x_iter_init (goner->as_neighbors, true);
-    while ((as_neighbor = (s_asneighbor_t *) list4x_iter (goner->as_neighbors))
+    while ((as_neighbor =
+                (s_asneighbor_t *) list4x_iter (goner->as_neighbors, &iter))
             != NULL) {
         // Individual who sees goner as neighbor
         s_indiv_t *indiv = as_neighbor->indiv;
@@ -693,13 +700,14 @@ static void evol_update_assessment_by_goner (evol_t *self, s_indiv_t *goner) {
 
             s_neighbor_t *nb_nb = NULL;
             list4x_iterator_t iter_nb_nb =
-                list4x_iter_init (nb->neighbors, true);
-            while ((nb_nb =
-                    (s_neighbor_t *) list4x_iter (nb->neighbors, &iter_nb_nb))
+                list4x_iter_init (nb->indiv->neighbors, true);
+            while ((nb_nb = (s_neighbor_t *)
+                            list4x_iter (nb->indiv->neighbors, &iter_nb_nb))
                    != NULL) {
                 if (!s_indiv_has_neighbor (indiv, nb_nb->indiv)) {
                     double dist =
-                        self->distance_assessor (indiv->genome,
+                        self->distance_assessor (self->context,
+                                                 indiv->genome,
                                                  nb_nb->indiv->genome);
                     s_neighbor_t *new_nb = s_neighbor_new (nb_nb->indiv, dist);
                     list4x_insert_sorted (new_nbs, new_nb);
@@ -1112,6 +1120,12 @@ static void evol_step (evol_t *self) {
 }
 
 
+// Due to variations of the context, (all) individuals in the livings group
+// should be updated (modified or transformed to new individuals, or abandoned)
+// accordingly. This operation transforms current livings group to a new one,
+// and the ancestors as well as the children group are cleared (because old
+// ancestors are meaningless in the new context). This operation is also
+// equivalent to initialize a new population by current one.
 static void evol_renew_population (evol_t *self) {
     assert (self->renewer);
     if (evol_num_livings (self) == 0)
@@ -1623,12 +1637,13 @@ void evol_run (evol_t *self) {
 
         if (self->should_renew && self->should_renew (self->context)) {
             evol_renew_population (self);
-            evol_reset_recorders (self);
+            evol_reset_stats (self);
+            evol_restart_recorders (self);
         }
         else if (evol_slowdown_happens (self)) {
-            // current process: simply stop. Other choices: diversify ...
             print_info ("Improvement slows down.\n");
-            // @todo when slowdown happens, diversity rather than quit
+            // @todo when slowdown happens, diversity rather than simply quit
+            // evol_diversity_population (self);
             break;
         }
 

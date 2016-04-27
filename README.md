@@ -1,4 +1,6 @@
-# Elastic Routing Project
+# Elastic Routing
+
+``elastic routing`` — practical and flexible vehicle routing solution.
 
 ## Goal
 
@@ -61,10 +63,18 @@ The concept of state is introduced to resolve a dynamic problem into discrete up
 
 Evolutionary framework
 
+# APIs
 
-# todos
+# Installation
 
-## emergent
+# Todos
+
+## large ones
+
+- VRP base model and sub-models
+- Asynchronization
+
+## to fixes or test
 
 - arrayset_add(): add a param replacing or not
 - add a ref_cnt to arrayset,  delete it when ref_cnt decreases to 0.

@@ -513,6 +513,35 @@ static s_indiv_t *evol_new_indiv (evol_t *self,
 }
 
 
+// Add neighbor_to_be to indiv's neighbors list
+// Return as_neighbor_t object if added, NULL if failed.
+static s_asneighbor_t *evol_add_neighbor (evol_t *self,
+                                          s_indiv_t *indiv,
+                                          s_indiv_t *neighbor_to_be,
+                                          double distance) {
+    assert (indiv != neighbor_to_be);
+    if (double_is_none (distance))
+        distance = self->distance_assessor (self->context,
+                                            indiv->genome,
+                                            neighbor_to_be->genome);
+
+    bool overflow = false;
+    if (list4x_size (indiv->neighbors) == self->max_neighbors) {
+        s_neighbor_t *farmost = list4x_last (indiv->neighbors);
+        if (farmost && farmost->distance <= distance)
+            return NULL;
+        overflow = true;
+    }
+
+    void *handle =
+        list4x_insert_sorted (indiv->neighbors,
+                              s_neighbor_new (neighbor_to_be, distance));
+    if (overflow)
+        list4x_remove_last (indiv->neighbors);
+    return s_asneighbor_new (indiv, handle);
+}
+
+
 // Get best fitness value obtained during evolution
 static double evol_best_fitness (evol_t *self) {
     if (evol_num_livings (self) == 0)
@@ -648,42 +677,23 @@ static void evol_assess_stranger (evol_t *self, s_indiv_t *stranger) {
     if (double_is_none (stranger->fitness))
         evol_assess_feasibility_and_fitness (self, stranger);
 
-    // Find and set neighbors
     assert (list4x_size (stranger->neighbors) == 0);
     assert (list4x_size (stranger->as_neighbors) == 0);
 
-    // Find neighbors in livings group
+    // Find and add neighbors from livings group
     s_indiv_t *indiv = NULL;
     list4x_iterator_t iter = list4x_iter_init (self->livings_rank_fit, true);
     while ((indiv = (s_indiv_t *) list4x_iter (self->livings_rank_fit, &iter))
            != NULL &&
-           indiv != stranger) {
-        assert (stranger->genome);
-        assert (indiv->genome);
-        double distance = self->distance_assessor (self->context,
-                                                   stranger->genome,
-                                                   indiv->genome);
-        list4x_insert_sorted (stranger->neighbors,
-                              s_neighbor_new (indiv, distance));
-        if (list4x_size (stranger->neighbors) > self->max_neighbors)
-            list4x_remove_last (stranger->neighbors);
-    }
+           indiv != stranger)
+        evol_add_neighbor (self, stranger, indiv, DOUBLE_NONE);
 
-    // Find neighbors in ancestors group
+    // Find and add neighbors from ancestors group
     iter = list4x_iter_init (self->ancestors, true);
     while ((indiv = (s_indiv_t *) list4x_iter (self->ancestors, &iter))
            != NULL &&
-           indiv != stranger) {
-        assert (stranger->genome);
-        assert (indiv->genome);
-        double distance = self->distance_assessor (self->context,
-                                                   stranger->genome,
-                                                   indiv->genome);
-        list4x_insert_sorted (stranger->neighbors,
-                              s_neighbor_new (indiv, distance));
-        if (list4x_size (stranger->neighbors) > self->max_neighbors)
-            list4x_remove_last (stranger->neighbors);
-    }
+           indiv != stranger)
+        evol_add_neighbor (self, stranger, indiv, DOUBLE_NONE);
 
     evol_assess_diversity_locally (self, stranger);
     evol_assess_score (self, stranger);
@@ -707,27 +717,13 @@ static void evol_update_assessment_by_comer (evol_t *self, s_indiv_t *comer) {
                        s_asneighbor_new (comer, iter.handle));
 
         // To see if comer could become indiv's neighbor
-        void *handle_in_neighbors =
-            list4x_insert_sorted (indiv->neighbors,
-                                  s_neighbor_new (comer, neighbor->distance));
-        bool comer_becomes_neighbor = true;
-
-        // If indiv's neighbors list overflows, remove the farmost one which is
-        // possible to be the newcomer.
-        if (list4x_size (indiv->neighbors) > self->max_neighbors) {
-            s_neighbor_t *farmost = list4x_last (indiv->neighbors);
-            if (farmost) {
-                if (farmost->indiv == comer)
-                    comer_becomes_neighbor = false;
-                list4x_remove_last (indiv->neighbors);
-            }
-        }
+        s_asneighbor_t *as_neighbor =
+            evol_add_neighbor (self, indiv, comer, neighbor->distance);
 
         // If comer becomes indiv's neighbor
-        if (comer_becomes_neighbor) {
+        if (as_neighbor) {
             // Add indiv to comer's as_neighbors list
-            list4x_append (comer->as_neighbors,
-                           s_asneighbor_new (indiv, handle_in_neighbors));
+            list4x_append (comer->as_neighbors, as_neighbor);
             // Re-assess indiv's diversity and score
             evol_assess_diversity_locally (self, indiv);
             list4x_reorder (self->livings_rank_div, indiv->handle_livings_div);
@@ -800,16 +796,19 @@ static void evol_update_assessment_by_forgotten (evol_t *self,
             }
         }
 
+        // Add new neighbor to indiv's neighbors list, and add indiv to new
+        // neighbor's as_neighbors list
         if (list4x_size (new_nbs) > 0) {
             s_neighbor_t *new_nb = NULL;
             list4x_iterator_t iter_new_nb = list4x_iter_init (new_nbs, true);
             while ((new_nb =
                     (s_neighbor_t *) list4x_iter (new_nbs, &iter_new_nb))
                    != NULL) {
-                print_debug ("");
                 list4x_iter_pop (new_nbs, &iter_new_nb);
                 print_debug ("");
-                list4x_insert_sorted (indiv->neighbors, new_nb);
+                void *handle = list4x_insert_sorted (indiv->neighbors, new_nb);
+                list4x_append (new_nb->indiv->as_neighbors,
+                               s_asneighbor_new (indiv, handle));
                 print_debug ("");
             }
         }

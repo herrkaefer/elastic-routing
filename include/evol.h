@@ -58,8 +58,7 @@ typedef void (*evol_local_improver_t) (const void *context, genome_t genome);
 typedef bool (*evol_should_renew_t) (const void *context);
 
 // Genome renew callback (genome is updated in place)
-// Return 0 if genome is unchanged,
-// Return 1 if genome is modified and keeped,
+// Return 0 if genome should be keeped
 // Return -1 if genome should be dropped
 typedef int (*evol_renewer_t) (const void *context, genome_t genome);
 

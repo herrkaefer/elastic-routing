@@ -12,23 +12,16 @@
 /*
 @todo
 
-- rewrite evol_renew_population ()
+- test renew
+- add diversification
+    - 当slow down条件满足后report结果，可以选择停止，或者进行diversify后继续。
+- 消息机制（放在evol还是solver?）
 
-- add diversify
-
+- [x]rewrite evol_renew_population ()
 - [x]diversity的计算及更新
     - 精确算法
     - 近似算法
-
-- 当auto_stop条件满足后report结果，可以选择停止，或者进行diversify后继续。
-
-- How to diversity?
-
-- 消息机制（放在evol还是solver?）
-
 - [x]把individual放在arrayset里似乎没有必要。
-
-- livings, ancestors, children的container可以考虑以后选用更高效的如tree
 
 */
 
@@ -56,7 +49,7 @@ typedef struct {
     print_func_t genome_printer;
 
     // Attributes
-    bool   is_feasible;
+    bool   feasible;
     double fitness;
     double diversity;
     double score; // func (alpha * rank_fitness + beta * rank_diversity)
@@ -246,7 +239,7 @@ static s_indiv_t *s_indiv_new (genome_t genome,
     else
         self->genome_destructor = NULL;
 
-    self->is_feasible = false;
+    self->feasible = false;
     self->fitness     = DOUBLE_NONE;
     self->diversity   = DOUBLE_NONE;
     self->score       = DOUBLE_NONE;
@@ -284,6 +277,22 @@ static void s_indiv_free (s_indiv_t **self_p) {
 }
 
 
+// Reset individual's all properties to the state after creation
+static void s_indiv_reset (s_indiv_t *self) {
+    self->feasible = false;
+    self->fitness     = DOUBLE_NONE;
+    self->diversity   = DOUBLE_NONE;
+    self->score       = DOUBLE_NONE;
+
+    self->handle_livings_fit   = NULL;
+    self->handle_livings_div   = NULL;
+    self->handle_livings_score = NULL;
+
+    list4x_purge (self->neighbors);
+    list4x_purge (self->as_neighbors);
+}
+
+
 // Individual compare fitness function
 static int s_indiv_compare_fitness (const s_indiv_t *indiv1,
                                     const s_indiv_t *indiv2) {
@@ -311,7 +320,7 @@ static int s_indiv_compare_score (const s_indiv_t *indiv1,
 }
 
 
-// Check if indiv is in neighbors
+// Check if indiv is self's neighbor
 static bool s_indiv_has_neighbor (s_indiv_t *self, s_indiv_t *indiv) {
     if (list4x_size (self->neighbors) == 0)
         return false;
@@ -352,6 +361,49 @@ static void s_heuristic_free (s_heuristic_t **self_p) {
 
 // ---------------------------------------------------------------------------
 
+// Create new livings group
+static void evol_new_livings_group (evol_t *self) {
+    // List sorted by fitness descending order
+    self->livings_rank_fit = list4x_new ();
+    list4x_set_comparator (self->livings_rank_fit,
+                           (compare_func_t) s_indiv_compare_fitness);
+    list4x_sort (self->livings_rank_fit, false);
+
+    // List sorted by diversity descending order
+    self->livings_rank_div = list4x_new ();
+    list4x_set_comparator (self->livings_rank_div,
+                           (compare_func_t) s_indiv_compare_diversity);
+    list4x_sort (self->livings_rank_div, false);
+
+    // List sorted by score descending order.
+    // Let this list be responsible for destroying items (individuals).
+    self->livings_rank_score = list4x_new ();
+    list4x_set_destructor (self->livings_rank_score,
+                           (free_func_t) s_indiv_free);
+    list4x_set_comparator (self->livings_rank_score,
+                           (compare_func_t) s_indiv_compare_score);
+    list4x_sort (self->livings_rank_score, false);
+}
+
+
+// Create new ancestors group
+static void evol_new_ancestors_group (evol_t *self) {
+    self->ancestors = list4x_new ();
+    // Let this list destroy ancestors individuals
+    list4x_set_destructor (self->ancestors, (free_func_t) s_indiv_free);
+}
+
+
+// Create new children group
+static void evol_new_children_group (evol_t *self) {
+    self->children = list4x_new ();
+    // Let this list destroy children individuals
+    list4x_set_destructor (self->children, (free_func_t) s_indiv_free);
+    list4x_set_comparator (self->children,
+                           (compare_func_t) s_indiv_compare_fitness);
+}
+
+
 // Get number of livings in livings group
 static size_t evol_num_livings (evol_t *self) {
     return list4x_size (self->livings_rank_fit);
@@ -374,8 +426,12 @@ static void evol_print_indiv (evol_t *self, s_indiv_t *indiv) {
     printf ("\nIndividual:\n");
     if (self->genome_printer)
             self->genome_printer (indiv->genome);
-    printf ("fitness: %8.3f, diversity: %8.3f, score: %8.3f\n\n",
+    printf ("feasible: %s, fitness: %8.3f, diversity: %8.3f, score: %8.3f\n",
+            indiv->feasible ? "true" : "false",
             indiv->fitness, indiv->diversity, indiv->score);
+    printf ("is living: %s, #neighbors: %zu, #as_neighbors: %zu\n\n",
+            (indiv->handle_livings_fit != NULL) ? "true" : "false",
+            list4x_size (indiv->neighbors), list4x_size (indiv->as_neighbors));
 }
 
 
@@ -470,7 +526,7 @@ static void evol_assess_feasibility_and_fitness (evol_t *self,
                                                  s_indiv_t *indiv) {
     // print_info ("assess feasibility and fitness.\n");
     if (self->feasiblity_assessor)
-        indiv->is_feasible =
+        indiv->feasible =
             self->feasiblity_assessor (self->context, indiv->genome);
 
     indiv->fitness = self->fitness_assessor (self->context, indiv->genome);
@@ -600,12 +656,15 @@ static void evol_assess_stranger (evol_t *self, s_indiv_t *stranger) {
     s_indiv_t *indiv = NULL;
     list4x_iterator_t iter = list4x_iter_init (self->livings_rank_fit, true);
     while ((indiv = (s_indiv_t *) list4x_iter (self->livings_rank_fit, &iter))
-           != NULL) {
+           != NULL &&
+           indiv != stranger) {
+        assert (stranger->genome);
+        assert (indiv->genome);
         double distance = self->distance_assessor (self->context,
                                                    stranger->genome,
                                                    indiv->genome);
-        s_neighbor_t *neighbor = s_neighbor_new (indiv, distance);
-        list4x_insert_sorted (stranger->neighbors, neighbor);
+        list4x_insert_sorted (stranger->neighbors,
+                              s_neighbor_new (indiv, distance));
         if (list4x_size (stranger->neighbors) > self->max_neighbors)
             list4x_remove_last (stranger->neighbors);
     }
@@ -613,12 +672,15 @@ static void evol_assess_stranger (evol_t *self, s_indiv_t *stranger) {
     // Find neighbors in ancestors group
     iter = list4x_iter_init (self->ancestors, true);
     while ((indiv = (s_indiv_t *) list4x_iter (self->ancestors, &iter))
-           != NULL) {
+           != NULL &&
+           indiv != stranger) {
+        assert (stranger->genome);
+        assert (indiv->genome);
         double distance = self->distance_assessor (self->context,
                                                    stranger->genome,
                                                    indiv->genome);
-        s_neighbor_t *neighbor = s_neighbor_new (indiv, distance);
-        list4x_insert_sorted (stranger->neighbors, neighbor);
+        list4x_insert_sorted (stranger->neighbors,
+                              s_neighbor_new (indiv, distance));
         if (list4x_size (stranger->neighbors) > self->max_neighbors)
             list4x_remove_last (stranger->neighbors);
     }
@@ -631,36 +693,41 @@ static void evol_assess_stranger (evol_t *self, s_indiv_t *stranger) {
 // Update attributes of individuals in livings group taking acount of newcomer.
 // In consideration of efficiency, only update newcomer's neighbors.
 static void evol_update_assessment_by_comer (evol_t *self, s_indiv_t *comer) {
+    assert (list4x_size (comer->as_neighbors) == 0);
+
     s_neighbor_t *neighbor = NULL;
     list4x_iterator_t iter = list4x_iter_init (comer->neighbors, true);
     while ((neighbor = (s_neighbor_t *) list4x_iter (comer->neighbors, &iter))
             != NULL) {
         s_indiv_t *indiv = neighbor->indiv;
+        assert (indiv != comer);
+
         // Add comer to indiv's as_neighbors list
         list4x_append (indiv->as_neighbors,
                        s_asneighbor_new (comer, iter.handle));
 
-        // Try to add comer to indiv's neighbors
-        s_neighbor_t *as_neighbor = s_neighbor_new (comer, neighbor->distance);
-        void *handle_in_neighbor =
-            list4x_insert_sorted (indiv->neighbors, as_neighbor);
-        bool neighbors_changed = true;
+        // To see if comer could become indiv's neighbor
+        void *handle_in_neighbors =
+            list4x_insert_sorted (indiv->neighbors,
+                                  s_neighbor_new (comer, neighbor->distance));
+        bool comer_becomes_neighbor = true;
 
+        // If indiv's neighbors list overflows, remove the farmost one which is
+        // possible to be the newcomer.
         if (list4x_size (indiv->neighbors) > self->max_neighbors) {
             s_neighbor_t *farmost = list4x_last (indiv->neighbors);
             if (farmost) {
-                // It is possible that comer is too far to become a neighbor
                 if (farmost->indiv == comer)
-                    neighbors_changed = false;
+                    comer_becomes_neighbor = false;
                 list4x_remove_last (indiv->neighbors);
             }
         }
 
         // If comer becomes indiv's neighbor
-        if (neighbors_changed) {
+        if (comer_becomes_neighbor) {
             // Add indiv to comer's as_neighbors list
             list4x_append (comer->as_neighbors,
-                           s_asneighbor_new (indiv, handle_in_neighbor));
+                           s_asneighbor_new (indiv, handle_in_neighbors));
             // Re-assess indiv's diversity and score
             evol_assess_diversity_locally (self, indiv);
             list4x_reorder (self->livings_rank_div, indiv->handle_livings_div);
@@ -671,26 +738,41 @@ static void evol_update_assessment_by_comer (evol_t *self, s_indiv_t *comer) {
 }
 
 
-// Update attributes of individuals in livings group taking acount of a goner.
-// Update goner's as_neighbors' neighbors, diversity, and score
-static void evol_update_assessment_by_goner (evol_t *self, s_indiv_t *goner) {
-    s_asneighbor_t *as_neighbor = NULL;
-    list4x_iterator_t iter = list4x_iter_init (goner->as_neighbors, true);
-    while ((as_neighbor =
-                (s_asneighbor_t *) list4x_iter (goner->as_neighbors, &iter))
-            != NULL) {
-        // Individual who sees goner as neighbor
-        s_indiv_t *indiv = as_neighbor->indiv;
-        // Remove goner from indiv's neighbors
-        list4x_remove (indiv->neighbors, as_neighbor->handle_in_neighbors);
+// Update attributes of livings taking acount of a forgotten individual.
+// Update forgotten's as_neighbors' neighbors, diversity, and score.
+static void evol_update_assessment_by_forgotten (evol_t *self,
+                                                 s_indiv_t *forgotten) {
+    // Temporary list for collecting new neighbors
+    list4x_t *new_nbs = list4x_new ();
+    list4x_set_destructor (new_nbs, (free_func_t) s_neighbor_free);
+    list4x_set_comparator (new_nbs, (compare_func_t) s_neighbor_compare);
+    list4x_sort (new_nbs, true);
+
+    s_asneighbor_t *as_nb = NULL;
+    list4x_iterator_t iter_as_nb =
+        list4x_iter_init (forgotten->as_neighbors, true);
+    while ((as_nb = (s_asneighbor_t *)
+                    list4x_iter (forgotten->as_neighbors, &iter_as_nb))
+           != NULL) {
+
+        assert (list4x_size (new_nbs) == 0);
+        assert (list4x_is_sorted_ascending (new_nbs));
+
+        // Remove forgotten from as_neighbor's neighbors
+        s_indiv_t *indiv = as_nb->indiv;
+
+        assert (indiv != forgotten);
+        print_debug ("");
+        evol_print_indiv (self, indiv);
+        assert (s_indiv_has_neighbor (indiv, forgotten));
+        void *item = list4x_item (indiv->neighbors, as_nb->handle_in_neighbors);
+        assert (item);
+
+        list4x_remove (indiv->neighbors, as_nb->handle_in_neighbors);
+        print_debug ("");
 
         size_t max_new_nbs =
             self->max_neighbors - list4x_size (indiv->neighbors);
-        // Temporary list for collecting new neighbors
-        list4x_t *new_nbs = list4x_new ();
-        list4x_set_destructor (new_nbs, (free_func_t) s_neighbor_free);
-        list4x_set_comparator (new_nbs, (compare_func_t) s_neighbor_compare);
-        list4x_sort (new_nbs, true);
 
         // Try to add new neighbor for indiv from its neighbors' neighbors
         s_neighbor_t *nb = NULL;
@@ -704,13 +786,14 @@ static void evol_update_assessment_by_goner (evol_t *self, s_indiv_t *goner) {
             while ((nb_nb = (s_neighbor_t *)
                             list4x_iter (nb->indiv->neighbors, &iter_nb_nb))
                    != NULL) {
-                if (!s_indiv_has_neighbor (indiv, nb_nb->indiv)) {
+                if (nb_nb != forgotten &&
+                    !s_indiv_has_neighbor (indiv, nb_nb->indiv)) {
                     double dist =
                         self->distance_assessor (self->context,
                                                  indiv->genome,
                                                  nb_nb->indiv->genome);
-                    s_neighbor_t *new_nb = s_neighbor_new (nb_nb->indiv, dist);
-                    list4x_insert_sorted (new_nbs, new_nb);
+                    list4x_insert_sorted (new_nbs,
+                                          s_neighbor_new (nb_nb->indiv, dist));
                     if (list4x_size (new_nbs) > max_new_nbs)
                         list4x_remove_last (new_nbs);
                 }
@@ -723,13 +806,19 @@ static void evol_update_assessment_by_goner (evol_t *self, s_indiv_t *goner) {
             while ((new_nb =
                     (s_neighbor_t *) list4x_iter (new_nbs, &iter_new_nb))
                    != NULL) {
+                print_debug ("");
                 list4x_iter_pop (new_nbs, &iter_new_nb);
+                print_debug ("");
                 list4x_insert_sorted (indiv->neighbors, new_nb);
+                print_debug ("");
             }
         }
-
-        list4x_free (&new_nbs);
+        assert (list4x_size (new_nbs) == 0);
+        assert (list4x_is_sorted_ascending (new_nbs));
     }
+
+    list4x_free (&new_nbs);
+    print_debug ("");
 }
 
 
@@ -793,7 +882,10 @@ static s_indiv_t *evol_add_ancestor (evol_t *self, s_indiv_t *indiv) {
 //   killed and moved to ancestors group.
 static s_indiv_t *evol_add_living (evol_t *self, s_indiv_t *indiv) {
 
+    print_info ("add a living.\n");
+    evol_print_indiv (self, indiv);
     evol_assess_stranger (self, indiv);
+    evol_print_indiv (self, indiv);
 
     // If livings group is full, and new indiv's score is worse than all
     // livings, drop and destroy it. (Do not move it to ancestors group)
@@ -817,11 +909,14 @@ static s_indiv_t *evol_add_living (evol_t *self, s_indiv_t *indiv) {
     indiv->handle_livings_score =
         list4x_insert_sorted (self->livings_rank_score, indiv);
 
+    print_debug ("");
+
     // Update assessment of livings (approximate algorithm)
     evol_update_assessment_by_comer (self, indiv);
+    print_debug ("");
 
     s_indiv_t *dead = NULL; // indiv removed from livings group
-    s_indiv_t *goner = NULL; // indiv removed from ancestors group
+    s_indiv_t *forgotten = NULL; // indiv removed from ancestors group
 
     // If livings group is full
     if (evol_num_livings (self) > self->max_livings) {
@@ -848,19 +943,23 @@ static s_indiv_t *evol_add_living (evol_t *self, s_indiv_t *indiv) {
         indiv->handle_livings_div = NULL;
 
         // Move the dead to ancestors group
-        goner = evol_add_ancestor (self, dead);
+        forgotten = evol_add_ancestor (self, dead);
     }
 
     // evol_update_diversity_and_score (self);
-    // evol_update_diversity_and_score_for_livings (self, indiv, goner);
+    // evol_update_diversity_and_score_for_livings (self, indiv, forgotten);
 
-    if (goner) {
+    if (forgotten) {
+        print_debug ("");
         // Update assessment of livings (approximate algorithm)
-        evol_update_assessment_by_goner (self, goner);
-        // Destroy goner
-        s_indiv_free (&goner);
+        evol_update_assessment_by_forgotten (self, forgotten);
+        print_debug ("");
+
+        // Destroy forgotten
+        s_indiv_free (&forgotten);
     }
 
+    print_info ("living added.\n");
     return dead;
 }
 
@@ -1120,65 +1219,49 @@ static void evol_step (evol_t *self) {
 }
 
 
-// Due to variations of the context, (all) individuals in the livings group
-// should be updated (modified or transformed to new individuals, or abandoned)
+// Due to variations of the context, (all) individuals in the population should
+// be updated (modified or transformed to new individuals, or abandoned)
 // accordingly. This operation transforms current livings group to a new one,
 // and the ancestors as well as the children group are cleared (because old
 // ancestors are meaningless in the new context). This operation is also
-// equivalent to initialize a new population by current one.
+// equivalent to initialize a new population from current one.
 static void evol_renew_population (evol_t *self) {
     assert (self->renewer);
-    if (evol_num_livings (self) == 0)
-        return;
 
-    bool modified = false;
+    list4x_t *old_livings_rank_fit = self->livings_rank_fit;
+    list4x_t *old_livings_rank_div = self->livings_rank_div;
+    list4x_t *old_livings_rank_score = self->livings_rank_score;
 
+    // Create new population: new livings group, empty ancestors and children
+    evol_new_livings_group (self);
+    list4x_purge (self->ancestors);
+    list4x_purge (self->children);
+
+    // Use score list for iteration, and pop item during iteration
     s_indiv_t *living = NULL;
-    list4x_iterator_t iter = list4x_iter_init (self->livings_rank_fit, true);
-    while ((living = (s_indiv_t *) list4x_iter (self->livings_rank_fit, &iter))
-            != NULL) {
+    list4x_iterator_t iter = list4x_iter_init (old_livings_rank_score, true);
+    while ((living = (s_indiv_t *) list4x_iter (old_livings_rank_score, &iter))
+           != NULL) {
+        list4x_iter_pop (old_livings_rank_score, &iter);
         int result = self->renewer (self->context, living->genome);
 
-        // Individual is modified
-        if (result == 1) {
-            modified = true;
-            // Re-assess fitness, diversity, and score
-            evol_assess_feasibility_and_fitness (self, living);
-            evol_assess_score (self, living);
-
-            // Reorder indiv in diversity and score list
-            list4x_reorder (self->livings_rank_div, living->handle_livings_div);
-            list4x_reorder (self->livings_rank_score, living->handle_livings_score);
+        // If individual is keeped, reset it and add it to new livings group
+        if (result == 0) {
+            s_indiv_reset (living);
+            evol_add_living (self, living);
         }
-
-        // Individual should be dropped (destroyed)
-        else if (result == -1) {
-            list4x_iter_pop (self->livings_rank_fit, &iter);
-            living->handle_livings_fit = NULL;
-            list4x_pop (self->livings_rank_div, living->handle_livings_div);
-            living->handle_livings_div = NULL;
-            list4x_pop (self->livings_rank_score, living->handle_livings_score);
-            living->handle_livings_score = NULL;
+        // If individual is dropped, destroy it
+        else if (result < 0)
             s_indiv_free (&living);
-        }
+        else
+            assert (false);
     }
 
-    // Re-sort fitness list if some livings are modified
-    if (modified) {
-        list4x_sort (self->livings_rank_fit, false);
-        // list4x_purge (self->ancestors);
-    }
+    // Destroy old livings group
+    list4x_free (&old_livings_rank_fit);
+    list4x_free (&old_livings_rank_div);
+    list4x_free (&old_livings_rank_score); // score list is already empty
 }
-
-
-// Reset recorders before each run
-// static void evol_reset_recorders (evol_t *self) {
-//     self->iters_cnt = 0;
-//     self->last_best_fit = evol_best_fitness (self);
-//     self->improved_fit_percent = DOUBLE_MAX;
-//     self->improved_fit_iters_begin = self->iters_cnt;
-//     self->improved_fit_time_begin = timer_total (self->timer, 0);
-// }
 
 
 // Restart recorders before running
@@ -1266,45 +1349,9 @@ evol_t *evol_new (void) {
 
     // ------------------ Population ------------------ //
 
-    // Livings group
-
-    self->livings_rank_fit = list4x_new ();
-    list4x_set_comparator (self->livings_rank_fit,
-                           (compare_func_t) s_indiv_compare_fitness);
-    // sort in descending order
-    list4x_sort (self->livings_rank_fit, false);
-    print_info ("livings after new:\n");
-    evol_print_group (self, self->livings_rank_fit);
-
-    self->livings_rank_div = list4x_new ();
-    list4x_set_comparator (self->livings_rank_div,
-                           (compare_func_t) s_indiv_compare_diversity);
-    // sort in descending order
-    list4x_sort (self->livings_rank_div, false);
-
-    self->livings_rank_score = list4x_new ();
-    // Let this list destroy livings individuals
-    list4x_set_destructor (self->livings_rank_score,
-                           (free_func_t) s_indiv_free);
-    list4x_set_comparator (self->livings_rank_score,
-                           (compare_func_t) s_indiv_compare_score);
-    // sort in descending order
-    list4x_sort (self->livings_rank_score, false);
-
-    // Ancestors group
-
-    self->ancestors = list4x_new ();
-    // Let this list destroy ancestors individuals
-    list4x_set_destructor (self->ancestors, (free_func_t) s_indiv_free);
-
-    // Children group
-
-    self->children = list4x_new ();
-    // Let this list destroy children individuals
-    list4x_set_destructor (self->children, (free_func_t) s_indiv_free);
-    list4x_set_comparator (self->children,
-                           (compare_func_t) s_indiv_compare_fitness);
-
+    evol_new_livings_group (self);
+    evol_new_ancestors_group (self);
+    evol_new_children_group (self);
 
     // ------------------ Parameters ------------------ //
 
@@ -1614,6 +1661,7 @@ void evol_init (evol_t *self) {
             evol_add_living (self, indiv);
         }
 
+        print_debug ("");
         if (self->genome_duplicator)
             list4x_set_destructor (h_genomes, self->genome_destructor);
         else
@@ -1621,6 +1669,7 @@ void evol_init (evol_t *self) {
         list4x_free (&h_genomes);
     }
 
+    print_debug ("");
     assert (list4x_size (self->ancestors) == 0);
     assert (list4x_size (self->children) == 0);
     evol_assert_population (self);
@@ -1636,6 +1685,7 @@ void evol_run (evol_t *self) {
     while (!evol_should_stop (self)) {
 
         if (self->should_renew && self->should_renew (self->context)) {
+            print_info ("Renew population.\n");
             evol_renew_population (self);
             evol_reset_stats (self);
             evol_restart_recorders (self);
@@ -1706,6 +1756,21 @@ static list4x_t *string_heuristic (const str_evol_context_t *context,
 }
 
 
+static bool string_should_renew (const str_evol_context_t *context) {
+    return rng_random (context->rng) > 0.9;
+}
+
+
+static int string_renewer (const str_evol_context_t *context, char *str) {
+    size_t len = strlen (str);
+    if (len < 6)
+        return -1;
+    else if (rng_random (context->rng) > 0.9)
+        str[0] = 'A';
+    return 0;
+}
+
+
 void evol_test (bool verbose) {
     print_info (" * evol: \n");
     evol_t *evol = evol_new ();
@@ -1724,6 +1789,9 @@ void evol_test (bool verbose) {
                              true,
                              SIZE_MAX);
     evol_register_crossover (evol, (evol_crossover_t) string_crossover);
+    // evol_set_renewer (evol,
+    //                   (evol_should_renew_t) string_should_renew,
+    //                   (evol_renewer_t) string_renewer);
 
     evol_init (evol);
 

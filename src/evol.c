@@ -751,21 +751,20 @@ static void evol_update_assessment_by_forgotten (evol_t *self,
                     list4x_iter (forgotten->as_neighbors, &iter_as_nb))
            != NULL) {
 
-        assert (list4x_size (new_nbs) == 0);
-        assert (list4x_is_sorted_ascending (new_nbs));
+        // assert (list4x_size (new_nbs) == 0);
+        // assert (list4x_is_sorted_ascending (new_nbs));
 
         // Remove forgotten from as_neighbor's neighbors
         s_indiv_t *indiv = as_nb->indiv;
 
-        assert (indiv != forgotten);
-        print_debug ("");
-        evol_print_indiv (self, indiv);
-        assert (s_indiv_has_neighbor (indiv, forgotten));
-        void *item = list4x_item (indiv->neighbors, as_nb->handle_in_neighbors);
-        assert (item);
+        // assert (indiv != forgotten);
+        // print_debug ("");
+        // evol_print_indiv (self, indiv);
+        // assert (s_indiv_has_neighbor (indiv, forgotten));
+        // void *item = list4x_item (indiv->neighbors, as_nb->handle_in_neighbors);
+        // assert (item);
 
         list4x_remove (indiv->neighbors, as_nb->handle_in_neighbors);
-        print_debug ("");
 
         size_t max_new_nbs =
             self->max_neighbors - list4x_size (indiv->neighbors);
@@ -782,17 +781,21 @@ static void evol_update_assessment_by_forgotten (evol_t *self,
             while ((nb_nb = (s_neighbor_t *)
                             list4x_iter (nb->indiv->neighbors, &iter_nb_nb))
                    != NULL) {
+
                 if (nb_nb != forgotten &&
+                    nb_nb != indiv &&
                     !s_indiv_has_neighbor (indiv, nb_nb->indiv)) {
-                    double dist =
-                        self->distance_assessor (self->context,
-                                                 indiv->genome,
-                                                 nb_nb->indiv->genome);
-                    list4x_insert_sorted (new_nbs,
-                                          s_neighbor_new (nb_nb->indiv, dist));
-                    if (list4x_size (new_nbs) > max_new_nbs)
-                        list4x_remove_last (new_nbs);
+                    continue;
                 }
+
+                double dist = self->distance_assessor (self->context,
+                                                       indiv->genome,
+                                                       nb_nb->indiv->genome);
+                list4x_insert_sorted (new_nbs,
+                                      s_neighbor_new (nb_nb->indiv, dist));
+                if (list4x_size (new_nbs) > max_new_nbs)
+                    list4x_remove_last (new_nbs);
+
             }
         }
 
@@ -805,19 +808,16 @@ static void evol_update_assessment_by_forgotten (evol_t *self,
                     (s_neighbor_t *) list4x_iter (new_nbs, &iter_new_nb))
                    != NULL) {
                 list4x_iter_pop (new_nbs, &iter_new_nb);
-                print_debug ("");
                 void *handle = list4x_insert_sorted (indiv->neighbors, new_nb);
                 list4x_append (new_nb->indiv->as_neighbors,
                                s_asneighbor_new (indiv, handle));
-                print_debug ("");
             }
         }
-        assert (list4x_size (new_nbs) == 0);
-        assert (list4x_is_sorted_ascending (new_nbs));
+        // assert (list4x_size (new_nbs) == 0);
+        // assert (list4x_is_sorted_ascending (new_nbs));
     }
 
     list4x_free (&new_nbs);
-    print_debug ("");
 }
 
 

@@ -1,5 +1,5 @@
 /*  =========================================================================
-    list4x - generic list container
+    list4x - a generic list container
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 
@@ -11,7 +11,7 @@
 */
 /* @todo
 
-- add list4x_iterator_t for iteration. 使用内置cursor变量的缺点是不支持对同一个
+- [x]add list4x_iterator_t for iteration. 使用内置cursor变量的缺点是不支持对同一个
   list的循环嵌套。
 
 - [x]优化list4x_count()
@@ -20,7 +20,7 @@
 
 - [x]不用reorder，改用list4x_pop(), change item, then insert_sorted()
 
-- list4x_insert_sorted () and list4x_reorder () 需要进一步test，主要是
+- [x]list4x_insert_sorted () and list4x_reorder () 需要进一步test，主要是
   binary search寻找位置尚不能保证一定准确。
 
 - [x]s_node_t: Add a indicator: whether the node is in list or not.

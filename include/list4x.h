@@ -1,5 +1,5 @@
 /*  =========================================================================
-    list4x - generic list container
+    list4x - a generic list container
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 
@@ -12,36 +12,35 @@
 /*
 list4x is a generic list container.
 
-- Item accessing
+- Item can be accessed
 
     - by handle: item handle is a pointer which is always binded with item and
-      stay unchanged during sort, reorder, reverse, shuffle, etc, unless the
-      item is manually set. As a result, the handle could be served as item's
-      ID in the list.
+      stays unchanged during sort, reorder, reverse, shuffle, etc, unless the
+      item is manually altered. As a result, the handle could be served as
+      item's ID in the list.
 
     - by index: item can be get and set like in ordinary array. Using index is a
       litter slower than using item handle.
 
-    - through iteration
+    - through iteration (see below)
 
 - List iteration
 
-Using index for list iteration is not recommended.
-
-    - list4x_iter_begin() / list4x_iter(). e.g.
+    - Using list4x_iter_init () and list4x_iter () is recommended. e.g.
 
     TYPE *item;
-    list4x_iter_begin (list, true);
-    while ((item = (TYPE *) list4x_iter (list)) != NULL) {
+    list4x_iterator_t iter = list4x_iter_init (list, true);
+    while ((item = (TYPE *) list4x_iter (list, &iter)) != NULL) {
         // Do somethings with item
         // ...
-        // You can remove current item from list (item is destroyed)
+        // If you need item handle, it is just iter.handle
+        //
+        // You can remove current item from list by
         // list4x_iter_remove (list);
 
-        // or pop current item from list without destroying it
+        // or pop current item from list without destroying it by
         // list4x_iter_pop (list);
     }
-
 */
 
 
@@ -54,32 +53,30 @@ extern "C" {
 
 typedef struct _list4x_t list4x_t;
 
-// typedef struct _list4x_iterator_t list4x_iterator_t;
-
 typedef struct {
-    void *handle;
-    bool forward;
+    void *handle; // handle of current item
+    bool forward; // iteration direction. true: forward, false: backward
 } list4x_iterator_t;
 
 // Create a new list
-// alloc_size is the initial size, or 0 to use a default value.
 list4x_t *list4x_new (void);
 
 // Destroy a list
 void list4x_free (list4x_t **self_p);
 
-// Set item free function
-// By default, the item is not freed when it is removed from the list.
+// Set item destructor callback.
+// By default, item is not destroyed when it is removed from the list.
 void list4x_set_destructor (list4x_t *self, free_func_t destructor);
 
-// Set item duplicate function
+// Set item duplicator callback
 // If this is set, the list contains a duplication of item.
 void list4x_set_duplicator (list4x_t *self, duplicate_func_t duplicator);
 
-// Set item compare func for sorting
+// Set item comparator callback
 void list4x_set_comparator (list4x_t *self, compare_func_t comparator);
 
-// Set item compare func for sorting
+// Set item printer callback.
+// If this is set, list4x_print () will use it to print items.
 void list4x_set_printer (list4x_t *self, print_func_t printer);
 
 // Get number of items in list
@@ -98,8 +95,7 @@ bool list4x_is_sorted_descending (list4x_t *self);
 void *list4x_item (list4x_t *self, void *handle);
 
 // Get item at index.
-// For list traversing, it is recommended to use list4x_iter_begin () and
-// list4x_iter () rather than index.
+// For list traversing, using list_iterato_t is much faster.
 void *list4x_item_at (list4x_t *self, size_t index);
 
 // Return the first item of the list
@@ -169,73 +165,83 @@ void list4x_remove_last (list4x_t *self);
 // Remove item at index
 void list4x_remove_at (list4x_t *self, size_t index);
 
-// Remove items at [from_index, to_index]
+// Remove items at interval [from_index, to_index]
 void list4x_remove_slice (list4x_t *self, size_t from_index, size_t to_index);
 
-// Remove all items in list
+// Remove all items in list.
+// After calling this, the list will be empty, however the sorting state will
+// be remained.
 void list4x_purge (list4x_t *self);
 
-// Sort list in specified order
+// Sort list using provided comparator in specified order
 void list4x_sort (list4x_t *self, bool ascending);
 
 // Reorder an item to the right position in list according to the sorting order.
 // The item is given by handle, in list or not.
-// It is assumed that the list is sorted except for the only item.
+// It is assumed that the list is sorted except for the only item which is just
+// altered and needs to be replaced to the right position.
 void list4x_reorder (list4x_t *self, void *handle);
 
 // Reverse list in place
 void list4x_reverse (list4x_t *self);
 
 // Shuffle list in place
-// Set rng to use your random number generator.
-// Set rng to NULL to use inner one.
+// Set rng to use your random number generator, or NULL to use an default one.
 void list4x_shuffle (list4x_t *self, rng_t *rng);
 
 // Find item in list.
 // Return the index if item is found, SIZE_NONE if not found.
 // The index could be arbitrary if multiple items exist.
+// Note that "found" means the two items are "equal" defined by the comparator
+// rather than "identical".
 size_t list4x_index (list4x_t *self, void *item);
 
 // Find item in list.
 // Return item handle if item is found, NULL if not found.
 // If multiple same items exist, return arbitrary one of them.
+// Note that "found" means the two items are "equal" defined by the comparator
+// rather than "identical".
 void *list4x_find (list4x_t *self, void *item);
 
 // Check if item is in list
+// Note that "include" means the two items are "equal" defined by the comparator
+// rather than "identical".
 bool list4x_includes (list4x_t *self, void *item);
 
 // Count numbers of item in list
 size_t list4x_count (list4x_t *self, void *item);
 
-// Set an inner list iterator before iteration.
+// Create a list iterator before iteration.
 // Set forward to true for iterating forward, or false for backward.
-// Note that after this initialization, the iterator does not point to the first
-// item, and you should call list4x_iter () to get the item.
+// Note that after creation, the iterator does not point to the first item, and
+// you should then call list4x_iter () to get the item.
 list4x_iterator_t list4x_iter_init (list4x_t *self, bool forward);
 
-// Get the next item using the inner iterator.
-// Return item, or NULL if iterator reaches the end.
+// Get the next item using list iterator.
+// Return the item, or NULL if iterator reaches the end.
+// If item is returned, iterator->handle is just the handle of item.
 void *list4x_iter (list4x_t *self, list4x_iterator_t *iterator);
 
 // Pop current item during iteration.
-// The inner iterator will go back to last position.
+// The iterator will go back to last position.
 void *list4x_iter_pop (list4x_t *self, list4x_iterator_t *iterator);
 
 // Remove current item during iteration.
-// The inner iterator will go back to last position.
+// The iterator will go back to last position.
 void list4x_iter_remove (list4x_t *self, list4x_iterator_t *iterator);
 
 // Duplicate a list
 list4x_t *list4x_duplicate (const list4x_t *self);
 
-// Check if two lists are equal: same item in same index
+// Check if two lists are equal: same items in the same sequence.
 bool list4x_equal (const list4x_t *self, const list4x_t *list);
 
-// Print list
+// Print list.
+// Items are displayed using provided printer if available.
 void list4x_print (const list4x_t *self);
 
-// --------------------------------------------------------
-void list4x_assert_sort (list4x_t *self, const char *order);
+// ---------------------------------------------------------------------------
+// void list4x_assert_sort (list4x_t *self, const char *order);
 
 // Self test
 void list4x_test (bool verbose);

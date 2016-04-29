@@ -241,7 +241,7 @@ bool list4x_equal (const list4x_t *self, const list4x_t *list);
 void list4x_print (const list4x_t *self);
 
 // ---------------------------------------------------------------------------
-// void list4x_assert_sort (list4x_t *self, const char *order);
+void list4x_assert_sort (list4x_t *self, const char *order);
 
 // Self test
 void list4x_test (bool verbose);

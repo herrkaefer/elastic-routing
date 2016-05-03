@@ -97,22 +97,28 @@ char *string_random_alphanum (size_t min_length, size_t max_length, rng_t *rng) 
 
 size_t string_levenshtein_distance (const char *str1, const char *str2) {
     assert (str1 && str2);
-    size_t x, y, s1len, s2len;
-    s1len = strlen (str1);
-    s2len = strlen (str2);
-    size_t matrix[s2len+1][s1len+1];
-    matrix[0][0] = 0;
+    size_t x, y;
+    size_t s1len = strlen (str1);
+    size_t s2len = strlen (str2);
+    size_t *matrix = (size_t *) malloc (sizeof (size_t) * (s2len+1) * (s1len+1));
+    assert (matrix);
+
+    matrix[0] = 0;
     for (x = 1; x <= s2len; x++)
-        matrix[x][0] = matrix[x-1][0] + 1;
+        matrix [x*(s1len+1)] = matrix[(x-1)*(s1len+1)] + 1;
     for (y = 1; y <= s1len; y++)
-        matrix[0][y] = matrix[0][y-1] + 1;
+        matrix[y] = matrix[y-1] + 1;
     for (x = 1; x <= s2len; x++)
         for (y = 1; y <= s1len; y++)
-            matrix[x][y] = MIN3 (matrix[x-1][y] + 1,
-                matrix[x][y-1] + 1,
-                matrix[x-1][y-1] + (str1[y-1] == str2[x-1] ? 0 : 1));
+            matrix[x*(s1len+1)+y] =
+                MIN3 (matrix[(x-1)*(s1len+1)+y] + 1,
+                      matrix[x*(s1len+1)+(y-1)] + 1,
+                      matrix[(x-1)*(s1len+1)+(y-1)] +
+                        (str1[y-1] == str2[x-1] ? 0 : 1));
 
-    return matrix[s2len][s1len];
+    size_t distance = matrix[s2len*(s1len+1) + s1len];
+    free (matrix);
+    return distance;
 }
 
 

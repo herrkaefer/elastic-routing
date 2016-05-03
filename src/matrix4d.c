@@ -56,7 +56,7 @@ matrix4d_t *matrix4d_new (size_t initial_rows, size_t initial_cols) {
     size_t initial_order =
         (initial_rows > initial_cols) ? initial_rows : initial_cols;
     if (initial_order == 0)
-        initial_order = 128;
+        initial_order = 64;
     self->data =
         (double *) malloc (sizeof (double) * initial_order * initial_order);
     assert (self->data);

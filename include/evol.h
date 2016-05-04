@@ -54,7 +54,8 @@ typedef genome_t (*evol_mutator_t) (const void *context, const genome_t genome);
 // Local improving callback (genome is improved in place)
 typedef void (*evol_local_improver_t) (const void *context, genome_t genome);
 
-// Callback to check whether renewer should be called to update whole population
+// Callback to check whether renewer should be called to update the population.
+// This is mostly because of the variation of context
 typedef bool (*evol_should_renew_t) (const void *context);
 
 // Genome renew callback (genome is updated in place)
@@ -88,9 +89,6 @@ void evol_set_ancestors_group_size (evol_t *self, size_t max_ancestors);
 // Set children group size
 // If this is not set, default value is used.
 void evol_set_children_group_size (evol_t *self, size_t max_children);
-
-// Set genome hash function
-// void evol_set_hash_func (evol_t *self, hash_func_t fn);
 
 // Set genome free function
 void evol_set_genome_destructor (evol_t *self, free_func_t fn);

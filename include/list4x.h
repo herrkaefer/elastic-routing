@@ -26,10 +26,14 @@ list4x is a generic list container.
 
 - List iteration
 
-    - Using list4x_iter_init () and list4x_iter () is recommended. e.g.
+    - Use list4x_iter_init () or list4x_iter_init_from () to initialize an
+      iterator, and use list4x_iter () to get item. e.g.
 
     TYPE *item;
+    // Start iteration from the beginning (forward) or end (backward)
     list4x_iterator_t iter = list4x_iter_init (list, true);
+    // or start iteration from specified item (start from the NEXT one)
+    // list4x_iterator_t iter = list4x_iter_init_from (list, handle, true);
     while ((item = (TYPE *) list4x_iter (list, &iter)) != NULL) {
         // Do somethings with item
         // ...
@@ -219,7 +223,7 @@ list4x_iterator_t list4x_iter_init (list4x_t *self, bool forward);
 
 // Create a list iterator from given item handle.
 // Set forward to true for iterating forward, or false for backward.
-// Note that calling list4x_iter () will get the next item after handle.
+// Note that calling list4x_iter () will get the NEXT item after handle.
 list4x_iterator_t list4x_iter_init_from (list4x_t *self,
                                          void *handle,
                                          bool forward);

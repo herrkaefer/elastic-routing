@@ -12,7 +12,11 @@
 /*
 @todo
 
-- test renew
+- sort livings when enough livings exist rather than at the very beginning.
+- update_by_forgotten() 补充新neighbor可以优化
+- score computation: best fit and div may change, should update?
+- renew之后livings size可能小于2，cx无法进行，如何处理？
+- init() and renew()需要在最后保证livings group已经sort
 - add diversification
     - 当slow down条件满足后report结果，可以选择停止，或者进行diversify后继续。
 - 消息机制（放在evol还是solver?）
@@ -27,9 +31,9 @@
 
 #include "classes.h"
 
-#define EVOL_DEFAULT_MAX_LIVINGS   20
-#define EVOL_DEFAULT_MAX_ANCESTORS 5
-#define EVOL_DEFAULT_MAX_CHILDREN  4
+#define EVOL_DEFAULT_MAX_LIVINGS   100
+#define EVOL_DEFAULT_MAX_ANCESTORS 20
+#define EVOL_DEFAULT_MAX_CHILDREN  30
 #define EVOL_DEFAULT_STEP_MAX_ITERS 10
 #define EVOL_DEFAULT_STEP_MAX_TIME 0.1 // seconds
 #define EVOL_DEFAULT_NUM_DICINGS_FOR_PARENT1 1
@@ -501,26 +505,29 @@ static void s_heuristic_free (s_heuristic_t **self_p) {
 
 // Create new livings group
 static void evol_new_livings_group (evol_t *self) {
-    // List sorted by fitness descending order
+    // List sorted by fitness descending order.
+    // This list is always sorted.
     self->livings_rank_fit = list4x_new ();
     list4x_set_comparator (self->livings_rank_fit,
                            (compare_func_t) s_indiv_compare_fitness);
     list4x_sort (self->livings_rank_fit, false);
 
     // List sorted by diversity descending order
+    // This list is sorted when enough livings exist
     self->livings_rank_div = list4x_new ();
     list4x_set_comparator (self->livings_rank_div,
                            (compare_func_t) s_indiv_compare_diversity);
-    list4x_sort (self->livings_rank_div, false);
+    // list4x_sort (self->livings_rank_div, false);
 
     // List sorted by score descending order.
+    // This list is sorted when enough livings exist
     // Let this list be responsible for destroying items (individuals).
     self->livings_rank_score = list4x_new ();
     list4x_set_destructor (self->livings_rank_score,
                            (free_func_t) s_indiv_free);
     list4x_set_comparator (self->livings_rank_score,
                            (compare_func_t) s_indiv_compare_score);
-    list4x_sort (self->livings_rank_score, false);
+    // list4x_sort (self->livings_rank_score, false);
 }
 
 
@@ -552,6 +559,7 @@ static size_t evol_num_children (evol_t *self) {
 }
 
 
+// Print individual
 static void evol_print_indiv (evol_t *self, s_indiv_t *indiv) {
     printf ("\nIndividual:\n");
     if (self->genome_printer)
@@ -567,6 +575,7 @@ static void evol_print_indiv (evol_t *self, s_indiv_t *indiv) {
 }
 
 
+// Print a group
 static void evol_print_group (evol_t *self, list4x_t *group) {
     printf ("\ngroup size: %zu, sorted: %s\n",
         list4x_size (group),
@@ -579,6 +588,12 @@ static void evol_print_group (evol_t *self, list4x_t *group) {
     while ((indiv = (s_indiv_t *) list4x_iter (group, &iter)) != NULL)
         evol_print_indiv (self, indiv);
     printf ("-------------------------------------------------------\n");
+}
+
+
+static bool evol_population_is_regularized (evol_t *self) {
+    return (list4x_is_sorted (self->livings_rank_div) &&
+            list4x_is_sorted (self->livings_rank_score));
 }
 
 
@@ -601,8 +616,8 @@ static void evol_assert_indiv (evol_t *self, s_indiv_t *indiv) {
                                       indiv->handle_livings_score));
 
         assert (!double_is_none (indiv->fitness));
-        assert (!double_is_none (indiv->diversity));
-        assert (!double_is_none (indiv->score));
+        // assert (!double_is_none (indiv->diversity));
+        // assert (!double_is_none (indiv->score));
     }
     // Indiv is in ancestors group
     else if (indiv->handle_ancestors) {
@@ -669,13 +684,12 @@ static void evol_assert_indiv (evol_t *self, s_indiv_t *indiv) {
             assert (as_nb->indiv->genome);
             assert (as_nb->indiv->neighbors);
             // assert (s_indiv_has_neighbor (as_nb->indiv, indiv));
-            print_debug ("");
             s_neighbor_t *as_nb_nb =
                 (s_neighbor_t *) list4x_item (as_nb->indiv->neighbors,
                                               as_nb->handle_in_neighbors);
-            print_debug ("");
+            // print_debug ("");
             assert (as_nb_nb->indiv == indiv);
-            print_debug ("");
+            // print_debug ("");
         }
     }
 }
@@ -692,8 +706,10 @@ static void evol_assert_population (evol_t *self) {
     assert (list4x_size (self->children) <= self->max_children + 1);
 
     list4x_assert_sort (self->livings_rank_fit, "descending");
-    list4x_assert_sort (self->livings_rank_div, "descending");
-    list4x_assert_sort (self->livings_rank_score, "descending");
+    if (evol_population_is_regularized (self)) {
+        list4x_assert_sort (self->livings_rank_div, "descending");
+        list4x_assert_sort (self->livings_rank_score, "descending");
+    }
     list4x_assert_sort (self->ancestors, "no");
 
     s_indiv_t *indiv = NULL;
@@ -702,14 +718,10 @@ static void evol_assert_population (evol_t *self) {
            != NULL)
         evol_assert_indiv (self, indiv);
 
-    print_debug ("");
-
     iter = list4x_iter_init (self->ancestors, true);
     while ((indiv = (s_indiv_t *) list4x_iter (self->ancestors, &iter))
            != NULL)
         evol_assert_indiv (self, indiv);
-
-    print_debug ("");
 
     iter = list4x_iter_init (self->children, true);
     while ((indiv = (s_indiv_t *) list4x_iter (self->children, &iter))
@@ -853,74 +865,106 @@ static void evol_assess_score (evol_t *self, s_indiv_t *indiv) {
 }
 
 
+// Re-assess a living's diversity and score, and reorder it in group if needed.
+static void evol_update_diversity_and_score_for_living (evol_t *self,
+                                                        s_indiv_t *living) {
+    assert (living->handle_livings_fit);
+    evol_assess_diversity_locally (self, living);
+    if (list4x_is_sorted (self->livings_rank_div))
+        list4x_reorder (self->livings_rank_div, living->handle_livings_div);
+    evol_assess_score (self, living);
+    if (list4x_is_sorted (self->livings_rank_score))
+        list4x_reorder (self->livings_rank_score, living->handle_livings_score);
+}
+
+
+// Regularize livings group (assume that ancestors group is empty).
+// Establish neighborhood relation, assess diversity and score for
+// livings, and sort livings according to diversity and score.
+static void evol_regularize_population (evol_t *self) {
+    assert (!evol_population_is_regularized (self));
+    assert (list4x_size (self->ancestors) == 0);
+
+    s_indiv_t *indiv1;
+    list4x_iterator_t iter1 = list4x_iter_init (self->livings_rank_fit, true);
+    while ((indiv1 = (s_indiv_t *) list4x_iter (self->livings_rank_fit, &iter1))
+           != NULL) {
+
+        s_indiv_t *indiv2;
+        list4x_iterator_t iter2 =
+            list4x_iter_init_from (self->livings_rank_fit, iter1.handle, true);
+        while ((indiv2 =
+                    (s_indiv_t *) list4x_iter (self->livings_rank_fit, &iter2))
+               != NULL) {
+            assert (indiv1 != indiv2);
+            double dist = self->distance_assessor (self->context,
+                                                   indiv1->genome,
+                                                   indiv2->genome);
+            s_indiv_add_neighbor (indiv1, indiv2, dist, self->max_neighbors);
+            s_indiv_add_neighbor (indiv2, indiv1, dist, self->max_neighbors);
+        }
+
+        assert (list4x_size (indiv1->neighbors) == self->max_neighbors);
+        evol_assess_diversity_locally (self, indiv1);
+    }
+
+    list4x_sort (self->livings_rank_div, false);
+
+    iter1 = list4x_iter_init (self->livings_rank_fit, true);
+    while ((indiv1 = (s_indiv_t *) list4x_iter (self->livings_rank_fit, &iter1))
+           != NULL)
+        evol_assess_score (self, indiv1);
+
+    list4x_sort (self->livings_rank_score, false);
+
+    print_debug ("");
+    evol_assert_population (self);
+    print_debug ("");
+}
+
+
 // Assess a newcomer who has no conection with the population (livings and
 // ancestors group) yet.
 // After this, the newcomer will have its attributes assessed, and neighbors
 // defined. Its as_neighbors will remain empty.
 // This function will not change the population at all.
 static void evol_assess_newcomer (evol_t *self, s_indiv_t *newcomer) {
-    print_debug ("");
+    assert (s_indiv_is_out_of_groups (newcomer));
+    assert (list4x_size (newcomer->neighbors) == 0);
+    assert (list4x_size (newcomer->as_neighbors) == 0);
 
     if (double_is_none (newcomer->fitness))
         evol_assess_feasibility_and_fitness (self, newcomer);
 
-    assert (list4x_size (newcomer->neighbors) == 0);
-    assert (list4x_size (newcomer->as_neighbors) == 0);
-
-    print_debug ("");
-
     // Find and add neighbors from livings group
-    s_indiv_t *indiv = NULL;
+    s_indiv_t *indiv;
     list4x_iterator_t iter = list4x_iter_init (self->livings_rank_fit, true);
     while ((indiv = (s_indiv_t *) list4x_iter (self->livings_rank_fit, &iter))
-           != NULL &&
-           indiv != newcomer) {
-        print_debug ("");
-        evol_print_indiv (self, newcomer);
-        print_debug ("");
-        evol_print_indiv (self, indiv);
-        print_debug ("");
-
-        double distance =
-            self->distance_assessor (self->context,
-                                     newcomer->genome,
-                                     indiv->genome);
-
-        print_debug ("");
-
+           != NULL) {
+        double distance = self->distance_assessor (self->context,
+                                                   newcomer->genome,
+                                                   indiv->genome);
         s_indiv_add_neighbor_unilaterally (newcomer,
                                            indiv,
                                            distance,
                                            self->max_neighbors);
-        print_debug ("");
     }
-
-    print_debug ("");
 
     // Find and add neighbors from ancestors group
     iter = list4x_iter_init (self->ancestors, true);
     while ((indiv = (s_indiv_t *) list4x_iter (self->ancestors, &iter))
-           != NULL &&
-           indiv != newcomer) {
-        double distance =
-            self->distance_assessor (self->context,
-                                     newcomer->genome,
-                                     indiv->genome);
+           != NULL) {
+        double distance = self->distance_assessor (self->context,
+                                                   newcomer->genome,
+                                                   indiv->genome);
         s_indiv_add_neighbor_unilaterally (newcomer,
                                            indiv,
                                            distance,
                                            self->max_neighbors);
     }
 
-    print_debug ("");
-
     evol_assess_diversity_locally (self, newcomer);
-
-    print_debug ("");
-
     evol_assess_score (self, newcomer);
-
-    print_debug ("");
 }
 
 
@@ -942,44 +986,26 @@ static void evol_update_population_by_newcomer (evol_t *self,
         // Add newcomer to indiv's as_neighbors list (pairing completed)
         s_indiv_add_as_neighbor (indiv, newcomer, iter.handle);
 
-        print_debug ("");
-        s_indiv_assert_neighbor_pairing (newcomer, indiv);
-        print_debug ("");
-
         // To see if newcomer could become indiv's neighbor
         int result = s_indiv_add_neighbor (indiv,
                                            newcomer,
                                            neighbor->distance,
                                            self->max_neighbors);
 
-        if (result == 0) {
-            print_debug ("");
-            s_indiv_assert_neighbor_pairing (indiv, newcomer);
-            print_debug ("");
-        }
-
         // If newcomer becomes indiv's neighbor, and indiv is in livings group,
         // re-assess indiv's diversity and score, and reorder it.
         if (result == 0 && indiv->handle_livings_fit) {
-            evol_assess_diversity_locally (self, indiv);
-            if (list4x_is_sorted (self->livings_rank_div))
-                list4x_reorder (self->livings_rank_div,
-                                indiv->handle_livings_div);
-            evol_assess_score (self, indiv);
-            if (list4x_is_sorted (self->livings_rank_score))
-                list4x_reorder (self->livings_rank_score,
-                                indiv->handle_livings_score);
+            evol_update_diversity_and_score_for_living (self, indiv);
 
-            print_debug ("");
-            s_indiv_assert_neighbor_pairing (indiv, newcomer);
-            print_debug ("");
+            // print_debug ("");
+            // s_indiv_assert_neighbor_pairing (indiv, newcomer);
+            // print_debug ("");
         }
     }
 
-    print_debug ("");
-    evol_assert_population (self);
-    print_debug ("");
-
+    // print_debug ("");
+    // evol_assert_population (self);
+    // print_debug ("");
 }
 
 
@@ -1075,25 +1101,17 @@ static void evol_update_population_by_forgotten (evol_t *self,
                     (s_neighbor_t *) list4x_iter (new_nbs, &iter_new_nbs))
                    != NULL) {
                 int re = s_indiv_add_neighbor (indiv,
-                                      new_nb->indiv,
-                                      new_nb->distance,
-                                      self->max_neighbors);
+                                               new_nb->indiv,
+                                               new_nb->distance,
+                                               self->max_neighbors);
                 assert (re == 0);
                 list4x_iter_remove (new_nbs, &iter_new_nbs);
             }
 
             // If indiv is in livings group, re-assess its diversity and score,
             // and reorder if needed.
-            if (indiv->handle_livings_fit) {
-                evol_assess_diversity_locally (self, indiv);
-                if (list4x_is_sorted (self->livings_rank_div))
-                    list4x_reorder (self->livings_rank_div,
-                                    indiv->handle_livings_div);
-                evol_assess_score (self, indiv);
-                if (list4x_is_sorted (self->livings_rank_score))
-                    list4x_reorder (self->livings_rank_score,
-                                    indiv->handle_livings_score);
-            }
+            if (indiv->handle_livings_fit)
+                evol_update_diversity_and_score_for_living (self, indiv);
         }
     }
     list4x_free (&new_nbs);
@@ -1157,6 +1175,26 @@ static void evol_add_ancestor (evol_t *self, s_indiv_t *dead) {
 // - Otherwise it is accepted. If livings group overflows, the worst one is
 //   killed and moved to ancestors group.
 static void evol_add_living (evol_t *self, s_indiv_t *newcomer) {
+    // If livings group is not regularized yet, simply assess newcomer's fitness
+    // and drop it in.
+    if (!evol_population_is_regularized (self)) {
+        if (double_is_none (newcomer->fitness))
+            evol_assess_feasibility_and_fitness (self, newcomer);
+        newcomer->handle_livings_fit =
+            list4x_insert_sorted (self->livings_rank_fit, newcomer);
+        newcomer->handle_livings_div =
+            list4x_append (self->livings_rank_div, newcomer);
+        newcomer->handle_livings_score =
+            list4x_append (self->livings_rank_score, newcomer);
+
+        // Regularize livings group if enough livings are gathered
+        if (evol_num_livings (self) > self->max_livings / 2)
+            evol_regularize_population (self);
+
+        return;
+    }
+
+    // Livings group is regularized
 
     // Assess newcomer's attributes
     evol_assess_newcomer (self, newcomer);
@@ -1172,24 +1210,13 @@ static void evol_add_living (evol_t *self, s_indiv_t *newcomer) {
         }
     }
 
-    // Newcomer accepted. Add it to livings group. Do not assume that the
-    // livings group is already sorted.
-    if (list4x_is_sorted (self->livings_rank_fit)) {
-        newcomer->handle_livings_fit =
-            list4x_insert_sorted (self->livings_rank_fit, newcomer);
-        newcomer->handle_livings_div =
-            list4x_insert_sorted (self->livings_rank_div, newcomer);
-        newcomer->handle_livings_score =
-            list4x_insert_sorted (self->livings_rank_score, newcomer);
-    }
-    else {
-        newcomer->handle_livings_fit =
-            list4x_append (self->livings_rank_fit, newcomer);
-        newcomer->handle_livings_div =
-            list4x_append (self->livings_rank_div, newcomer);
-        newcomer->handle_livings_score =
-            list4x_append (self->livings_rank_score, newcomer);
-    }
+    // Newcomer accepted. Add it to livings group. The livings group is sorted.
+    newcomer->handle_livings_fit =
+        list4x_insert_sorted (self->livings_rank_fit, newcomer);
+    newcomer->handle_livings_div =
+        list4x_insert_sorted (self->livings_rank_div, newcomer);
+    newcomer->handle_livings_score =
+        list4x_insert_sorted (self->livings_rank_score, newcomer);
 
     // Update population (approximate algorithm employed)
     evol_update_population_by_newcomer (self, newcomer);
@@ -1464,7 +1491,7 @@ static void evol_renew_population (evol_t *self) {
     // Destroy old livings group
     list4x_free (&old_livings_rank_fit);
     list4x_free (&old_livings_rank_div);
-    list4x_free (&old_livings_rank_score); // score list is already empty
+    list4x_free (&old_livings_rank_score); // score list should be already empty
 }
 
 
@@ -1476,9 +1503,9 @@ static void evol_renew_population (evol_t *self) {
 // is processed in evol_add_living ()
 static void evol_join (evol_t *self) {
     // print_info ("join\n");
-    print_debug ("");
-    evol_assert_population (self);
-    print_debug ("");
+    // print_debug ("");
+    // evol_assert_population (self);
+    // print_debug ("");
 
     if (evol_num_children (self) == 0)
         return;
@@ -1968,6 +1995,7 @@ void evol_run (evol_t *self) {
         if (self->should_renew && self->should_renew (self->context)) {
             print_info ("Renew population.\n");
             evol_renew_population (self);
+            print_info ("new livings size: %zu\n", evol_num_livings (self));
             evol_reset_stats (self);
             evol_restart_recorders (self);
         }
@@ -2053,16 +2081,15 @@ static list4x_t *string_heuristic (const str_evol_context_t *context,
 
 
 static bool string_should_renew (const str_evol_context_t *context) {
-    return rng_random (context->rng) > 0.9;
+    return rng_random (context->rng) < 0.02;
 }
 
 
 static int string_renewer (const str_evol_context_t *context, char *str) {
-    size_t len = strlen (str);
-    if (len < 6)
+    if (strlen (str) > 100)
         return -1;
-    else if (rng_random (context->rng) > 0.9)
-        str[0] = 'A';
+    else if (rng_random (context->rng) < 0.05)
+        str[0] = 'z';
     return 0;
 }
 
@@ -2085,9 +2112,9 @@ void evol_test (bool verbose) {
                              true,
                              SIZE_MAX);
     evol_register_crossover (evol, (evol_crossover_t) string_crossover);
-    // evol_set_renewer (evol,
-    //                   (evol_should_renew_t) string_should_renew,
-    //                   (evol_renewer_t) string_renewer);
+    evol_set_renewer (evol,
+                      (evol_should_renew_t) string_should_renew,
+                      (evol_renewer_t) string_renewer);
 
     evol_init (evol);
 

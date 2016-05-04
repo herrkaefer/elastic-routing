@@ -1000,6 +1000,17 @@ list4x_iterator_t list4x_iter_init (list4x_t *self, bool forward) {
 }
 
 
+list4x_iterator_t list4x_iter_init_from (list4x_t *self,
+                                         void *handle,
+                                         bool forward) {
+    assert (self);
+    assert (handle);
+    s_node_t *node = (s_node_t *) handle;
+    assert (node->attached);
+    return (list4x_iterator_t) {node, forward};
+}
+
+
 void *list4x_iter (list4x_t *self, list4x_iterator_t *iterator) {
     assert (self);
     assert (iterator);
@@ -1342,7 +1353,14 @@ void list4x_test (bool verbose) {
     printf ("\n");
 
     list4x_sort (list, false);
+    list4x_print (list);
     handle = list4x_find (list, "ten");
+    print_debug ("");
+    iter = list4x_iter_init_from (list, handle, false);
+    while ((str = (char *) list4x_iter (list, &iter)) != NULL)
+        printf ("%s, ", str);
+    printf ("\n");
+
     assert (streq (list4x_item (list, handle), "ten"));
     char *item = list4x_item (list, handle);
     item[0] = 'a';

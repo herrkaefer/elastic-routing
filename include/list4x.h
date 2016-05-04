@@ -217,6 +217,13 @@ size_t list4x_count (list4x_t *self, void *item);
 // you should then call list4x_iter () to get the item.
 list4x_iterator_t list4x_iter_init (list4x_t *self, bool forward);
 
+// Create a list iterator from given item handle.
+// Set forward to true for iterating forward, or false for backward.
+// Note that calling list4x_iter () will get the next item after handle.
+list4x_iterator_t list4x_iter_init_from (list4x_t *self,
+                                         void *handle,
+                                         bool forward);
+
 // Get the next item using list iterator.
 // Return the item, or NULL if iterator reaches the end.
 // If item is returned, iterator->handle is just the handle of item.

@@ -68,7 +68,6 @@ typedef int (*evol_renewer_t) (const void *context, genome_t genome);
 // Outside stopper callback
 typedef bool (*evol_stopper_t) (const void *context);
 
-
 // ---------------------------------------------------------------------------
 
 // Create evolution object
@@ -136,15 +135,11 @@ void evol_register_mutator (evol_t *self, evol_mutator_t fn);
 // Set genome local search function
 void evol_register_local_improver (evol_t *self, evol_local_improver_t fn);
 
-// Initialize evolution. Fill population using heuristics.
-void evol_init (evol_t *self);
-
 // Run evolution
 void evol_run (evol_t *self);
 
 // Get genome with best fitness
 genome_t evol_best_genome (evol_t *self);
-
 
 void evol_test (bool verbose);
 

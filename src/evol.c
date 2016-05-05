@@ -1774,6 +1774,7 @@ void evol_free (evol_t **self_p) {
         free (self);
         *self_p = NULL;
     }
+    print_info ("evol freed.\n");
 }
 
 
@@ -1896,13 +1897,10 @@ void evol_register_local_improver (evol_t *self, evol_local_improver_t fn) {
 }
 
 
-void evol_init (evol_t *self) {
+void evol_run (evol_t *self) {
     assert (self);
-    print_info ("evol initilizing...\n");
-    assert (evol_num_livings (self) == 0);
-    assert (list4x_size (self->ancestors) == 0);
-    assert (list4x_size (self->children) == 0);
 
+    print_info ("initilizing...\n");
     // Fill livings group with heuristics
     evol_fill_livings_with_heuristics (self);
 
@@ -1910,18 +1908,8 @@ void evol_init (evol_t *self) {
     if (!evol_population_is_regularized (self))
         evol_regularize_population (self);
 
-    // print_debug ("");
-    // assert (list4x_size (self->ancestors) == 0);
-    // assert (list4x_size (self->children) == 0);
-    // evol_assert_population (self);
-
-    print_info ("evol initilized. #livings in population: %zu\n",
+    print_info ("population initilized. #livings in population: %zu\n",
                 evol_num_livings (self));
-}
-
-
-void evol_run (evol_t *self) {
-    assert (self);
 
     evol_reset_stats (self);
     evol_restart_recorders (self);
@@ -1965,6 +1953,7 @@ genome_t evol_best_genome (evol_t *self) {
 // ---------------------------------------------------------------------------
 // Self test using string
 
+// A demo context for string evolution
 typedef struct {
     rng_t *rng;
 } str_evol_context_t;
@@ -2029,13 +2018,18 @@ static int string_renewer (const str_evol_context_t *context, char *str) {
 
 void evol_test (bool verbose) {
     print_info (" * evol: \n");
+
+    // Create a context
+    rng_t *rng_context = rng_new ();
+    str_evol_context_t context = {rng_context};
+
+    // Create evolution object
     evol_t *evol = evol_new ();
 
-    // context
-    rng_t *rng = rng_new ();
-    str_evol_context_t context = {rng};
-
+    // Set context
     evol_set_context (evol, &context);
+
+    // Set all necessary callbacks
     evol_set_genome_destructor (evol, (free_func_t) string_free);
     evol_set_genome_printer (evol, (print_func_t) string_print);
     evol_set_fitness_assessor (evol, (evol_fitness_assessor_t) string_fitness2);
@@ -2049,11 +2043,15 @@ void evol_test (bool verbose) {
                       (evol_should_renew_t) string_should_renew,
                       (evol_renewer_t) string_renewer);
 
-    evol_init (evol);
-
+    // Run evolution
     evol_run (evol);
 
+    // Get results
+    // @todo to add
+
+    // Destroy evolution object
     evol_free (&evol);
-    rng_free (&rng);
+
+    rng_free (&rng_context);
     print_info ("OK\n");
 }

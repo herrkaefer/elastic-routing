@@ -186,10 +186,10 @@ struct _evol_t {
     size_t improved_fit_iters_begin;
     double improved_fit_time_begin;
 
-    // ------------------ Stats ------------------------ //
+    // --------------- Stats (for run) ----------------- //
 
     double initial_best_fit;
-    double overall_improved_fit;
+    double overall_improved_fit; // percentage
 
     // ------------------ Auxiliaries ------------------ //
 
@@ -1204,9 +1204,7 @@ static void evol_fill_livings_with_heuristics (evol_t *self) {
     s_indiv_t *indiv = NULL;
 
     // Step 1: non-random heuristics
-    print_debug ("non-random heuristics\n");
 
-    // size_t num_livings = evol_num_livings (self);
     max_expected = (self->max_livings - evol_num_livings (self)) / num_h;
     if (max_expected == 0) {
         max_expected = 1;
@@ -1242,12 +1240,10 @@ static void evol_fill_livings_with_heuristics (evol_t *self) {
     }
 
     // Step 2: random heuristics
-    print_debug ("random heuristics. num: %zu\n", random_h_cnt);
 
     if (random_h_cnt == 0) // no random heuristics
         return;
 
-    // num_livings = evol_num_livings (self);
     max_expected = (self->max_livings - evol_num_livings (self)) / random_h_cnt;
     if (max_expected == 0) {
         max_expected = 1;
@@ -1274,7 +1270,6 @@ static void evol_fill_livings_with_heuristics (evol_t *self) {
             evol_add_living (self, indiv);
         }
 
-        print_debug ("");
         if (self->genome_duplicator)
             list4x_set_destructor (h_genomes, self->genome_destructor);
         else
@@ -1738,16 +1733,14 @@ evol_t *evol_new (void) {
     self->max_neighbors        = EVOL_DEFAULT_MAX_NEIGHBORS;
     self->weight_fit           = EVOL_DEFAULT_WEIGHT_FITNESS;
 
-    // ------------------ Recorders ------------------ //
+    // ------------------ Recorders ------------------- //
 
     self->timer      = timer_new ("EVOL_RUN");
     self->step_timer = timer_new ("EVOL_STEP");
 
-    // ------------------ Statistics ------------------ //
+    // ------------------ Stats ----------------------- //
 
-    self->overall_improved_fit = 0;
-
-    // ------------------ Auxiliaries ------------------ //
+    // ------------------ Auxiliaries ----------------- //
 
     self->rng = rng_new ();
 
@@ -1917,10 +1910,10 @@ void evol_init (evol_t *self) {
     if (!evol_population_is_regularized (self))
         evol_regularize_population (self);
 
-    print_debug ("");
-    assert (list4x_size (self->ancestors) == 0);
-    assert (list4x_size (self->children) == 0);
-    evol_assert_population (self);
+    // print_debug ("");
+    // assert (list4x_size (self->ancestors) == 0);
+    // assert (list4x_size (self->children) == 0);
+    // evol_assert_population (self);
 
     print_info ("evol initilized. #livings in population: %zu\n",
                 evol_num_livings (self));
@@ -2021,15 +2014,15 @@ static list4x_t *string_heuristic (const str_evol_context_t *context,
 
 
 static bool string_should_renew (const str_evol_context_t *context) {
-    return rng_random (context->rng) < 0.02;
+    return rng_random (context->rng) < 0.01;
 }
 
 
 static int string_renewer (const str_evol_context_t *context, char *str) {
     if (strlen (str) > 100)
         return -1;
-    else if (rng_random (context->rng) < 0.05)
-        str[0] = 'z';
+    else if (rng_random (context->rng) < 0.03)
+        str[0] = 'x';
     return 0;
 }
 

@@ -55,12 +55,14 @@ typedef genome_t (*evol_mutator_t) (const void *context, const genome_t genome);
 typedef void (*evol_local_improver_t) (const void *context, genome_t genome);
 
 // Callback to check whether renewer should be called to update the population.
-// This is mostly because of the variation of context
+// This is mostly due to variation of context
 typedef bool (*evol_should_renew_t) (const void *context);
 
 // Genome renew callback (genome is updated in place)
-// Return 0 if genome should be keeped
-// Return -1 if genome should be dropped
+// When context varies during evolution, you can use this callback to update
+// current individuals accordingly.
+// Return 0 if genome should be keeped (modified or tansformed into a new one.)
+// Return -1 if genome should be dropped.
 typedef int (*evol_renewer_t) (const void *context, genome_t genome);
 
 // Outside stopper callback
@@ -75,7 +77,7 @@ evol_t *evol_new (void);
 // Destroy evolution object
 void evol_free (evol_t **self_p);
 
-// Set the context to which individuals are refered (e.g. model)
+// Set the context to which individuals are refered (e.g. a model)
 void evol_set_context (evol_t *self, void *context);
 
 // Set livings group size

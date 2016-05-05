@@ -221,7 +221,7 @@ size_t list4x_count (list4x_t *self, void *item);
 // you should then call list4x_iter () to get the item.
 list4x_iterator_t list4x_iter_init (list4x_t *self, bool forward);
 
-// Create a list iterator from given item handle.
+// Create a list iterator starting from given item handle.
 // Set forward to true for iterating forward, or false for backward.
 // Note that calling list4x_iter () will get the NEXT item after handle.
 list4x_iterator_t list4x_iter_init_from (list4x_t *self,
@@ -247,11 +247,14 @@ list4x_t *list4x_duplicate (const list4x_t *self);
 // Check if two lists are equal: same items in the same sequence.
 bool list4x_equal (const list4x_t *self, const list4x_t *list);
 
-// Print list.
+// Print a list.
 // Items are displayed using provided printer if available.
 void list4x_print (const list4x_t *self);
 
 // ---------------------------------------------------------------------------
+// Assert that list is sorted correctly in given order.
+// param order could be "ascending", "descending", or "no".
+// This method is provided for debug purpose.
 void list4x_assert_sort (list4x_t *self, const char *order);
 
 // Self test

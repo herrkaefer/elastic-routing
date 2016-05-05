@@ -1100,16 +1100,17 @@ bool list4x_equal (const list4x_t *self, const list4x_t *list) {
 
 void list4x_print (const list4x_t *self) {
     assert (self);
-    char sorting_state[16];
-    if (self->sorting_state == LIST4X_ASCENDING_SORTED)
-        sprintf (sorting_state, "ascending");
-    else if (self->sorting_state == LIST4X_DESCENDING_SORTED)
-        sprintf (sorting_state, "descending");
-    else
-        sprintf (sorting_state, "no");
-
-    printf ("\nlist4x size: %zu, sorted: %s\n", self->size, sorting_state);
-    printf ("--------------------------------------------------\n");
+    printf ("\nlist4x size: %zu, sorted: %s\n", self->size,
+            (self->sorting_state == LIST4X_ASCENDING_SORTED) ?
+            "ascending" : (self->sorting_state == LIST4X_DESCENDING_SORTED ?
+                          "descending" :
+                          "no"));
+    printf ("destructor: %s, duplicator: %s, comparator: %s, printer: %s\n",
+            self->destructor ? "set" : "none",
+            self->duplicator ? "set" : "none",
+            self->comparator ? "set" : "none",
+            self->printer    ? "set" : "none");
+    printf ("---------------------------------------------------------------\n");
     if (self->printer) {
         size_t index = 0;
         s_node_t *node = self->head->next;

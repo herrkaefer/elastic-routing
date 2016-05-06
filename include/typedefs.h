@@ -29,8 +29,8 @@ typedef void (*print_func_t) (const void *obj);
 #define strneq(s1,s2)   (strcmp ((s1), (s2)))
 
 #define UUID_STR_LEN 32
-
 #define PI 3.1415926
+#define EARTH_RADIUS 6373.0
 
 #ifdef SIZE_MAX
 #define ID_NONE   SIZE_MAX

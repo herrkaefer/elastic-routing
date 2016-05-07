@@ -64,7 +64,9 @@ The concept of state is introduced to resolve a dynamic problem into discrete up
 
 # Evolutionary Framework (done)
 
-![population groups and individual flow](https://raw.githubusercontent.com/herrkaefer/elastic-routing/master/doc/evol-population.jpeg)
+## Population groups and individual flow
+
+![population groups and individual flow](https://raw.githubusercontent.com/herrkaefer/elastic-routing/master/doc/evol-population.png)
 
 (More explanations will be added later.)
 

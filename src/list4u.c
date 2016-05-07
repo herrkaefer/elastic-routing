@@ -1,5 +1,5 @@
 /*  =========================================================================
-    list4u - list container of usigned integers (size_t)
+    list4u - list container of usigned integers
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 

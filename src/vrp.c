@@ -32,7 +32,7 @@ typedef struct {
 
     node_type_t type; // NT_DEPOT or NT_CUSTOMER
     coord2d_t coord; // 2D coordinates
-} node_t;
+} s_node_t;
 
 
 typedef struct {
@@ -42,34 +42,34 @@ typedef struct {
     double max_capacity; // maximal capacity
     double capacity; // actual capacity
 
-    // @todo use id or node_t?
+    // @todo use id or s_node_t?
     size_t start_node_id;
     size_t end_node_id;
 
     // coord2d_t coord; // current position
 
     size_t route_id; // ID of assigned route in plans
-} vehicle_t;
+} s_vehicle_t;
 
 
 typedef enum {
-    RS_NOTPLANNED, // 该request进入系统，尚未规划
-    RS_WAITTING, // 包含该request的执行解已经找到，等待执行
+    RS_NOTPLANNED, // not in plan
+    RS_WAITTING, // in plan, not executed
     RS_BEFORE_PICKUP,
     RS_PICKINGUP,
     RS_BEFORE_DELIVERY,
     RS_DELIVERING,
     RS_BEFORE_VISIT,
     RS_VISITING,
-    RS_COMPLETED,
+    RS_COMPLETED, // exeuted
 } request_state_t;
 
 
 // @todo about request type, specify node type or not?
 typedef enum {
     RT_NONE,
-    RT_PICKUP_AND_DELIVERY,
-    RT_VISIT,
+    RT_PICKUP_AND_DELIVERY, // two nodes task (quantity could be zero or not)
+    RT_VISIT, // single node task (quantity could be zero or not)
     // RT_DEPOT2CUSTOMER,
     // RT_CUSTOMER2DEPOT,
     // RT_CUSTOMER2CUSTOMER,
@@ -80,7 +80,7 @@ typedef enum {
 
 typedef struct {
     size_t id;
-    char ext_id[UUID_STR_LEN]; // external id connecting the request to outside task
+    char ext_id[UUID_STR_LEN]; // external ID connecting request to outside task
 
     request_type_t type;
 
@@ -101,7 +101,7 @@ typedef struct {
     // service durations
     size_t pickup_duration; // service time for pickup. e.g. min
     size_t delivery_duration; // service time for delivery. e.g. min
-} request_t;
+} s_request_t;
 
 
 struct _vrp_t {
@@ -113,31 +113,32 @@ struct _vrp_t {
 
     // Fleet
     arrayset_t *vehicles;
-    // bool vehicles_are_homogeneous; // @todo what is the meaning related to state?
 
-    // transportation requests
+    // Transportation requests
     arrayset_t *requests;
 
-    // Constraints
+    // Solution
+    arrayset_t *plan;
+
+    // Constraints on plan
     double max_route_distance;
     double max_route_duration;
     // ...
-
-    // Solutions
-    arrayset_t *plan;
 
     // Auxiliaries
     list4u_t *depot_ids;
     list4u_t *customer_ids;
     list4u_t *pending_requests;
+    // bool vehicles_are_homogeneous; // @todo what is the meaning related to state?
 };
 
 
-static node_t *node_new (const char *ext_id) {
+// Create a node
+static s_node_t *node_new (const char *ext_id) {
     assert (ext_id);
     assert (strlen (ext_id) <= UUID_STR_LEN);
 
-    node_t *self = (node_t *) malloc (sizeof (node_t));
+    s_node_t *self = (s_node_t *) malloc (sizeof (s_node_t));
     assert (self);
 
     self->id = ID_NONE;
@@ -151,10 +152,11 @@ static node_t *node_new (const char *ext_id) {
 }
 
 
-static void node_free (node_t **self_p) {
+// Destroy a node
+static void node_free (s_node_t **self_p) {
     assert (self_p);
     if (*self_p) {
-        node_t *self = *self_p;
+        s_node_t *self = *self_p;
 
         // free properties here
 
@@ -165,12 +167,12 @@ static void node_free (node_t **self_p) {
 }
 
 
-// ---------------------------------------------------------------------------
-static vehicle_t *vehicle_new (const char *ext_id) {
+// Create a vehicle
+static s_vehicle_t *vehicle_new (const char *ext_id) {
     assert (ext_id);
     assert (strlen (ext_id) <= UUID_STR_LEN);
 
-    vehicle_t *self = (vehicle_t *) malloc (sizeof (vehicle_t));
+    s_vehicle_t *self = (s_vehicle_t *) malloc (sizeof (s_vehicle_t));
     assert (self);
 
     self->id = ID_NONE;
@@ -185,10 +187,11 @@ static vehicle_t *vehicle_new (const char *ext_id) {
 }
 
 
-static void vehicle_free (vehicle_t **self_p) {
+// Destroy a vehicle
+static void vehicle_free (s_vehicle_t **self_p) {
     assert (self_p);
     if (*self_p) {
-        vehicle_t *self = *self_p;
+        s_vehicle_t *self = *self_p;
 
         // free properties
 
@@ -199,12 +202,11 @@ static void vehicle_free (vehicle_t **self_p) {
 }
 
 
-// ---------------------------------------------------------------------------
 // Create a request object
-static request_t *request_new (const char *ext_id) {
+static s_request_t *request_new (const char *ext_id) {
     assert (ext_id && strlen (ext_id) <= UUID_STR_LEN);
 
-    request_t *self = (request_t *) malloc (sizeof (request_t));
+    s_request_t *self = (s_request_t *) malloc (sizeof (s_request_t));
     assert (self);
 
     self->id = ID_NONE;
@@ -233,10 +235,10 @@ static request_t *request_new (const char *ext_id) {
 
 
 // Destroy request object
-static void request_free (request_t **self_p) {
+static void request_free (s_request_t **self_p) {
     assert (self_p);
     if (*self_p) {
-        request_t *self = *self_p;
+        s_request_t *self = *self_p;
         // free properties here
 
         free (self);
@@ -283,12 +285,6 @@ vrp_t *vrp_new (void) {
                              (equal_func_t) string_equal,
                              NULL);
 
-
-    // Constraints
-    self->max_route_distance = DOUBLE_NONE;
-    self->max_route_duration = DOUBLE_NONE;
-
-
     // Plan
     self->plan = arrayset_new (0);
     arrayset_set_data_free_func (self->plan, (free_func_t) route_free);
@@ -298,7 +294,9 @@ vrp_t *vrp_new (void) {
     //                          (equal_func_t) string_equal,
     //                          (free_func_t) string_free);
 
-
+    // Constraints
+    self->max_route_distance = DOUBLE_NONE;
+    self->max_route_duration = DOUBLE_NONE;
 
     // Auxiliaries
 
@@ -552,20 +550,20 @@ vrp_t *vrp_new_from_file (const char *filename) {
         // create model
         self = vrp_new ();
         char ext_id[UUID_STR_LEN];
-        // node_t *depot = NULL;
+        // s_node_t *depot = NULL;
         size_t depot_id;
 
         // add nodes, arc distances, and requests
         for (size_t cnt = 0; cnt <= N; cnt++) {
             sprintf (ext_id, "%zu", cnt);
-            // node_t *node = vrp_add_node (self, ext_id);
+            // s_node_t *node = vrp_add_node (self, ext_id);
             size_t node_id;
 
             node_id = vrp_add_node (self, ext_id);
             if (cnt == 0)
-                vrp_set_node_depot (self, node_id);
+                vrp_set_node_as_depot (self, node_id);
             else
-                vrp_set_node_customer (self, node_id);
+                vrp_set_node_as_customer (self, node_id);
 
             if (cnt == 0)
                 depot_id = node_id;
@@ -607,8 +605,8 @@ vrp_t *vrp_new_from_file (const char *filename) {
 
 
 // Get node by id
-static node_t *vrp_node (vrp_t *self, size_t node_id) {
-    node_t *node = (node_t *) arrayset_data (self->nodes, node_id);
+static s_node_t *vrp_node (vrp_t *self, size_t node_id) {
+    s_node_t *node = (s_node_t *) arrayset_data (self->nodes, node_id);
     assert (node);
     return node;
 }
@@ -624,25 +622,25 @@ void vrp_set_coord_sys (vrp_t *self, coord2d_sys_t coord_sys) {
 size_t vrp_add_node (vrp_t *self, const char *ext_id) {
     assert (self);
 
-    node_t *node = node_new (ext_id);
+    s_node_t *node = node_new (ext_id);
     size_t id = arrayset_add (self->nodes, node, node->ext_id);
     node->id = id;
     return id;
 }
 
 
-void vrp_set_node_depot (vrp_t *self, size_t node_id) {
+void vrp_set_node_as_depot (vrp_t *self, size_t node_id) {
     assert (self);
-    node_t *node = vrp_node (self, node_id);
+    s_node_t *node = vrp_node (self, node_id);
     assert (node->type == NT_NONE);
     node->type = NT_DEPOT;
     list4u_append (self->depot_ids, node_id);
 }
 
 
-void vrp_set_node_customer (vrp_t *self, size_t node_id) {
+void vrp_set_node_as_customer (vrp_t *self, size_t node_id) {
     assert (self);
-    node_t *node = vrp_node (self, node_id);
+    s_node_t *node = vrp_node (self, node_id);
     assert (node->type == NT_NONE);
     node->type = NT_CUSTOMER;
     list4u_append (self->customer_ids, node_id);
@@ -651,14 +649,14 @@ void vrp_set_node_customer (vrp_t *self, size_t node_id) {
 
 bool vrp_node_is_depot (vrp_t *self, size_t node_id) {
     assert (self);
-    node_t *node = vrp_node (self, node_id);
+    s_node_t *node = vrp_node (self, node_id);
     return node->type == NT_DEPOT;
 }
 
 
 bool vrp_node_is_customer (vrp_t *self, size_t node_id) {
     assert (self);
-    node_t *node = vrp_node (self, node_id);
+    s_node_t *node = vrp_node (self, node_id);
     return node->type == NT_CUSTOMER;
 }
 
@@ -671,21 +669,21 @@ size_t vrp_query_node (vrp_t *self, const char *node_ext_id) {
 
 bool vrp_node_exists (vrp_t *self, size_t node_id) {
     assert (self);
-    node_t *node = vrp_node (self, node_id);
+    s_node_t *node = vrp_node (self, node_id);
     return node != NULL;
 }
 
 
 const coord2d_t *vrp_node_coord (vrp_t *self, size_t node_id) {
     assert (self);
-    node_t *node = vrp_node (self, node_id);
+    s_node_t *node = vrp_node (self, node_id);
     return &node->coord;
 }
 
 
 void vrp_set_node_coord (vrp_t *self, size_t node_id, coord2d_t coord) {
     assert (self);
-    node_t *node = vrp_node (self, node_id);
+    s_node_t *node = vrp_node (self, node_id);
     node->coord.v1 = coord.v1;
     node->coord.v2 = coord.v2;
 }
@@ -727,12 +725,6 @@ size_t *vrp_customer_ids (vrp_t *self) {
 }
 
 
-double vrp_distance (vrp_t *self, size_t from_node_id, size_t to_node_id) {
-    assert (self);
-    return matrix4d_get (self->distances, from_node_id, to_node_id);
-}
-
-
 void vrp_set_distance (vrp_t *self,
                        size_t from_node_id,
                        size_t to_node_id,
@@ -765,9 +757,9 @@ int vrp_auto_set_distances (vrp_t *self) {
 }
 
 
-double vrp_duration (vrp_t *self, size_t from_node_id, size_t to_node_id) {
+double vrp_distance (vrp_t *self, size_t from_node_id, size_t to_node_id) {
     assert (self);
-    return matrix4d_get (self->durations, from_node_id, to_node_id);
+    return matrix4d_get (self->distances, from_node_id, to_node_id);
 }
 
 
@@ -794,19 +786,20 @@ int vrp_auto_set_durations (vrp_t *self, double speed) {
     for (cnt1 = 0; cnt1 < num_nodes; cnt1++) {
         for (cnt2 = 0; cnt2 < num_nodes; cnt2++) {
             dist = matrix4d_get (self->distances, ids[cnt1], ids[cnt2]);
-            if (!isnan (dist)) {
-                matrix4d_set (self->durations, ids[cnt1], ids[cnt2], dist / speed);
-            }
-            else {
-                print_error ("Distance is NaN.\n");
-                result = -1;
-                break;
-            }
+            assert (!double_is_none (dist));
+            matrix4d_set (self->durations, ids[cnt1], ids[cnt2], dist / speed);
         }
     }
 
     free (ids);
     return result;
+}
+
+
+
+double vrp_duration (vrp_t *self, size_t from_node_id, size_t to_node_id) {
+    assert (self);
+    return matrix4d_get (self->durations, from_node_id, to_node_id);
 }
 
 
@@ -816,9 +809,9 @@ int vrp_auto_set_durations (vrp_t *self, double speed) {
 
 
 // Get vehicle by id
-static vehicle_t *vrp_vehicle (vrp_t *self, size_t vehicle_id) {
-    vehicle_t *vehicle =
-        (vehicle_t *) arrayset_data (self->vehicles, vehicle_id);
+static s_vehicle_t *vrp_vehicle (vrp_t *self, size_t vehicle_id) {
+    s_vehicle_t *vehicle =
+        (s_vehicle_t *) arrayset_data (self->vehicles, vehicle_id);
     assert (vehicle);
     return vehicle;
 }
@@ -826,7 +819,7 @@ static vehicle_t *vrp_vehicle (vrp_t *self, size_t vehicle_id) {
 
 size_t vrp_add_vehicle (vrp_t *self, const char *vehicle_ext_id) {
     assert (self);
-    vehicle_t *vehicle = vehicle_new (vehicle_ext_id);
+    s_vehicle_t *vehicle = vehicle_new (vehicle_ext_id);
     size_t id = arrayset_add (self->vehicles, vehicle, vehicle->ext_id);
     vehicle->id = id;
     return id;
@@ -841,14 +834,14 @@ size_t vrp_num_vehicles (vrp_t *self) {
 
 const char *vrp_vehicle_ext_id (vrp_t *self, size_t vehicle_id) {
     assert (self);
-    vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
+    s_vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
     return vehicle->ext_id;
 }
 
 
 double vrp_vehicle_max_capacity (vrp_t *self, size_t vehicle_id) {
     assert (self);
-    vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
+    s_vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
     return vehicle->max_capacity;
 }
 
@@ -858,30 +851,30 @@ void vrp_set_vehicle_max_capacity (vrp_t *self,
                                    double max_capacity) {
     assert (self);
     assert (max_capacity > 0);
-    vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
+    s_vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
     vehicle->max_capacity = max_capacity;
 }
 
 
 double vrp_vehicle_capacity (vrp_t *self, size_t vehicle_id) {
     assert (self);
-    vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
+    s_vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
     return vehicle->capacity;
 }
 
 
 void vrp_reset_vehicle_capacity (vrp_t *self, size_t vehicle_id) {
     assert (self);
-    vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
+    s_vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
     vehicle->capacity = vehicle->max_capacity;
 }
 
 
 void vrp_reset_all_vehicles_capacities (vrp_t *self) {
     assert (self);
-    for (vehicle_t *vehicle = (vehicle_t *) arrayset_first (self->vehicles);
+    for (s_vehicle_t *vehicle = (s_vehicle_t *) arrayset_first (self->vehicles);
          vehicle != NULL;
-         vehicle = (vehicle_t *) arrayset_next (self->vehicles)) {
+         vehicle = (s_vehicle_t *) arrayset_next (self->vehicles)) {
         vehicle->capacity = vehicle->max_capacity;
     }
 }
@@ -889,7 +882,7 @@ void vrp_reset_all_vehicles_capacities (vrp_t *self) {
 
 double vrp_vehicle_load (vrp_t *self, size_t vehicle_id) {
     assert (self);
-    vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
+    s_vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
     return vehicle->max_capacity - vehicle->capacity;
 }
 
@@ -897,7 +890,7 @@ double vrp_vehicle_load (vrp_t *self, size_t vehicle_id) {
 void vrp_vehicle_do_pickup (vrp_t *self, size_t vehicle_id, double quantity) {
     assert (self);
     assert (quantity >= 0);
-    vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
+    s_vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
     assert (quantity <= vehicle->capacity);
     vehicle->capacity -= quantity;
 }
@@ -906,7 +899,7 @@ void vrp_vehicle_do_pickup (vrp_t *self, size_t vehicle_id, double quantity) {
 void vrp_vehicle_do_delivery (vrp_t *self, size_t vehicle_id, double quantity) {
     assert (self);
     assert (quantity >= 0);
-    vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
+    s_vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
     assert (vehicle->capacity + quantity <= vehicle->max_capacity);
     vehicle->capacity += quantity;
 }
@@ -914,7 +907,7 @@ void vrp_vehicle_do_delivery (vrp_t *self, size_t vehicle_id, double quantity) {
 
 size_t vrp_vehicle_start_node_id (vrp_t *self, size_t vehicle_id) {
     assert (self);
-    vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
+    s_vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
     return vehicle->start_node_id;
 }
 
@@ -923,14 +916,14 @@ void vrp_vehicle_set_start_node_id (vrp_t *self,
                                     size_t vehicle_id,
                                     size_t node_id) {
     assert (self);
-    vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
+    s_vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
     vehicle->start_node_id = node_id;
 }
 
 
 size_t vrp_vehicle_end_node_id (vrp_t *self, size_t vehicle_id) {
     assert (self);
-    vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
+    s_vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
     return vehicle->end_node_id;
 }
 
@@ -939,14 +932,14 @@ void vrp_set_vehicle_end_node_id (vrp_t *self,
                                   size_t vehicle_id,
                                   size_t node_id) {
     assert (self);
-    vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
+    s_vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
     vehicle->end_node_id = node_id;
 }
 
 
 size_t vrp_vehicle_route_id (vrp_t *self, size_t vehicle_id) {
     assert (self);
-    vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
+    s_vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
     return vehicle->route_id;
 }
 
@@ -956,14 +949,14 @@ void vrp_attach_route_to_vehicle (vrp_t *self,
                                   size_t route_id) {
     assert (self);
     // assert (self->route_id != ID_NONE);
-    vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
+    s_vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
     vehicle->route_id = route_id;
 }
 
 
 void vrp_detach_route_from_vehicle (vrp_t *self, size_t vehicle_id) {
     assert (self);
-    vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
+    s_vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
     vehicle->route_id = ID_NONE;
 }
 
@@ -974,9 +967,9 @@ void vrp_detach_route_from_vehicle (vrp_t *self, size_t vehicle_id) {
 
 
 // Get request by id
-static request_t *vrp_request (vrp_t *self, size_t request_id) {
-    request_t *request =
-        (request_t *) arrayset_data (self->requests, request_id);
+static s_request_t *vrp_request (vrp_t *self, size_t request_id) {
+    s_request_t *request =
+        (s_request_t *) arrayset_data (self->requests, request_id);
     assert (request);
     return request;
 }
@@ -985,7 +978,7 @@ static request_t *vrp_request (vrp_t *self, size_t request_id) {
 size_t vrp_add_request (vrp_t *self, const char *request_ext_id) {
     assert (self);
 
-    request_t *request = request_new (request_ext_id);
+    s_request_t *request = request_new (request_ext_id);
     size_t id = arrayset_add (self->requests, request, request->ext_id);
     request->id = id;
 
@@ -1010,7 +1003,7 @@ void vrp_set_request_task (vrp_t *self,
     assert (self);
     assert (quantity >= 0);
 
-    request_t *request = vrp_request (self, request_id);
+    s_request_t *request = vrp_request (self, request_id);
 
     request->pickup_node_id = pickup_node_id;
     request->delivery_node_id = delivery_node_id;
@@ -1028,7 +1021,7 @@ void vrp_set_request_pickup_time (vrp_t *self,
                                   time_t pickup_latest,
                                   size_t pickup_duration) {
     assert (self);
-    request_t *request = vrp_request (self, request_id);
+    s_request_t *request = vrp_request (self, request_id);
     request->pickup_earliest = pickup_earliest;
     request->pickup_latest = pickup_latest;
     request->pickup_duration = pickup_duration;
@@ -1041,7 +1034,7 @@ void vrp_set_request_delivery_time (vrp_t *self,
                                     time_t delivery_latest,
                                     size_t delivery_duration) {
     assert (self);
-    request_t *request = vrp_request (self, request_id);
+    s_request_t *request = vrp_request (self, request_id);
     request->delivery_earliest = delivery_earliest;
     request->delivery_latest = delivery_latest;
     request->delivery_duration = delivery_duration;

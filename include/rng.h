@@ -1,5 +1,7 @@
 /*  =========================================================================
-    rng - random number generator
+    rng - random number generator.
+
+    A wrapper of [PCG](http://www.pcg-random.org/) RNGs.
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 

@@ -56,7 +56,7 @@ typedef struct {
     free_func_t genome_destructor;
     print_func_t genome_printer;
 
-    // Attributes
+    // Evaluations
     bool   feasible;
     double fitness;
     double diversity;
@@ -72,11 +72,11 @@ typedef struct {
     void *handle_ancestors;
     void *handle_children;
 
-    // Neighbors. list of s_neighbor_t sorted by distance.
+    // Records of neighbors. list of s_neighbor_t sorted by distance.
     // max size: evol_t.max_neighbors
     list4x_t *neighbors;
 
-    // As other individuals' neighbors. list of s_asneighbor_t
+    // Records of as other individuals' neighbors. list of s_asneighbor_t.
     list4x_t *as_neighbors;
 } s_indiv_t;
 
@@ -447,6 +447,11 @@ static int s_indiv_add_neighbor (s_indiv_t *self,
 }
 
 
+static bool s_indiv_is_living (s_indiv_t *self) {
+    return self->handle_livings_fit != NULL;
+}
+
+
 // Check if individual is out of any group
 static bool s_indiv_is_out_of_groups (s_indiv_t *self) {
     return (self->handle_livings_fit   == NULL &&
@@ -577,8 +582,23 @@ static void evol_print_indiv (evol_t *self, s_indiv_t *indiv) {
 
 
 // Print a group
-static void evol_print_group (evol_t *self, list4x_t *group) {
-    printf ("\ngroup size: %zu, sorted: %s\n",
+static void evol_print_group (evol_t *self, const char *group_name) {
+    list4x_t *group = NULL;
+    if (streq (group_name, "livings_rank_fit"))
+        group = self->livings_rank_fit;
+    else if (streq (group_name, "livings_rank_div"))
+        group = self->livings_rank_div;
+    else if (streq (group_name, "livings_rank_score"))
+        group = self->livings_rank_score;
+    else if (streq (group_name, "ancestors"))
+        group = self->ancestors;
+    else if (streq (group_name, "children"))
+        group = self->children;
+    else
+        assert (false);
+
+    printf ("\ngroup %s, size: %zu, sorted: %s\n",
+        group_name,
         list4x_size (group),
         list4x_is_sorted (group) ?
         (list4x_is_sorted_ascending (group) ? "ascending" : "descending") :
@@ -990,7 +1010,8 @@ static void evol_update_population_by_forgotten (evol_t *self,
         s_indiv_t *indiv = as_nb->indiv;
         list4x_remove (indiv->neighbors, as_nb->handle_in_neighbors);
 
-        // Try to add new neighbor for indiv from its neighbors' neighbors
+        // If indiv is in livings group, try to add new neighbor for indiv from
+        // its neighbors' neighbors
         size_t max_new_nbs =
             self->max_neighbors - list4x_size (indiv->neighbors);
         s_neighbor_t *nb = NULL;
@@ -1036,7 +1057,7 @@ static void evol_update_population_by_forgotten (evol_t *self,
         }
 
         // Add new neighbor to indiv's neighbors list, and add indiv to new
-        // neighbor's as_neighbors list
+        // neighbor's as_neighbors list (pairing)
         if (list4x_size (new_nbs) > 0) {
             s_neighbor_t *new_nb = NULL;
             list4x_iterator_t iter_new_nbs = list4x_iter_init (new_nbs, true);
@@ -1054,7 +1075,7 @@ static void evol_update_population_by_forgotten (evol_t *self,
 
         // If indiv is in livings group, as its neighbors changed, re-assess
         // its diversity and score, and reorder it.
-        if (indiv->handle_livings_fit)
+        if (s_indiv_is_living (indiv))
             evol_update_diversity_and_score_for_living (self, indiv);
 
     }
@@ -1081,8 +1102,13 @@ static void evol_add_child (evol_t *self, s_indiv_t *child) {
 // Return the individual who is removed from ancestors group (forgotten);
 // NULL if no one is removed.
 static void evol_add_ancestor (evol_t *self, s_indiv_t *dead) {
+    assert (s_indiv_is_out_of_groups (dead));
+
     // Append the new dead individual (ancestors group is a FIFO queue)
     dead->handle_ancestors = list4x_append (self->ancestors, dead);
+    dead->fitness = DOUBLE_NONE;
+    dead->diversity = DOUBLE_NONE;
+    dead->score = DOUBLE_NONE;
 
     // If ancestors group overflows, forget the oldest, and update population
     if (list4x_size (self->ancestors) > self->max_ancestors) {
@@ -1938,7 +1964,6 @@ void evol_run (evol_t *self) {
 }
 
 
-// @todo to finish
 genome_t evol_best_genome (evol_t *self) {
     assert (self);
 

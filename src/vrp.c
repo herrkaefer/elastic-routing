@@ -735,7 +735,7 @@ void vrp_set_distance (vrp_t *self,
 }
 
 
-int vrp_auto_set_distances (vrp_t *self) {
+int vrp_generate_straight_distances (vrp_t *self) {
     assert (self);
 
     size_t num_nodes = vrp_num_nodes (self);
@@ -773,7 +773,7 @@ void vrp_set_duration (vrp_t *self,
 }
 
 
-int vrp_auto_set_durations (vrp_t *self, double speed) {
+int vrp_generate_durations (vrp_t *self, double speed) {
     assert (self);
     assert (speed >= 0);
 

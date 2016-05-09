@@ -100,7 +100,7 @@ void list4u_shuffle (list4u_t *self, rng_t *rng);
 size_t list4u_find (list4u_t *self, size_t value);
 
 // Check if value is in list
-bool list4u_has_value (list4u_t *self, size_t value);
+bool list4u_includes (list4u_t *self, size_t value);
 
 // Count numbers of value in list
 size_t list4u_count (list4u_t *self, size_t value);

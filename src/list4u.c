@@ -603,7 +603,7 @@ size_t list4u_find (list4u_t *self, size_t value) {
 }
 
 
-bool list4u_has_value (list4u_t *self, size_t value) {
+bool list4u_includes (list4u_t *self, size_t value) {
     return list4u_find (self, value) != SIZE_NONE;
 }
 
@@ -712,13 +712,13 @@ void list4u_test (bool verbose) {
     list4u_print (list);
 
     assert (list4u_count (list, 9) == 2);
-    assert (list4u_has_value (list, 9));
+    assert (list4u_includes (list, 9));
     assert (list4u_count (list, 0) == 0);
-    assert (list4u_has_value (list, 0) == false);
+    assert (list4u_includes (list, 0) == false);
 
     list4u_remove_value (list, 9);
     list4u_print (list);
-    assert (list4u_has_value (list, 9) == false);
+    assert (list4u_includes (list, 9) == false);
 
     assert (list4u_is_sorted (list));
     assert (list4u_is_sorted_ascending (list) == false);

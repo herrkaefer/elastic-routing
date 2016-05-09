@@ -14,10 +14,10 @@ list4x is a generic list container.
 
 - Item can be accessed
 
-    - by handle: item handle is a pointer which is always binded with item and
-      stays unchanged during sort, reorder, reverse, shuffle, etc, unless the
-      item is manually altered. As a result, the handle could be served as
-      item's ID in the list.
+    - by handle: item handle is a pointer which is always bound with the item
+      after it is attached to the list, and stays unchanged during sort,
+      reorder, reverse, shuffle, etc, unless the item is explicitly altered.
+      So actually, the handle could be served as item's ID in the list.
 
     - by index: item can be get and set like in ordinary array. Using index is a
       litter slower than using item handle.

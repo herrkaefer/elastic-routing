@@ -35,6 +35,41 @@ typedef struct {
 } s_node_t;
 
 
+// Create a node
+static s_node_t *s_node_new (const char *ext_id) {
+    assert (ext_id);
+    assert (strlen (ext_id) <= UUID_STR_LEN);
+
+    s_node_t *self = (s_node_t *) malloc (sizeof (s_node_t));
+    assert (self);
+
+    self->id = ID_NONE;
+
+    strcpy (self->ext_id, ext_id);
+    self->type = NT_NONE;
+    coord2d_set_none (&self->coord);
+
+    print_info ("node created.\n");
+    return self;
+}
+
+
+// Destroy a node
+static void s_node_free (s_node_t **self_p) {
+    assert (self_p);
+    if (*self_p) {
+        s_node_t *self = *self_p;
+
+        // free properties here
+
+        free (self);
+        *self_p = NULL;
+    }
+    print_info ("node freed.\n");
+}
+
+
+// ---------------------------------------------------------------------------
 typedef struct {
     size_t id;
     char ext_id[UUID_STR_LEN];
@@ -48,10 +83,47 @@ typedef struct {
 
     // coord2d_t coord; // current position
 
-    size_t route_id; // ID of assigned route in plans
+    // route attached.
+    size_t route_id;
 } s_vehicle_t;
 
 
+// Create a vehicle
+static s_vehicle_t *s_vehicle_new (const char *ext_id) {
+    assert (ext_id);
+    assert (strlen (ext_id) <= UUID_STR_LEN);
+
+    s_vehicle_t *self = (s_vehicle_t *) malloc (sizeof (s_vehicle_t));
+    assert (self);
+
+    self->id = ID_NONE;
+    strcpy (self->ext_id, ext_id);
+    self->max_capacity = DOUBLE_MAX;
+    self->capacity = self->max_capacity;
+    self->start_node_id = ID_NONE;
+    self->end_node_id = ID_NONE;
+    self->route_id = ID_NONE;
+
+    return self;
+}
+
+
+// Destroy a vehicle
+static void s_vehicle_free (s_vehicle_t **self_p) {
+    assert (self_p);
+    if (*self_p) {
+        s_vehicle_t *self = *self_p;
+
+        // free properties
+
+        free (self);
+        *self_p = NULL;
+    }
+    print_info ("vehicle freed.\n");
+}
+
+
+// ---------------------------------------------------------------------------
 typedef enum {
     RS_NOTPLANNED, // not in plan
     RS_WAITTING, // in plan, not executed
@@ -101,9 +173,114 @@ typedef struct {
     // service durations
     size_t pickup_duration; // service time for pickup. e.g. min
     size_t delivery_duration; // service time for delivery. e.g. min
+
+    // vehicle attached to. One request is attached to one vehicle.
+    size_t vehicle_id;
 } s_request_t;
 
 
+// Create a request object
+static s_request_t *s_request_new (const char *ext_id) {
+    assert (ext_id && strlen (ext_id) <= UUID_STR_LEN);
+
+    s_request_t *self = (s_request_t *) malloc (sizeof (s_request_t));
+    assert (self);
+
+    self->id = ID_NONE;
+
+    strcpy (self->ext_id, ext_id);
+
+    self->type = RT_NONE;
+    self->state = RS_NOTPLANNED;
+
+    self->pickup_node_id = ID_NONE;
+    self->delivery_node_id = ID_NONE;
+    self->quantity = 0;
+
+    self->pickup_earliest = TIME_NONE;
+    self->pickup_latest = TIME_NONE;
+
+    self->delivery_earliest = TIME_NONE;
+    self->delivery_latest = TIME_NONE;
+
+    self->pickup_duration = 0;
+    self->delivery_duration = 0;
+
+    self->vehicle_id = ID_NONE;
+
+    print_info ("request created.\n");
+    return self;
+}
+
+
+// Destroy request object
+static void s_request_free (s_request_t **self_p) {
+    assert (self_p);
+    if (*self_p) {
+        s_request_t *self = *self_p;
+        // free properties here
+
+        free (self);
+        *self_p = NULL;
+    }
+    print_info ("request freed.\n");
+}
+
+
+// ---------------------------------------------------------------------------
+typedef struct {
+    size_t id;
+
+    list4u_t *node_ids;
+    list4u_t *node_request_ids;
+
+    // vehicle attached to. One route is attached to one vehicle.
+    size_t vehicle_id;
+
+    // requests attached
+    // list4u_t request_ids;
+} s_route_t;
+
+
+// Create a route object
+static s_route_t *s_route_new (const char *ext_id) {
+    assert (ext_id && strlen (ext_id) <= UUID_STR_LEN);
+
+    s_route_t *self = (s_route_t *) malloc (sizeof (s_route_t));
+    assert (self);
+
+    self->id = ID_NONE;
+
+    self->node_ids = list4u_new ();
+    self->node_request_ids = list4u_new ();
+
+    self->vehicle_id = ID_NONE;
+    // self->request_ids = list4u_new ();
+
+    print_info ("route created.\n");
+    return self;
+}
+
+
+// Destroy request object
+static void s_route_free (s_route_t **self_p) {
+    assert (self_p);
+    if (*self_p) {
+        s_route_t *self = *self_p;
+
+        list4u_free (&self->node_ids);
+        list4u_free (&self->node_request_ids);
+
+        list4u_free (&self->request_ids);
+
+        free (self);
+        *self_p = NULL;
+    }
+    print_info ("route freed.\n");
+}
+
+
+// ---------------------------------------------------------------------------
 struct _vrp_t {
     // Roadgraph
     arrayset_t *nodes; // vertices of road graph
@@ -133,121 +310,6 @@ struct _vrp_t {
 };
 
 
-// Create a node
-static s_node_t *node_new (const char *ext_id) {
-    assert (ext_id);
-    assert (strlen (ext_id) <= UUID_STR_LEN);
-
-    s_node_t *self = (s_node_t *) malloc (sizeof (s_node_t));
-    assert (self);
-
-    self->id = ID_NONE;
-
-    strcpy (self->ext_id, ext_id);
-    self->type = NT_NONE;
-    coord2d_set_none (&self->coord);
-
-    print_info ("node created.\n");
-    return self;
-}
-
-
-// Destroy a node
-static void node_free (s_node_t **self_p) {
-    assert (self_p);
-    if (*self_p) {
-        s_node_t *self = *self_p;
-
-        // free properties here
-
-        free (self);
-        *self_p = NULL;
-    }
-    print_info ("node freed.\n");
-}
-
-
-// Create a vehicle
-static s_vehicle_t *vehicle_new (const char *ext_id) {
-    assert (ext_id);
-    assert (strlen (ext_id) <= UUID_STR_LEN);
-
-    s_vehicle_t *self = (s_vehicle_t *) malloc (sizeof (s_vehicle_t));
-    assert (self);
-
-    self->id = ID_NONE;
-    strcpy (self->ext_id, ext_id);
-    self->max_capacity = DOUBLE_MAX;
-    self->capacity = self->max_capacity;
-    self->start_node_id = ID_NONE;
-    self->end_node_id = ID_NONE;
-    self->route_id = ID_NONE;
-
-    return self;
-}
-
-
-// Destroy a vehicle
-static void vehicle_free (s_vehicle_t **self_p) {
-    assert (self_p);
-    if (*self_p) {
-        s_vehicle_t *self = *self_p;
-
-        // free properties
-
-        free (self);
-        *self_p = NULL;
-    }
-    print_info ("vehicle freed.\n");
-}
-
-
-// Create a request object
-static s_request_t *request_new (const char *ext_id) {
-    assert (ext_id && strlen (ext_id) <= UUID_STR_LEN);
-
-    s_request_t *self = (s_request_t *) malloc (sizeof (s_request_t));
-    assert (self);
-
-    self->id = ID_NONE;
-
-    strcpy (self->ext_id, ext_id);
-
-    self->type = RT_NONE;
-    self->state = RS_NOTPLANNED;
-
-    self->pickup_node_id = ID_NONE;
-    self->delivery_node_id = ID_NONE;
-    self->quantity = 0;
-
-    self->pickup_earliest = TIME_NONE;
-    self->pickup_latest = TIME_NONE;
-
-    self->delivery_earliest = TIME_NONE;
-    self->delivery_latest = TIME_NONE;
-
-    self->pickup_duration = 0;
-    self->delivery_duration = 0;
-
-    print_info ("request created.\n");
-    return self;
-}
-
-
-// Destroy request object
-static void request_free (s_request_t **self_p) {
-    assert (self_p);
-    if (*self_p) {
-        s_request_t *self = *self_p;
-        // free properties here
-
-        free (self);
-        *self_p = NULL;
-    }
-    print_info ("request freed.\n");
-}
-
-
 // ---------------------------------------------------------------------------
 // Constructor and destructor
 // ---------------------------------------------------------------------------
@@ -259,7 +321,7 @@ vrp_t *vrp_new (void) {
 
     // Roadgraph
     self->nodes = arrayset_new (0);
-    arrayset_set_data_free_func (self->nodes, (free_func_t) node_free);
+    arrayset_set_data_free_func (self->nodes, (free_func_t) s_node_free);
     arrayset_set_hash_funcs (self->nodes,
                              (hash_func_t) string_hash,
                              (equal_func_t) string_equal,
@@ -271,7 +333,7 @@ vrp_t *vrp_new (void) {
 
     // Fleet
     self->vehicles = arrayset_new (0);
-    arrayset_set_data_free_func (self->vehicles, (free_func_t) vehicle_free);
+    arrayset_set_data_free_func (self->vehicles, (free_func_t) s_vehicle_free);
     arrayset_set_hash_funcs (self->vehicles,
                              (hash_func_t) string_hash,
                              (equal_func_t) string_equal,
@@ -279,7 +341,7 @@ vrp_t *vrp_new (void) {
 
     // Requests
     self->requests = arrayset_new (0);
-    arrayset_set_data_free_func (self->requests, (free_func_t) request_free);
+    arrayset_set_data_free_func (self->requests, (free_func_t) s_request_free);
     arrayset_set_hash_funcs (self->requests,
                              (hash_func_t) string_hash,
                              (equal_func_t) string_equal,
@@ -622,7 +684,7 @@ void vrp_set_coord_sys (vrp_t *self, coord2d_sys_t coord_sys) {
 size_t vrp_add_node (vrp_t *self, const char *ext_id) {
     assert (self);
 
-    s_node_t *node = node_new (ext_id);
+    s_node_t *node = s_node_new (ext_id);
     size_t id = arrayset_add (self->nodes, node, node->ext_id);
     node->id = id;
     return id;
@@ -819,7 +881,7 @@ static s_vehicle_t *vrp_vehicle (vrp_t *self, size_t vehicle_id) {
 
 size_t vrp_add_vehicle (vrp_t *self, const char *vehicle_ext_id) {
     assert (self);
-    s_vehicle_t *vehicle = vehicle_new (vehicle_ext_id);
+    s_vehicle_t *vehicle = s_vehicle_new (vehicle_ext_id);
     size_t id = arrayset_add (self->vehicles, vehicle, vehicle->ext_id);
     vehicle->id = id;
     return id;
@@ -978,7 +1040,7 @@ static s_request_t *vrp_request (vrp_t *self, size_t request_id) {
 size_t vrp_add_request (vrp_t *self, const char *request_ext_id) {
     assert (self);
 
-    s_request_t *request = request_new (request_ext_id);
+    s_request_t *request = s_request_new (request_ext_id);
     size_t id = arrayset_add (self->requests, request, request->ext_id);
     request->id = id;
 

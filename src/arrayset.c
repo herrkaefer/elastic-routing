@@ -19,7 +19,7 @@ typedef struct {
     size_t id; // i.e. index in entries
     bool valid; // true: in set, false: removed from set
     void *data;
-    hash_handle_t hash_handle; // handle of entry in hash table of foreign key
+    void *hash_handle; // handle of entry in hash table of foreign key
 } arrayset_entry_t;
 
 
@@ -43,7 +43,7 @@ static void arrayset_set_entry (arrayset_t *self,
                                 size_t id,
                                 bool valid,
                                 void *data,
-                                hash_handle_t hash_handle) {
+                                void *hash_handle) {
     assert (self);
     assert (entry);
     assert (data);
@@ -87,7 +87,7 @@ static void arrayset_insert (arrayset_t *self,
 
     arrayset_entry_t *entry = self->entries + index;
 
-    hash_handle_t hash_handle = NULL;
+    void *hash_handle = NULL;
 
     // If foreign key is indexed, add it to hash table
     if (foreign_key) {

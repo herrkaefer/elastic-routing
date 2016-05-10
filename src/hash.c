@@ -51,7 +51,7 @@ static const size_t hash_num_primes = sizeof (hash_primes) / sizeof (int);
 
 
 // Allocate the table
-static void hash_allocate_table (hash_t *self) {
+static void hash_alloc_table (hash_t *self) {
 	assert (self);
 
 	size_t new_table_size;
@@ -93,6 +93,7 @@ static void hash_free_entry (hash_t *self, hash_entry_t *entry) {
 }
 
 
+// Enlarge hash table size
 static void hash_enlarge (hash_t *self) {
 	assert (self);
 
@@ -103,7 +104,7 @@ static void hash_enlarge (hash_t *self) {
 
 	// Allocate a new, larger table
 	++self->prime_index;
-	hash_allocate_table (self);
+	hash_alloc_table (self);
 
 	hash_entry_t *rover;
 	hash_entry_t *next;
@@ -112,7 +113,7 @@ static void hash_enlarge (hash_t *self) {
 	size_t index;
 
 	// Link all entries from all chains into the new table
-	for (old_index = 0; old_index < old_table_size; ++old_index) {
+	for (old_index = 0; old_index < old_table_size; old_index++) {
 		rover = old_table[old_index].next;
 
 		while (rover != NULL) {
@@ -139,6 +140,8 @@ static void hash_enlarge (hash_t *self) {
 
 
 //----------------------------------------------------------------------------
+
+
 hash_t *hash_new (hash_func_t hash_func,
                   equal_func_t equal_func,
                   free_func_t key_free_func,
@@ -157,7 +160,7 @@ hash_t *hash_new (hash_func_t hash_func,
 	self->value_free_func = value_free_func;
 
 	// Allocate the table
-	hash_allocate_table (self);
+	hash_alloc_table (self);
 
 	print_info ("hash table created.\n");
 	return self;
@@ -191,7 +194,13 @@ void hash_free (hash_t **self_p) {
 }
 
 
-hash_handle_t hash_insert (hash_t *self,
+size_t hash_size (hash_t *self) {
+	assert (self);
+	return self->num_entries;
+}
+
+
+void *hash_insert (hash_t *self,
 	                   	   void *key,
                        	   void *value,
                        	   bool guaranteed_new) {
@@ -213,7 +222,7 @@ hash_handle_t hash_insert (hash_t *self,
 		while (rover != NULL) {
 			// find an entry with the same key
 			if (self->equal_func (rover->key, key)) {
-				print_info ("Entry found, update it.\n");
+				print_info ("entry exists, update it.\n");
 				// free key and value if needed
 				if (self->value_free_func != NULL)
 					self->value_free_func (&rover->value);
@@ -229,8 +238,7 @@ hash_handle_t hash_insert (hash_t *self,
 	}
 
 	// Entry is guaranteed new or not found. Create a new entry.
-	hash_entry_t *newentry =
-		(hash_entry_t *) malloc (sizeof (hash_entry_t));
+	hash_entry_t *newentry = (hash_entry_t *) malloc (sizeof (hash_entry_t));
 	assert (newentry);
 
 	newentry->key = key;
@@ -275,51 +283,31 @@ void hash_remove (hash_t *self, void *key) {
 	assert (self);
 
 	size_t index = self->hash_func (key) % self->table_size;
-
-	/* Rover points at the pointer which points at the current entry
-	 * in the chain being inspected.  ie. the entry in the table, or
-	 * the "next" pointer of the previous entry in the chain.  This
-	 * allows us to unlink the entry when we find it. */
-
-	hash_entry_t *rover;
+	hash_entry_t *rover = self->table[index].next;
 	hash_entry_t *next;
-
-	rover = self->table[index].next;
 
 	while (rover != NULL) {
 		next = rover->next;
-
 		if (self->equal_func (key, rover->key)) {
-
 			// Unlink from the list
 			rover->prev->next = rover->next;
 			if (rover->next != NULL)
 				rover->next->prev = rover->prev;
-
 			// Destroy the entry structure
 			hash_free_entry (self, rover);
-
 			// Track count of entries
 			--self->num_entries;
-
-			break;
+			return;
 		}
-
 		rover = next;
 	}
 
 	// not found
-	print_warning ("No entry found.\n");
+	print_warning ("no entry found.\n");
 }
 
 
-size_t hash_size (hash_t *self) {
-	assert (self);
-	return self->num_entries;
-}
-
-
-void hash_remove_entry (hash_t *self, hash_handle_t handle) {
+void hash_remove_entry (hash_t *self, void *handle) {
 	assert (self);
 	assert (handle);
 
@@ -338,8 +326,7 @@ void hash_remove_entry (hash_t *self, hash_handle_t handle) {
 }
 
 
-void hash_update_entry (hash_t *self, hash_handle_t handle,
-                        void *key, void *value) {
+void hash_update_entry (hash_t *self, void *handle, void *key, void *value) {
 	assert (self);
 	assert (handle);
 	assert (key);
@@ -348,10 +335,10 @@ void hash_update_entry (hash_t *self, hash_handle_t handle,
 	hash_entry_t *entry = (hash_entry_t *) handle;
 	assert (self->equal_func (entry->key, key));
 
-	if (self->key_free_func != NULL)
+	if (entry->key != key && self->key_free_func != NULL)
 		self->key_free_func (&entry->key);
 
-	if (self->value_free_func != NULL)
+	if (entry->value != value && self->value_free_func != NULL)
 		self->value_free_func (&entry->value);
 
 	entry->key = key;
@@ -359,7 +346,7 @@ void hash_update_entry (hash_t *self, hash_handle_t handle,
 }
 
 
-hash_handle_t hash_first (hash_t *self) {
+void *hash_first (hash_t *self) {
 	assert (self);
 	self->cursor = NULL;
 	for (self->cursor_index = 0;
@@ -373,7 +360,7 @@ hash_handle_t hash_first (hash_t *self) {
 }
 
 
-hash_handle_t hash_next (hash_t *self) {
+void *hash_next (hash_t *self) {
 	assert (self);
 	if (self->cursor == NULL)
 		return NULL;
@@ -383,7 +370,7 @@ hash_handle_t hash_next (hash_t *self) {
 		return self->cursor;
 
 	// Advance the chain index
-	for (;
+	for (self->cursor_index ++;
 		 self->cursor_index < self->table_size;
 		 self->cursor_index ++) {
 		self->cursor = self->table[self->cursor_index].next;
@@ -394,13 +381,13 @@ hash_handle_t hash_next (hash_t *self) {
 }
 
 
-void *hash_key_from_entry (hash_handle_t handle) {
+void *hash_entry_key (void *handle) {
 	assert (handle);
 	return ((hash_entry_t *)handle)->key;
 }
 
 
-void *hash_value_from_entry (hash_handle_t handle) {
+void *hash_entry_value (void *handle) {
 	assert (handle);
 	return ((hash_entry_t *)handle)->value;
 }
@@ -408,8 +395,99 @@ void *hash_value_from_entry (hash_handle_t handle) {
 
 void hash_test (bool verbose) {
 	print_info (" * hash: \n");
-    // hash_t *hash = hash_new ();
-    // hash_run (hash);
-    // hash_free (&hash);
+    hash_t *hash = hash_new ((hash_func_t) string_hash,
+    						 (equal_func_t) string_equal,
+    						 NULL,
+    						 NULL);
+
+	assert (hash);
+	assert (hash_size (hash) == 0);
+	assert (hash_first (hash) == NULL);
+
+	// Insert
+	void *handle;
+	handle = hash_insert (hash, "PADINGTON", "goes to market", false);
+	assert (handle);
+	assert (streq (hash_entry_key (handle), "PADINGTON"));
+	assert (streq (hash_entry_value (handle), "goes to market"));
+
+	handle = hash_insert (hash, "MIFFY", "on a scoot", false);
+	assert (handle);
+	handle = hash_insert (hash, "MAISY", "goes shopping", false);
+	assert (handle);
+	handle = hash_insert (hash, "BUDDY", "plays a ball", false);
+	assert (handle);
+	assert (hash_size (hash) == 4);
+
+	// Look for existing items
+	char *item = (char *) hash_lookup (hash, "PADINGTON");
+	assert (streq (item, "goes to market"));
+	item = (char *) hash_lookup (hash, "MAISY");
+	assert (streq (item, "goes shopping"));
+	item = (char *) hash_lookup (hash, "BUDDY");
+	assert (streq (item, "plays a ball"));
+	item = (char *) hash_lookup (hash, "MIFFY");
+	assert (streq (item, "on a scoot"));
+
+	// Look for non-existent items
+	item = (char *) hash_lookup (hash, "PIGGY");
+	assert (item == NULL);
+
+	// Try to insert duplicate items (update)
+	hash_insert (hash, "MIFFY", "visit a friend", false);
+	item = (char *) hash_lookup (hash, "MIFFY");
+	assert (streq (item, "visit a friend"));
+
+	// Delete a item
+	hash_remove (hash, "MAISY");
+	item = (char *) hash_lookup (hash, "MAISY");
+	assert (item == NULL);
+	assert (hash_size (hash) == 3);
+
+	// Iteration
+	handle = hash_first (hash);
+	while (handle != NULL) {
+		string_print (hash_entry_key (handle));
+		string_print (hash_entry_value (handle));
+		handle = hash_next (hash);
+	}
+
+	// Check that the queue is robust against random usage
+	struct {
+		char name [100];
+	 	bool exists;
+	} testset [200];
+	memset (testset, 0, sizeof (testset));
+	int testmax = 200, testnbr, iteration;
+
+	rng_t *rng = rng_new ();
+	for (iteration = 0; iteration < 25000; iteration++) {
+		testnbr = rng_random_int (rng, 0, testmax);
+		if (testset [testnbr].exists) {
+			item = (char *) hash_lookup (hash, testset [testnbr].name);
+			assert (item);
+			hash_remove (hash, testset [testnbr].name);
+			testset [testnbr].exists = false;
+		}
+		else {
+			sprintf (testset [testnbr].name, "%.5f-%.5f",
+						rng_random (rng), rng_random (rng));
+			print_debug ("");
+			printf ("%s\n", testset [testnbr].name);
+			print_debug ("");
+			handle = hash_insert (hash, testset [testnbr].name, "", false);
+			assert (handle);
+			testset [testnbr].exists = true;
+		}
+	}
+	rng_free(&rng);
+
+	// Test 10K lookups
+	for (iteration = 0; iteration < 10000; iteration++)
+		item = (char *) hash_lookup (hash, "DEADBEEFABADCAFE");
+
+    hash_free (&hash);
+    hash_free (&hash);
+    assert (hash == NULL);
     print_info ("OK\n");
 }

@@ -9,10 +9,6 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
     =========================================================================
 */
-/*
-@todo
-- 修改hash_entry_t为void *handle
-*/
 
 #ifndef __HASH_H_INCLUDED__
 #define __HASH_H_INCLUDED__
@@ -22,8 +18,6 @@ extern "C" {
 #endif
 
 typedef struct _hash_t hash_t;
-
-typedef void *hash_handle_t;
 
 // Create a new hash table
 hash_t *hash_new (hash_func_t hash_func,
@@ -37,46 +31,42 @@ void hash_free (hash_t **self_p);
 // Get the number of entries in a hash table
 size_t hash_size (hash_t *self);
 
-// Insert a value into a hash table.
-// Return the hash entry which you can save for fast update or removal.
+// Insert a key-value pair into a hash table.
+// Return handle of the entry which you can save for fast update or removal.
 // If the entry is guaranteed new one (entry with the key does not exist in
-// the table), setting guaranteed_new to be true will make the insertion
-// faster. Otherwise set it to be false, and then the old entry will be
-// updated by the given one if their keys are equal.
-hash_handle_t hash_insert (hash_t *self,
-                           void *key,
-                           void *value,
-                           bool guaranteed_new);
+// the table), setting guaranteed_new to be true will accelerate the insertion.
+// Otherwise set it to be false, and then the old entry will be updated by the
+// given one if their keys are equal.
+void *hash_insert (hash_t *self, void *key, void *value, bool guaranteed_new);
 
 // Look up a value in a hash table by key
 void *hash_lookup (hash_t *self, const void *key);
 
-// Remove an entry from a hash table by key
+// Remove an entry from hash table by key
 void hash_remove (hash_t *self, void *key);
 
-// Remove an entry in a hash table
+// Remove an entry from hash table by handle
 // This is much faster than removal by key.
-void hash_remove_entry (hash_t *self, hash_handle_t handle);
+void hash_remove_entry (hash_t *self, void *handle);
 
-// update an hash table entry given the entry
+// Update a hash table entry by handle
 // Note: old and new key must be equal
-void hash_update_entry (hash_t *self, hash_handle_t handle,
-                        void *key, void *value);
+void hash_update_entry (hash_t *self, void *handle, void *key, void *value);
 
-// Get the first entry in hash table.
+// Get handle of the first entry in hash table.
 // Return NULL if hash table is empty.
 // Use hash_first / hash_next() for simple iteration.
-hash_handle_t hash_first (hash_t *self);
+void *hash_first (hash_t *self);
 
-// Get next entry in hash table (order inrelevant)
+// Get handle of the next entry in hash table (order inrelevant)
 // Return NULL if no more entry exists.
-hash_handle_t hash_next (hash_t *self);
+void *hash_next (hash_t *self);
 
 // Get key from hash entry
-void *hash_key_from_entry (hash_handle_t handle);
+void *hash_entry_key (void *handle);
 
 // Get value from hash entry
-void *hash_value_from_entry (hash_handle_t handle);
+void *hash_entry_value (void *handle);
 
 // Self test
 void hash_test (bool verbose);

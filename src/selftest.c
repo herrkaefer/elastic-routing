@@ -22,8 +22,8 @@ all_tests [] = {
 // #ifdef WITH_DRAFTS
     // { "queue", queue_test },
     // { "matrix4d", matrix4d_test },
-    // { "hash", hash_test },
-    { "arrayset", arrayset_test },
+    { "hash", hash_test },
+    // { "arrayset", arrayset_test },
     // { "vrp", vrp_test },
     // { "list4u", list4u_test },
     // { "list4x", list4x_test },

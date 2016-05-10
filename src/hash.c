@@ -35,10 +35,10 @@ struct _hash_t {
 };
 
 
-/* This is a set of good hash table prime numbers, from:
- * http://planetmath.org/encyclopedia/GoodHashPrimes.html
- * Each prime is roughly double the previous value, and as far as
- * possible from the nearest powers of two. */
+// This is a set of good hash table prime numbers, from:
+// http://planetmath.org/encyclopedia/GoodHashPrimes.html
+// Each prime is roughly double the previous value, and as far as
+// possible from the nearest powers of two.
 static const size_t hash_primes[] = {
 	193, 389, 769, 1543, 3079, 6151, 12289, 24593, 49157, 98317,
 	196613, 393241, 786433, 1572869, 3145739, 6291469,
@@ -56,10 +56,10 @@ static void hash_allocate_table (hash_t *self) {
 
 	size_t new_table_size;
 
-	/* Determine the table size based on the current prime index.
-	 * An attempt is made here to ensure sensible behavior if the
-	 * maximum prime is exceeded, but in practice other things are
-	 * likely to break long before that happens. */
+	// Determine the table size based on the current prime index.
+	// An attempt is made here to ensure sensible behavior if the
+	// maximum prime is exceeded, but in practice other things are
+	// likely to break long before that happens.
 
 	if (self->prime_index < hash_num_primes)
 		new_table_size = hash_primes[self->prime_index];

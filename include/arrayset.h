@@ -42,6 +42,9 @@ typedef struct _arrayset_t arrayset_t;
 // alloc_size is the initial size, or 0 to use a default value.
 arrayset_t *arrayset_new (size_t alloc_size);
 
+// Destroy an arrayset
+void arrayset_free (arrayset_t **self_p);
+
 // Set data free function.
 // If data free function is set, arrayset is responsible for freeing data.
 void arrayset_set_data_free_func (arrayset_t *self, free_func_t data_free_func);
@@ -54,9 +57,6 @@ void arrayset_set_hash_funcs (arrayset_t *self,
                               equal_func_t foreign_key_equal_func,
                               free_func_t foreign_key_free_func);
 
-// Destroy an arrayset
-void arrayset_free (arrayset_t **self_p);
-
 // Get data by id.
 void *arrayset_data (arrayset_t *self, size_t id);
 
@@ -64,6 +64,7 @@ void *arrayset_data (arrayset_t *self, size_t id);
 size_t arrayset_size (arrayset_t *self);
 
 // Get maximum id value of data in the set.
+// Return ID_NONE if the set is empty.
 size_t arrayset_max_id (arrayset_t *self);
 
 // Add a data to arrayset.

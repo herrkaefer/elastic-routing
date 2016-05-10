@@ -1,6 +1,8 @@
 # Elastic Routing
 
-``elastic routing`` — practical and flexible vehicle routing solution.
+``elastic routing`` — extendable and flexible vehicle routing solution for the real world written in C.
+
+**WARNING**: this project is not reach the minimal functional point, some key designs are in progress.
 
 ## Overview
 
@@ -73,7 +75,9 @@ The concept of state is introduced to resolve a dynamic problem into discrete up
 # Distributed Solver (not done)
 
 
-# Fundamental Data Structures (done)
+# Fundamental Data Structures
+
+The following data structures are developped for the project, but they themselves can be used for generic purpose.
 
 ## list4u
 

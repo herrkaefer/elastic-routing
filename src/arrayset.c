@@ -12,29 +12,28 @@
 
 #include "classes.h"
 
+#define ARRAYSET_DEFAULT_ALLOC_SIZE 64
+
 
 typedef struct {
-    size_t id; // i.e. index in entry_pool
-    bool is_valid; // false: removed
+    size_t id; // i.e. index in entries
+    bool valid; // true: in set, false: removed from set
     void *data;
-    hash_handle_t hash_handle; // hash table entry of index of
-                                        // foreign key
+    hash_handle_t hash_handle; // handle of entry in hash table of foreign key
 } arrayset_entry_t;
 
 
 struct _arrayset_t {
-    arrayset_entry_t *entry_pool;
+    arrayset_entry_t *entries;
     size_t size; // number of entries
-    size_t length; // number of entries and holes
+    size_t length; // number of entries plus holes
     size_t alloced; // size of alloced memory
     size_t cursor; // entry id for iteration
 
-    queue_t *holes; // Record of removed nodes. A FIFO queue.
+    queue_t *holes; // record of removed nodes. A FIFO queue.
 
-    hash_t *hash; // A hash table of data by foreign key.
-                  // This is optional.
-
-    free_func_t data_free_func;
+    hash_t *hash; // an optional hash table for indexing data by foreign key
+    free_func_t data_free_func; // callback for destroying data
 };
 
 
@@ -42,7 +41,7 @@ struct _arrayset_t {
 static void arrayset_set_entry (arrayset_t *self,
                                 arrayset_entry_t *entry,
                                 size_t id,
-                                bool is_valid,
+                                bool valid,
                                 void *data,
                                 hash_handle_t hash_handle) {
     assert (self);
@@ -50,7 +49,7 @@ static void arrayset_set_entry (arrayset_t *self,
     assert (data);
 
     entry->id = id;
-    entry->is_valid = is_valid;
+    entry->valid = valid;
     if (entry->data != NULL && self->data_free_func != NULL)
         self->data_free_func (&entry->data);
     entry->data = data;
@@ -64,11 +63,11 @@ static void arrayset_enlarge (arrayset_t *self) {
     // Double the pool size
     unsigned int newsize = self->alloced * 2;
     arrayset_entry_t *new_entry_pool =
-        (arrayset_entry_t *) realloc (self->entry_pool,
+        (arrayset_entry_t *) realloc (self->entries,
                                       sizeof (arrayset_entry_t) * newsize);
     assert (new_entry_pool);
 
-    self->entry_pool = new_entry_pool;
+    self->entries = new_entry_pool;
     self->alloced = newsize;
 }
 
@@ -86,7 +85,7 @@ static void arrayset_insert (arrayset_t *self,
     if (index == self->length && self->length + 1 > self->alloced)
         arrayset_enlarge (self);
 
-    arrayset_entry_t *entry = self->entry_pool + index;
+    arrayset_entry_t *entry = self->entries + index;
 
     hash_handle_t hash_handle = NULL;
 
@@ -113,27 +112,46 @@ static void arrayset_insert (arrayset_t *self,
 
 // ---------------------------------------------------------------------------
 arrayset_t *arrayset_new (size_t alloc_size) {
-    if (alloc_size == 0)
-        alloc_size = 128;
-
     arrayset_t *self = (arrayset_t *) malloc (sizeof (arrayset_t));
     assert (self);
 
+    if (alloc_size == 0)
+        alloc_size = ARRAYSET_DEFAULT_ALLOC_SIZE;
     self->alloced = alloc_size;
     self->size = 0;
     self->length = 0;
 
-    self->entry_pool = malloc (alloc_size * sizeof (arrayset_entry_t));
-    assert (self->entry_pool);
+    self->entries = malloc (alloc_size * sizeof (arrayset_entry_t));
+    assert (self->entries);
 
     self->holes = queue_new ();
-    assert (self->holes);
-
     self->hash = NULL;
     self->data_free_func = NULL;
 
     print_info ("arrayset created.\n");
     return self;
+}
+
+
+void arrayset_free (arrayset_t **self_p) {
+    assert (self_p);
+    if (*self_p) {
+        arrayset_t *self = *self_p;
+        if (self->hash)
+            hash_free (&self->hash);
+
+        queue_free (&self->holes);
+
+        if (self->data_free_func != NULL) {
+            for (size_t id = 0; id < self->length; id++)
+                self->data_free_func (&self->entries[id].data);
+        }
+        free (self->entries);
+
+        free (self);
+        *self_p = NULL;
+    }
+    print_info ("arrayset freed.\n");
 }
 
 
@@ -162,34 +180,12 @@ void arrayset_set_hash_funcs (arrayset_t *self,
 }
 
 
-void arrayset_free (arrayset_t **self_p) {
-    assert (self_p);
-    if (*self_p) {
-        arrayset_t *self = *self_p;
-        if (self->hash)
-            hash_free (&self->hash);
-
-        queue_free (&self->holes);
-
-        if (self->data_free_func != NULL) {
-            for (size_t id = 0; id < self->length; id++)
-                self->data_free_func (&self->entry_pool[id].data);
-        }
-        free (self->entry_pool);
-
-        free (self);
-        *self_p = NULL;
-    }
-    print_info ("arrayset freed.\n");
-}
-
-
 void *arrayset_data (arrayset_t *self, size_t id) {
     assert (self);
-    if (id >= self->length || !self->entry_pool[id].is_valid)
+    if (id >= self->length || !(self->entries[id].valid))
         return NULL;
     else
-        return self->entry_pool[id].data;
+        return self->entries[id].data;
 }
 
 
@@ -201,10 +197,13 @@ size_t arrayset_size (arrayset_t *self) {
 
 size_t arrayset_max_id (arrayset_t *self) {
     assert (self);
-    assert (self->size > 0);
+
+    if (self->size == 0)
+        return ID_NONE;
+
     size_t max_id = self->size - 1;
-    for (size_t id = self->length - 1; id >= self->size - 1; id--) {
-        if (self->entry_pool[id].is_valid) {
+    for (size_t id = self->length - 1; id > self->size - 1; id--) {
+        if (self->entries[id].valid) {
             max_id = id;
             break;
         }
@@ -219,14 +218,13 @@ size_t arrayset_add (arrayset_t *self, void *data, void *foreign_key) {
 
     size_t id;
 
-    // If foreign key is indexed, and data already exists,
-    // update the data
+    // If foreign key is indexed and data already exists, update the data
     if (foreign_key) {
         id = arrayset_query (self, foreign_key);
         if (id != ID_NONE) {
-            print_warning ("Same data already exists in arrayset. id: %zu\n", id);
-            arrayset_entry_t *entry = &self->entry_pool[id];
-            assert (entry->is_valid);
+            print_warning ("data already exists in arrayset. id: %zu\n", id);
+            arrayset_entry_t *entry = &self->entries[id];
+            assert (entry->valid);
 
             // update entry's data
             if (entry->data != NULL && self->data_free_func != NULL)
@@ -241,7 +239,7 @@ size_t arrayset_add (arrayset_t *self, void *data, void *foreign_key) {
     // try to get a hole
     void *hole = queue_pop_head (self->holes);
 
-    // hole exists, place the entry there
+    // If hole exists, place the entry there
     if (hole != NULL) {
         arrayset_entry_t *entry = (arrayset_entry_t *) hole;
         id = entry->id;
@@ -249,7 +247,7 @@ size_t arrayset_add (arrayset_t *self, void *data, void *foreign_key) {
         return id;
     }
 
-    // No hole exists, append entry to the end
+    // If no hole exists, append entry to the end
     id = self->length;
     arrayset_insert (self, id, data, foreign_key);
     return id;
@@ -260,21 +258,19 @@ void arrayset_remove (arrayset_t *self, size_t id) {
     assert (self);
     assert (id < self->length);
 
-    arrayset_entry_t *entry = &self->entry_pool[id];
-    assert (entry->is_valid);
+    arrayset_entry_t *entry = &self->entries[id];
+    assert (entry->valid);
 
-    entry->is_valid = false;
+    entry->valid = false;
 
     if (self->hash) {
         hash_remove_entry (self->hash, entry->hash_handle);
         entry->hash_handle = NULL;
     }
 
-    // Free data
-    if (entry->data != NULL && self->data_free_func != NULL) {
+    // Free data if needed
+    if (entry->data != NULL && self->data_free_func != NULL)
         self->data_free_func (&entry->data);
-        // entry->data = NULL;
-    }
 
     // Add entry to holes queue
     queue_push_tail (self->holes, (void *)entry);
@@ -308,10 +304,7 @@ size_t arrayset_query (arrayset_t *self, const void *foreign_key) {
 
     arrayset_entry_t *entry =
         (arrayset_entry_t *) hash_lookup (self->hash, foreign_key);
-    if (entry)
-        return entry->id;
-    else
-        return ID_NONE;
+    return entry ? entry->id : ID_NONE;
 }
 
 
@@ -323,7 +316,7 @@ size_t *arrayset_id_array (arrayset_t *self) {
 
     size_t count = 0;
     for (size_t id = 0; id < self->length; id++) {
-        if (self->entry_pool[id].is_valid) {
+        if (self->entries[id].valid) {
             array[count] = id;
             count++;
         }
@@ -343,8 +336,8 @@ void **arrayset_data_array (arrayset_t *self) {
     size_t count = 0;
     arrayset_entry_t *entry = NULL;
     for (size_t id = 0; id < self->length; id++) {
-        entry = &self->entry_pool[id];
-        if (entry->is_valid) {
+        entry = &self->entries[id];
+        if (entry->valid) {
             array[count] = entry->data;
             count++;
         }
@@ -358,8 +351,8 @@ void *arrayset_first (arrayset_t *self) {
     assert (self);
     arrayset_entry_t *entry;
     for (self->cursor = 0; self->cursor < self->length; self->cursor++) {
-        entry = &self->entry_pool[self->cursor];
-        if (entry->is_valid)
+        entry = &self->entries[self->cursor];
+        if (entry->valid)
             return entry->data;
     }
     return NULL;
@@ -370,8 +363,8 @@ void *arrayset_next (arrayset_t *self) {
     assert (self);
     arrayset_entry_t *entry;
     for (self->cursor++; self->cursor < self->length; self->cursor++) {
-        entry = &(self->entry_pool[self->cursor]);
-        if (entry->is_valid)
+        entry = &(self->entries[self->cursor]);
+        if (entry->valid)
             return entry->data;
     }
     return NULL;
@@ -382,8 +375,8 @@ void *arrayset_last (arrayset_t *self) {
     assert (self);
     arrayset_entry_t *entry;
     for (self->cursor = self->length; self->cursor -- > 0; ) {
-        entry = &self->entry_pool[self->cursor];
-        if (entry->is_valid)
+        entry = &self->entries[self->cursor];
+        if (entry->valid)
             return entry->data;
     }
     return NULL;
@@ -394,8 +387,8 @@ void *arrayset_prev (arrayset_t *self) {
     assert (self);
     arrayset_entry_t *entry;
     for (; self->cursor -- > 0; ) {
-        entry = &(self->entry_pool[self->cursor]);
-        if (entry->is_valid)
+        entry = &(self->entries[self->cursor]);
+        if (entry->valid)
             return entry->data;
     }
     return NULL;

@@ -125,8 +125,8 @@ static void s_vehicle_free (s_vehicle_t **self_p) {
 
 // ---------------------------------------------------------------------------
 typedef enum {
-    RS_NOTPLANNED, // not in plan
-    RS_WAITTING, // in plan, not executed
+    RS_PENDING, // added, not planned
+    RS_PLANNED, // planned, waiting for execution
     RS_BEFORE_PICKUP,
     RS_PICKINGUP,
     RS_BEFORE_DELIVERY,
@@ -191,7 +191,7 @@ static s_request_t *s_request_new (const char *ext_id) {
     strcpy (self->ext_id, ext_id);
 
     self->type = RT_NONE;
-    self->state = RS_NOTPLANNED;
+    self->state = RS_PENDING;
 
     self->pickup_node_id = ID_NONE;
     self->delivery_node_id = ID_NONE;
@@ -251,8 +251,8 @@ static s_route_t *s_route_new (const char *ext_id) {
 
     self->id = ID_NONE;
 
-    self->node_ids = list4u_new ();
-    self->node_request_ids = list4u_new ();
+    self->node_ids = list4u_new (0);
+    self->node_request_ids = list4u_new (0);
 
     self->vehicle_id = ID_NONE;
     // self->request_ids = list4u_new ();
@@ -271,7 +271,7 @@ static void s_route_free (s_route_t **self_p) {
         list4u_free (&self->node_ids);
         list4u_free (&self->node_request_ids);
 
-        list4u_free (&self->request_ids);
+        // list4u_free (&self->request_ids);
 
         free (self);
         *self_p = NULL;

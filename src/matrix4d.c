@@ -2,7 +2,12 @@
     matrix4d - a double type matrix
 
     Internally, datas of a square matrix with large enough size are stored in
-    left-upper-block-major order.
+    left-upper-block-major order. i.e.
+
+    A(0,0),
+    A(1,0), A(1,1), A(0,1),
+    A(2,0), A(2,1), A(2,2), A(1,2), A(0,2),
+    ...
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 
@@ -14,6 +19,8 @@
 */
 
 #include "classes.h"
+
+#define MATRIX4D_DEFAULT_ORDER 32
 
 
 struct _matrix4d_t {
@@ -56,7 +63,7 @@ matrix4d_t *matrix4d_new (size_t initial_rows, size_t initial_cols) {
     size_t initial_order =
         (initial_rows > initial_cols) ? initial_rows : initial_cols;
     if (initial_order == 0)
-        initial_order = 64;
+        initial_order = MATRIX4D_DEFAULT_ORDER;
     self->data =
         (double *) malloc (sizeof (double) * initial_order * initial_order);
     assert (self->data);

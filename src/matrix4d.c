@@ -4,10 +4,11 @@
     Internally, datas of a square matrix with large enough size are stored in
     left-upper-block-major order. i.e.
 
-    A(0,0),
-    A(1,0), A(1,1), A(0,1),
-    A(2,0), A(2,1), A(2,2), A(1,2), A(0,2),
-    ...
+    0  3  8 15  |
+    1  2  7 14  |
+    4  5  6 13  ^
+    9 10 11 12  |
+    ------>------
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 

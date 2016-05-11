@@ -20,53 +20,55 @@ extern "C" {
 typedef struct _hash_t hash_t;
 
 // Create a new hash table
-hash_t *hash_new (hash_func_t hash_func,
-                  equal_func_t equal_func,
-                  free_func_t key_free_func,
-                  free_func_t value_free_func);
+hash_t *hash_new (hash_func_t hash_func, equal_func_t equal_func);
 
 // Destroy a hash table
 void hash_free (hash_t **self_p);
 
+// Set destructors of key and value structures
+void hash_set_destructors (hash_t *self,
+                           free_func_t key_destructor,
+                           free_func_t value_destructor);
+
 // Get the number of entries in a hash table
 size_t hash_size (hash_t *self);
 
+// Get key by item handle
+void *hash_key (void *handle);
+
+// Get value by item handle
+void *hash_value (void *handle);
+
 // Insert a key-value pair into a hash table.
-// Return handle of the entry which you can save for fast update or removal.
-// If the entry is guaranteed new one (entry with the key does not exist in
+// Return item handle which you can save for fast update or removal.
+// If the item is guaranteed new one (item with the key does not exist in
 // the table), setting guaranteed_new to be true will accelerate the insertion.
-// Otherwise set it to be false, and then the old entry will be updated by the
+// Otherwise set it to be false, and then the old item will be updated by the
 // given one if their keys are equal.
 void *hash_insert (hash_t *self, void *key, void *value, bool guaranteed_new);
 
 // Look up a value in a hash table by key
 void *hash_lookup (hash_t *self, const void *key);
 
-// Remove an entry from hash table by key
+// Remove an item from hash table by key
 void hash_remove (hash_t *self, void *key);
 
-// Remove an entry from hash table by handle
+// Remove an item from hash table by handle
 // This is much faster than removal by key.
-void hash_remove_entry (hash_t *self, void *handle);
+void hash_remove_item (hash_t *self, void *handle);
 
-// Update a hash table entry by handle
+// Update a hash table item by handle
 // Note: old and new key must be equal
-void hash_update_entry (hash_t *self, void *handle, void *key, void *value);
+void hash_update_item (hash_t *self, void *handle, void *key, void *value);
 
-// Get handle of the first entry in hash table.
+// Get handle of the first item in hash table.
 // Return NULL if hash table is empty.
 // Use hash_first / hash_next() for simple iteration.
 void *hash_first (hash_t *self);
 
-// Get handle of the next entry in hash table (order inrelevant)
-// Return NULL if no more entry exists.
+// Get handle of the next item in hash table (order inrelevant)
+// Return NULL if no more item exists.
 void *hash_next (hash_t *self);
-
-// Get key from hash entry
-void *hash_entry_key (void *handle);
-
-// Get value from hash entry
-void *hash_entry_value (void *handle);
 
 // Self test
 void hash_test (bool verbose);

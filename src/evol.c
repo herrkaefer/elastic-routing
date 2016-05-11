@@ -12,11 +12,11 @@
 /*
 @todo
 
-- update_by_forgotten() 补充新neighbor可以优化
+- update_by_forgotten() 补充新neighbor可以优化 (add a helper flag in indiv?)
 - score computation: best fit and div may change, should update?
 - add diversification
     - 当slow down条件满足后report结果，可以选择停止，或者进行diversify后继续。
-    - a method: adjust weight_fit
+    - a inner method: decrease weight_fit
 - 消息机制（放在evol还是solver?）
 
 - [x]init() and renew()需要在最后保证livings group已经sort

@@ -41,7 +41,7 @@ double coord2d_distance (const coord2d_t *p1,
             print_warning ("for CS_GCJ02 the result may not be correct.\n");
 
         case CS_WGS84:
-            // 'haversine' formula:
+            // Haversine formula: (assumes that the Earth is a sphere)
             // See: http://www.movable-type.co.uk/scripts/latlong.html
             // a = sin²(Δφ/2) + cos φ1 ⋅ cos φ2 ⋅ sin²(Δλ/2)
             // c = 2 ⋅ atan2 ( √a, √(1−a) )

@@ -1,6 +1,6 @@
 # Elastic Routing
 
-``elastic routing`` — extendable and flexible vehicle routing solution for the real world written in C.
+``elastic routing`` — flexible and powerful vehicle routing solution for the real world written in C.
 
 **WARNING**: this project is not reach the minimal functional point, some key designs are in progress.
 

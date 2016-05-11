@@ -127,16 +127,16 @@ void *list4x_append (list4x_t *self, void *item);
 // Remove and return the item by handle
 void *list4x_pop (list4x_t *self, void *handle);
 
-// Remove and return the item at the start
-// Return NULL if the list is empty
+// Remove and return the item at the start.
+// Return NULL if the list is empty.
 void *list4x_pop_first (list4x_t *self);
 
-// Remove and return item at the end
-// Return NULL if the list is empty
+// Remove and return item at the end.
+// Return NULL if the list is empty.
 void *list4x_pop_last (list4x_t *self);
 
-// Remove and return the item at index
-// Return NULL if the list is empty
+// Remove and return the item at index.
+// Return NULL if the list is empty.
 void *list4x_pop_at (list4x_t *self, size_t index);
 
 // Extend list by appending items from another list

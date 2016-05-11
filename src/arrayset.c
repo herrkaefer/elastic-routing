@@ -172,10 +172,8 @@ void arrayset_set_hash_funcs (arrayset_t *self,
     assert (foreign_key_equal_func);
     assert (self->hash == NULL);
 
-    self->hash = hash_new (hash_func,
-                           foreign_key_equal_func,
-                           foreign_key_free_func,
-                           NULL);
+    self->hash = hash_new (hash_func, foreign_key_equal_func);
+    hash_set_destructors (self->hash, foreign_key_free_func, NULL);
     assert (self->hash);
 }
 
@@ -264,7 +262,7 @@ void arrayset_remove (arrayset_t *self, size_t id) {
     entry->valid = false;
 
     if (self->hash) {
-        hash_remove_entry (self->hash, entry->hash_handle);
+        hash_remove_item (self->hash, entry->hash_handle);
         entry->hash_handle = NULL;
     }
 

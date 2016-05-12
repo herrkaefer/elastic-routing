@@ -20,7 +20,7 @@ extern "C" {
 typedef struct _hash_t hash_t;
 
 // Create a new hash table
-hash_t *hash_new (hashfunc_t hash_func, matcher_t key_equal_func);
+hash_t *hash_new (hashfunc_t hashfunc, matcher_t key_matcher);
 
 // Destroy a hash table
 void hash_free (hash_t **self_p);

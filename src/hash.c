@@ -29,10 +29,10 @@ struct _hash_t {
 	s_hash_item_t *cursor; // pointer for iteration
 	size_t cursor_index; // chain index for iteration
 
-	hashfunc_t  	 hash_func;
-	matcher_t 	 key_equal_func;
-	destructor_t  	 key_destructor;
-	destructor_t  	 value_destructor;
+	hashfunc_t   hashfunc;
+	matcher_t 	 key_matcher;
+	destructor_t key_destructor;
+	destructor_t value_destructor;
 	duplicator_t key_duplicator;
 	duplicator_t value_duplicator;
 };
@@ -133,7 +133,7 @@ static void hash_enlarge (hash_t *self) {
 		while (rover != NULL) {
 			next = rover->next;
 			// Link rover into the chain of the new table
-			index = self->hash_func (rover->key) % self->table_size;
+			index = self->hashfunc (rover->key) % self->table_size;
 			hash_link_item (self, rover, index);
 			rover = next;
 		}
@@ -146,9 +146,9 @@ static void hash_enlarge (hash_t *self) {
 //----------------------------------------------------------------------------
 
 
-hash_t *hash_new (hashfunc_t hash_func, matcher_t key_equal_func) {
-	assert (hash_func);
-	assert (key_equal_func);
+hash_t *hash_new (hashfunc_t hashfunc, matcher_t key_matcher) {
+	assert (hashfunc);
+	assert (key_matcher);
 
 	hash_t *self = (hash_t *) malloc (sizeof (hash_t));
 	assert (self);
@@ -157,8 +157,8 @@ hash_t *hash_new (hashfunc_t hash_func, matcher_t key_equal_func) {
 	self->prime_index = 0;
 	self->cursor = NULL;
 	self->cursor_index = 0;
-	self->hash_func = hash_func;
-	self->key_equal_func = key_equal_func;
+	self->hashfunc = hashfunc;
+	self->key_matcher = key_matcher;
 	self->key_destructor = NULL;
 	self->value_destructor = NULL;
 	self->key_duplicator = NULL;
@@ -237,7 +237,7 @@ void *hash_insert (hash_t *self, void *key, void *value, bool guaranteed_new) {
 		hash_enlarge (self);
 
 	// Compute the index into the table
-	size_t index = self->hash_func (key) % self->table_size;
+	size_t index = self->hashfunc (key) % self->table_size;
 
 	// The item is not guaranteed a new one, query first and replace
 	// the existing one if it exists.
@@ -245,7 +245,7 @@ void *hash_insert (hash_t *self, void *key, void *value, bool guaranteed_new) {
 		s_hash_item_t *rover = self->table[index].next;
 		while (rover != NULL) {
 			// If item with the same key is found, update it
-			if (self->key_equal_func (rover->key, key)) {
+			if (self->key_matcher (rover->key, key)) {
 				print_info ("item exists, update it.\n");
 				hash_update_item (self, rover, key, value);
 				return rover;
@@ -271,14 +271,14 @@ void *hash_lookup (hash_t *self, const void *key) {
 	assert (self);
 
 	/* Generate the hash of the key and hence the index into the table */
-	size_t index = self->hash_func (key) % self->table_size;
+	size_t index = self->hashfunc (key) % self->table_size;
 
 	// Walk the chain at this index until the corresponding item is found
 	s_hash_item_t *rover = self->table[index].next;
 
 	while (rover != NULL) {
 		// Found the item. Return the data.
-		if (self->key_equal_func (key, rover->key))
+		if (self->key_matcher (key, rover->key))
 			return rover->value;
 		rover = rover->next;
 	}
@@ -292,13 +292,13 @@ void hash_remove (hash_t *self, void *key) {
 	assert (self);
 	assert (key);
 
-	size_t index = self->hash_func (key) % self->table_size;
+	size_t index = self->hashfunc (key) % self->table_size;
 	s_hash_item_t *rover = self->table[index].next;
 	s_hash_item_t *next;
 
 	while (rover != NULL) {
 		next = rover->next;
-		if (self->key_equal_func (key, rover->key)) {
+		if (self->key_matcher (key, rover->key)) {
 			hash_remove_item (self, rover);
 			return;
 		}
@@ -336,7 +336,7 @@ void hash_update_item (hash_t *self, void *handle, void *key, void *value) {
 	assert (value);
 
 	s_hash_item_t *item = (s_hash_item_t *) handle;
-	assert (self->key_equal_func (item->key, key));
+	assert (self->key_matcher (item->key, key));
 
 	if (item->key != key && self->key_destructor != NULL)
 		self->key_destructor (&item->key);

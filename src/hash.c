@@ -161,6 +161,8 @@ hash_t *hash_new (hash_func_t hash_func, equal_func_t key_equal_func) {
 	self->key_equal_func = key_equal_func;
 	self->key_destructor = NULL;
 	self->value_destructor = NULL;
+	self->key_duplicator = NULL;
+	self->value_duplicator = NULL;
 
 	// Allocate the table
 	hash_alloc_table (self);

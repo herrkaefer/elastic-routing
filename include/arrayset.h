@@ -53,7 +53,7 @@ void arrayset_set_data_free_func (arrayset_t *self, destructor_t data_free_func)
 // Set foreign_key_free_func so that arrayset is responsible for freeing the key
 // structure.
 void arrayset_set_hash_funcs (arrayset_t *self,
-                              hash_func_t hash_func,
+                              hashfunc_t hash_func,
                               matcher_t foreign_key_equal_func,
                               destructor_t foreign_key_free_func);
 

@@ -323,7 +323,7 @@ vrp_t *vrp_new (void) {
     self->nodes = arrayset_new (0);
     arrayset_set_data_free_func (self->nodes, (destructor_t) s_node_free);
     arrayset_set_hash_funcs (self->nodes,
-                             (hash_func_t) string_hash,
+                             (hashfunc_t) string_hash,
                              (matcher_t) string_equal,
                              NULL);
 
@@ -335,7 +335,7 @@ vrp_t *vrp_new (void) {
     self->vehicles = arrayset_new (0);
     arrayset_set_data_free_func (self->vehicles, (destructor_t) s_vehicle_free);
     arrayset_set_hash_funcs (self->vehicles,
-                             (hash_func_t) string_hash,
+                             (hashfunc_t) string_hash,
                              (matcher_t) string_equal,
                              NULL);
 
@@ -343,7 +343,7 @@ vrp_t *vrp_new (void) {
     self->requests = arrayset_new (0);
     arrayset_set_data_free_func (self->requests, (destructor_t) s_request_free);
     arrayset_set_hash_funcs (self->requests,
-                             (hash_func_t) string_hash,
+                             (hashfunc_t) string_hash,
                              (matcher_t) string_equal,
                              NULL);
 
@@ -352,7 +352,7 @@ vrp_t *vrp_new (void) {
     arrayset_set_data_free_func (self->plan, (destructor_t) route_free);
     // @todo do plans need hash?
     // arrayset_set_hash_funcs (self->plans,
-    //                          (hash_func_t) string_hash,
+    //                          (hashfunc_t) string_hash,
     //                          (matcher_t) string_equal,
     //                          (destructor_t) string_free);
 

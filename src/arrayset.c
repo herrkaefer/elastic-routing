@@ -164,7 +164,7 @@ void arrayset_set_data_free_func (arrayset_t *self,
 
 
 void arrayset_set_hash_funcs (arrayset_t *self,
-                              hash_func_t hash_func,
+                              hashfunc_t hash_func,
                               matcher_t foreign_key_equal_func,
                               destructor_t foreign_key_free_func) {
     assert (self);
@@ -401,7 +401,7 @@ void arrayset_test (bool verbose) {
     assert (arrayset_size (as) == 0);
 
     arrayset_set_hash_funcs (as,
-                             (hash_func_t) string_hash,
+                             (hashfunc_t) string_hash,
                              (matcher_t) string_equal,
                              NULL);
 

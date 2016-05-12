@@ -11,7 +11,7 @@
 */
 
 
-typedef size_t (*hash_func_t) (const void *obj);
+typedef size_t (*hashfunc_t) (const void *obj);
 
 typedef void (*destructor_t) (void **obj_p);
 

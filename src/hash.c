@@ -29,7 +29,7 @@ struct _hash_t {
 	s_hash_item_t *cursor; // pointer for iteration
 	size_t cursor_index; // chain index for iteration
 
-	hash_func_t  	 hash_func;
+	hashfunc_t  	 hash_func;
 	matcher_t 	 key_equal_func;
 	destructor_t  	 key_destructor;
 	destructor_t  	 value_destructor;
@@ -146,7 +146,7 @@ static void hash_enlarge (hash_t *self) {
 //----------------------------------------------------------------------------
 
 
-hash_t *hash_new (hash_func_t hash_func, matcher_t key_equal_func) {
+hash_t *hash_new (hashfunc_t hash_func, matcher_t key_equal_func) {
 	assert (hash_func);
 	assert (key_equal_func);
 
@@ -397,7 +397,7 @@ void *hash_value (void *handle) {
 
 void hash_test (bool verbose) {
 	print_info (" * hash: \n");
-    hash_t *hash = hash_new ((hash_func_t) string_hash,
+    hash_t *hash = hash_new ((hashfunc_t) string_hash,
     						 (matcher_t) string_equal);
 
 	assert (hash);

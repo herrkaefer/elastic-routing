@@ -47,15 +47,15 @@ void arrayset_free (arrayset_t **self_p);
 
 // Set data free function.
 // If data free function is set, arrayset is responsible for freeing data.
-void arrayset_set_data_free_func (arrayset_t *self, free_func_t data_free_func);
+void arrayset_set_data_free_func (arrayset_t *self, destructor_t data_free_func);
 
 // Set hash functions if you want to index a foreign key associated with data.
 // Set foreign_key_free_func so that arrayset is responsible for freeing the key
 // structure.
 void arrayset_set_hash_funcs (arrayset_t *self,
                               hash_func_t hash_func,
-                              equal_func_t foreign_key_equal_func,
-                              free_func_t foreign_key_free_func);
+                              matcher_t foreign_key_equal_func,
+                              destructor_t foreign_key_free_func);
 
 // Get data by id.
 void *arrayset_data (arrayset_t *self, size_t id);

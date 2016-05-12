@@ -20,20 +20,20 @@ extern "C" {
 typedef struct _hash_t hash_t;
 
 // Create a new hash table
-hash_t *hash_new (hash_func_t hash_func, equal_func_t key_equal_func);
+hash_t *hash_new (hash_func_t hash_func, matcher_t key_equal_func);
 
 // Destroy a hash table
 void hash_free (hash_t **self_p);
 
 // Set destructors of key and value structures
 void hash_set_destructors (hash_t *self,
-                           free_func_t key_destructor,
-                           free_func_t value_destructor);
+                           destructor_t key_destructor,
+                           destructor_t value_destructor);
 
 // Set duplicators of key and value structures
 void hash_set_duplicators (hash_t *self,
-                           duplicate_func_t key_duplicator,
-                           duplicate_func_t value_duplicator);
+                           duplicator_t key_duplicator,
+                           duplicator_t value_duplicator);
 
 // Get the number of entries in a hash table
 size_t hash_size (hash_t *self);

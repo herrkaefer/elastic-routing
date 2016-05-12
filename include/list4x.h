@@ -70,18 +70,18 @@ void list4x_free (list4x_t **self_p);
 
 // Set item destructor callback.
 // By default, item is not destroyed when it is removed from the list.
-void list4x_set_destructor (list4x_t *self, free_func_t destructor);
+void list4x_set_destructor (list4x_t *self, destructor_t destructor);
 
 // Set item duplicator callback
 // If this is set, the list contains a duplication of item.
-void list4x_set_duplicator (list4x_t *self, duplicate_func_t duplicator);
+void list4x_set_duplicator (list4x_t *self, duplicator_t duplicator);
 
 // Set item comparator callback
-void list4x_set_comparator (list4x_t *self, compare_func_t comparator);
+void list4x_set_comparator (list4x_t *self, comparator_t comparator);
 
 // Set item printer callback.
 // If this is set, list4x_print () will use it to print items.
-void list4x_set_printer (list4x_t *self, print_func_t printer);
+void list4x_set_printer (list4x_t *self, printer_t printer);
 
 // Get number of items in list
 size_t list4x_size (list4x_t *self);

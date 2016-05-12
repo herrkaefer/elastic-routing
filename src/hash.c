@@ -30,11 +30,11 @@ struct _hash_t {
 	size_t cursor_index; // chain index for iteration
 
 	hash_func_t  	 hash_func;
-	equal_func_t 	 key_equal_func;
-	free_func_t  	 key_destructor;
-	free_func_t  	 value_destructor;
-	duplicate_func_t key_duplicator;
-	duplicate_func_t value_duplicator;
+	matcher_t 	 key_equal_func;
+	destructor_t  	 key_destructor;
+	destructor_t  	 value_destructor;
+	duplicator_t key_duplicator;
+	duplicator_t value_duplicator;
 };
 
 
@@ -146,7 +146,7 @@ static void hash_enlarge (hash_t *self) {
 //----------------------------------------------------------------------------
 
 
-hash_t *hash_new (hash_func_t hash_func, equal_func_t key_equal_func) {
+hash_t *hash_new (hash_func_t hash_func, matcher_t key_equal_func) {
 	assert (hash_func);
 	assert (key_equal_func);
 
@@ -200,8 +200,8 @@ void hash_free (hash_t **self_p) {
 
 
 void hash_set_destructors (hash_t *self,
-						   free_func_t key_destructor,
-                           free_func_t value_destructor) {
+						   destructor_t key_destructor,
+                           destructor_t value_destructor) {
 	assert (self);
 	assert (self->key_destructor == NULL);
 	assert (self->value_destructor == NULL);
@@ -211,8 +211,8 @@ void hash_set_destructors (hash_t *self,
 
 
 void hash_set_duplicators (hash_t *self,
-                           duplicate_func_t key_duplicator,
-                           duplicate_func_t value_duplicator) {
+                           duplicator_t key_duplicator,
+                           duplicator_t value_duplicator) {
 	assert (self);
 	assert (self->key_duplicator == NULL);
 	assert (self->value_duplicator == NULL);
@@ -398,7 +398,7 @@ void *hash_value (void *handle) {
 void hash_test (bool verbose) {
 	print_info (" * hash: \n");
     hash_t *hash = hash_new ((hash_func_t) string_hash,
-    						 (equal_func_t) string_equal);
+    						 (matcher_t) string_equal);
 
 	assert (hash);
 	assert (hash_size (hash) == 0);

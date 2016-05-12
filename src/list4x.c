@@ -31,10 +31,10 @@ struct _list4x_t {
     s_node_t *head;
     size_t size;
     int sorting_state;
-    free_func_t      destructor;
-    duplicate_func_t duplicator;
-    compare_func_t   comparator;
-    print_func_t     printer;
+    destructor_t      destructor;
+    duplicator_t duplicator;
+    comparator_t   comparator;
+    printer_t     printer;
 };
 
 
@@ -388,26 +388,26 @@ void list4x_free (list4x_t **self_p) {
 }
 
 
-void list4x_set_destructor (list4x_t *self, free_func_t destructor) {
+void list4x_set_destructor (list4x_t *self, destructor_t destructor) {
     assert (self);
     self->destructor = destructor;
 }
 
 
 void list4x_set_duplicator (list4x_t *self,
-                                duplicate_func_t duplicator) {
+                                duplicator_t duplicator) {
     assert (self);
     self->duplicator = duplicator;
 }
 
 
-void list4x_set_comparator (list4x_t *self, compare_func_t comparator) {
+void list4x_set_comparator (list4x_t *self, comparator_t comparator) {
     assert (self);
     self->comparator = comparator;
 }
 
 
-void list4x_set_printer (list4x_t *self, print_func_t printer) {
+void list4x_set_printer (list4x_t *self, printer_t printer) {
     assert (self);
     self->printer = printer;
 }
@@ -1162,10 +1162,10 @@ void list4x_test (bool verbose) {
         printf ("%s, ", str);
     printf ("\n");
 
-    list4x_set_destructor (list, (free_func_t) string_free);
-    list4x_set_duplicator (list, (duplicate_func_t) string_duplicate);
-    list4x_set_comparator (list, (compare_func_t) string_compare);
-    list4x_set_printer (list, (print_func_t) string_print);
+    list4x_set_destructor (list, (destructor_t) string_free);
+    list4x_set_duplicator (list, (duplicator_t) string_duplicate);
+    list4x_set_comparator (list, (comparator_t) string_compare);
+    list4x_set_printer (list, (printer_t) string_print);
 
     assert (list4x_find (list, "hello") == NULL);
     assert (list4x_index (list, "hello") == SIZE_NONE);

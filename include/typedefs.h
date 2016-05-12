@@ -13,17 +13,17 @@
 
 typedef size_t (*hash_func_t) (const void *obj);
 
-typedef void (*free_func_t) (void **obj_p);
+typedef void (*destructor_t) (void **obj_p);
 
-typedef int (*compare_func_t) (const void *obj1, const void *obj2);
+typedef int (*comparator_t) (const void *obj1, const void *obj2);
 
-typedef bool (*equal_func_t) (const void *obj1, const void *obj2);
+typedef bool (*matcher_t) (const void *obj1, const void *obj2);
 
-typedef void *(*duplicate_func_t) (const void *obj);
+typedef void *(*duplicator_t) (const void *obj);
 
-typedef void (*copy_func_t) (void *dest, const void *src);
+typedef void (*copier_t) (void *dest, const void *src);
 
-typedef void (*print_func_t) (const void *obj);
+typedef void (*printer_t) (const void *obj);
 
 #define streq(s1,s2)    (!strcmp ((s1), (s2)))
 #define strneq(s1,s2)   (strcmp ((s1), (s2)))

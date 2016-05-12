@@ -33,7 +33,7 @@ struct _arrayset_t {
     queue_t *holes; // record of removed nodes. A FIFO queue.
 
     hash_t *hash; // an optional hash table for indexing data by foreign key
-    free_func_t data_free_func; // callback for destroying data
+    destructor_t data_free_func; // callback for destroying data
 };
 
 
@@ -156,7 +156,7 @@ void arrayset_free (arrayset_t **self_p) {
 
 
 void arrayset_set_data_free_func (arrayset_t *self,
-                                  free_func_t data_free_func) {
+                                  destructor_t data_free_func) {
     assert (self);
     assert (self->data_free_func == NULL);
     self->data_free_func = data_free_func;
@@ -165,8 +165,8 @@ void arrayset_set_data_free_func (arrayset_t *self,
 
 void arrayset_set_hash_funcs (arrayset_t *self,
                               hash_func_t hash_func,
-                              equal_func_t foreign_key_equal_func,
-                              free_func_t foreign_key_free_func) {
+                              matcher_t foreign_key_equal_func,
+                              destructor_t foreign_key_free_func) {
     assert (self);
     assert (hash_func);
     assert (foreign_key_equal_func);
@@ -402,7 +402,7 @@ void arrayset_test (bool verbose) {
 
     arrayset_set_hash_funcs (as,
                              (hash_func_t) string_hash,
-                             (equal_func_t) string_equal,
+                             (matcher_t) string_equal,
                              NULL);
 
     size_t id;

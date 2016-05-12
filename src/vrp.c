@@ -321,10 +321,10 @@ vrp_t *vrp_new (void) {
 
     // Roadgraph
     self->nodes = arrayset_new (0);
-    arrayset_set_data_free_func (self->nodes, (free_func_t) s_node_free);
+    arrayset_set_data_free_func (self->nodes, (destructor_t) s_node_free);
     arrayset_set_hash_funcs (self->nodes,
                              (hash_func_t) string_hash,
-                             (equal_func_t) string_equal,
+                             (matcher_t) string_equal,
                              NULL);
 
     self->distances = matrix4d_new (0, 0);
@@ -333,28 +333,28 @@ vrp_t *vrp_new (void) {
 
     // Fleet
     self->vehicles = arrayset_new (0);
-    arrayset_set_data_free_func (self->vehicles, (free_func_t) s_vehicle_free);
+    arrayset_set_data_free_func (self->vehicles, (destructor_t) s_vehicle_free);
     arrayset_set_hash_funcs (self->vehicles,
                              (hash_func_t) string_hash,
-                             (equal_func_t) string_equal,
+                             (matcher_t) string_equal,
                              NULL);
 
     // Requests
     self->requests = arrayset_new (0);
-    arrayset_set_data_free_func (self->requests, (free_func_t) s_request_free);
+    arrayset_set_data_free_func (self->requests, (destructor_t) s_request_free);
     arrayset_set_hash_funcs (self->requests,
                              (hash_func_t) string_hash,
-                             (equal_func_t) string_equal,
+                             (matcher_t) string_equal,
                              NULL);
 
     // Plan
     self->plan = arrayset_new (0);
-    arrayset_set_data_free_func (self->plan, (free_func_t) route_free);
+    arrayset_set_data_free_func (self->plan, (destructor_t) route_free);
     // @todo do plans need hash?
     // arrayset_set_hash_funcs (self->plans,
     //                          (hash_func_t) string_hash,
-    //                          (equal_func_t) string_equal,
-    //                          (free_func_t) string_free);
+    //                          (matcher_t) string_equal,
+    //                          (destructor_t) string_free);
 
     // Constraints
     self->max_route_distance = DOUBLE_NONE;

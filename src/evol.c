@@ -53,8 +53,8 @@ typedef struct {
     // Core representation
     genome_t genome;
 
-    free_func_t genome_destructor;
-    print_func_t genome_printer;
+    destructor_t genome_destructor;
+    printer_t genome_printer;
 
     // Evaluations
     bool   feasible;
@@ -142,9 +142,9 @@ struct _evol_t {
     double step_max_time; // second
 
     // Callbacks
-    free_func_t                genome_destructor;
-    duplicate_func_t           genome_duplicator;
-    print_func_t               genome_printer;
+    destructor_t                genome_destructor;
+    duplicator_t           genome_duplicator;
+    printer_t               genome_printer;
     evol_feasiblity_assessor_t feasiblity_assessor;
     evol_fitness_assessor_t    fitness_assessor;
     evol_distance_assessor_t   distance_assessor;
@@ -251,7 +251,7 @@ static void s_asneighbor_free (s_asneighbor_t **self_p) {
 // Create a new individual (use evol_new_indiv() rather than this one to create
 // an individual for evolution)
 static s_indiv_t *s_indiv_new (genome_t genome,
-                               free_func_t genome_destructor) {
+                               destructor_t genome_destructor) {
     s_indiv_t *self = (s_indiv_t *) malloc (sizeof (s_indiv_t));
     assert (self);
 
@@ -273,12 +273,12 @@ static s_indiv_t *s_indiv_new (genome_t genome,
     self->handle_children      = NULL;
 
     self->neighbors = list4x_new ();
-    list4x_set_destructor (self->neighbors, (free_func_t) s_neighbor_free);
-    list4x_set_comparator (self->neighbors, (compare_func_t) s_neighbor_compare);
+    list4x_set_destructor (self->neighbors, (destructor_t) s_neighbor_free);
+    list4x_set_comparator (self->neighbors, (comparator_t) s_neighbor_compare);
     list4x_sort (self->neighbors, true);
 
     self->as_neighbors = list4x_new ();
-    list4x_set_destructor (self->as_neighbors, (free_func_t) s_asneighbor_free);
+    list4x_set_destructor (self->as_neighbors, (destructor_t) s_asneighbor_free);
 
     return self;
 }
@@ -517,39 +517,39 @@ static void evol_new_livings_group (evol_t *self) {
     // List sorted by fitness descending order. This list is always sorted.
     self->livings_rank_fit = list4x_new ();
     list4x_set_comparator (self->livings_rank_fit,
-                           (compare_func_t) s_indiv_compare_fitness);
+                           (comparator_t) s_indiv_compare_fitness);
     list4x_sort (self->livings_rank_fit, false);
 
     // List sorted by diversity descending order.
     // This list is sorted conditionally by evol_regularize_population().
     self->livings_rank_div = list4x_new ();
     list4x_set_comparator (self->livings_rank_div,
-                           (compare_func_t) s_indiv_compare_diversity);
+                           (comparator_t) s_indiv_compare_diversity);
 
     // List sorted by score descending order.
     // This list is sorted conditionally by evol_regularize_population().
     // Let this list be responsible for destroying items (individuals).
     self->livings_rank_score = list4x_new ();
     list4x_set_destructor (self->livings_rank_score,
-                           (free_func_t) s_indiv_free);
+                           (destructor_t) s_indiv_free);
     list4x_set_comparator (self->livings_rank_score,
-                           (compare_func_t) s_indiv_compare_score);
+                           (comparator_t) s_indiv_compare_score);
 }
 
 
 // Create new ancestors group
 static void evol_new_ancestors_group (evol_t *self) {
     self->ancestors = list4x_new ();
-    list4x_set_destructor (self->ancestors, (free_func_t) s_indiv_free);
+    list4x_set_destructor (self->ancestors, (destructor_t) s_indiv_free);
 }
 
 
 // Create new children group
 static void evol_new_children_group (evol_t *self) {
     self->children = list4x_new ();
-    list4x_set_destructor (self->children, (free_func_t) s_indiv_free);
+    list4x_set_destructor (self->children, (destructor_t) s_indiv_free);
     list4x_set_comparator (self->children,
-                           (compare_func_t) s_indiv_compare_fitness);
+                           (comparator_t) s_indiv_compare_fitness);
 }
 
 
@@ -741,7 +741,7 @@ static void evol_assert_population (evol_t *self) {
 // Create new individual for evolution
 static s_indiv_t *evol_new_indiv (evol_t *self,
                                   genome_t genome,
-                                  free_func_t genome_destructor) {
+                                  destructor_t genome_destructor) {
     if (self->genome_duplicator) {
         // if duplicator is set, destructor should also be set
         assert (genome_destructor);
@@ -995,8 +995,8 @@ static void evol_update_population_by_forgotten (evol_t *self,
 
     // Temporary list for collecting new neighbors
     list4x_t *new_nbs = list4x_new ();
-    list4x_set_destructor (new_nbs, (free_func_t) s_neighbor_free);
-    list4x_set_comparator (new_nbs, (compare_func_t) s_neighbor_compare);
+    list4x_set_destructor (new_nbs, (destructor_t) s_neighbor_free);
+    list4x_set_comparator (new_nbs, (comparator_t) s_neighbor_compare);
     list4x_sort (new_nbs, true);
 
     s_asneighbor_t *as_nb = NULL;
@@ -1748,7 +1748,7 @@ evol_t *evol_new (void) {
     self->stopper             = NULL;
 
     self->heuristics      = list4x_new ();
-    list4x_set_destructor (self->heuristics, (free_func_t) s_heuristic_free);
+    list4x_set_destructor (self->heuristics, (destructor_t) s_heuristic_free);
     self->crossovers      = list4x_new ();
     self->mutators        = list4x_new ();
     self->local_improvers = list4x_new ();
@@ -1831,21 +1831,21 @@ void evol_set_children_group_size (evol_t *self, size_t max_children) {
 }
 
 
-void evol_set_genome_destructor (evol_t *self, free_func_t fn) {
+void evol_set_genome_destructor (evol_t *self, destructor_t fn) {
     assert (self);
     assert (fn);
     self->genome_destructor = fn;
 }
 
 
-void evol_set_genome_duplicator (evol_t *self, duplicate_func_t fn) {
+void evol_set_genome_duplicator (evol_t *self, duplicator_t fn) {
     assert (self);
     assert (fn);
     self->genome_duplicator = fn;
 }
 
 
-void evol_set_genome_printer (evol_t *self, print_func_t fn) {
+void evol_set_genome_printer (evol_t *self, printer_t fn) {
     assert (self);
     assert (fn);
     self->genome_printer = fn;
@@ -2055,8 +2055,8 @@ void evol_test (bool verbose) {
     evol_set_context (evol, &context);
 
     // Set all necessary callbacks
-    evol_set_genome_destructor (evol, (free_func_t) string_free);
-    evol_set_genome_printer (evol, (print_func_t) string_print);
+    evol_set_genome_destructor (evol, (destructor_t) string_free);
+    evol_set_genome_printer (evol, (printer_t) string_print);
     evol_set_fitness_assessor (evol, (evol_fitness_assessor_t) string_fitness2);
     evol_set_distance_assessor (evol, (evol_distance_assessor_t) string_distance);
     evol_register_heuristic (evol,

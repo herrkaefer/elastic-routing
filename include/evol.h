@@ -92,14 +92,14 @@ void evol_set_ancestors_group_size (evol_t *self, size_t max_ancestors);
 void evol_set_children_group_size (evol_t *self, size_t max_children);
 
 // Set genome free function
-void evol_set_genome_destructor (evol_t *self, free_func_t fn);
+void evol_set_genome_destructor (evol_t *self, destructor_t fn);
 
 // Set genome duplicate function
 // If genome duplicator is set, genome destructor should be set as well.
-void evol_set_genome_duplicator (evol_t *self, duplicate_func_t fn);
+void evol_set_genome_duplicator (evol_t *self, duplicator_t fn);
 
 // Set genome print function
-void evol_set_genome_printer (evol_t *self, print_func_t fn);
+void evol_set_genome_printer (evol_t *self, printer_t fn);
 
 // Set genome feasiblity assessment function
 void evol_set_feasibility_assessor (evol_t *self,

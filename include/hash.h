@@ -38,21 +38,34 @@ void hash_set_duplicators (hash_t *self,
 // Get the number of entries in a hash table
 size_t hash_size (hash_t *self);
 
-// Get key by item handle
+// Get item's key by item handle
 void *hash_key (void *handle);
 
-// Get value by item handle
+// Get item's value by item handle
 void *hash_value (void *handle);
 
-// Insert a key-value pair into a hash table.
-// Return item handle which you can save for fast update or removal.
+// Insert item into a hash table. If the item already exists, do not update it.
+// Return the item handle.
 // If the item is guaranteed new one (item with the key does not exist in
 // the table), setting guaranteed_new to be true will accelerate the insertion.
 // Otherwise set it to be false, and then the old item will be updated by the
 // given one if their keys are equal.
-void *hash_insert (hash_t *self, void *key, void *value, bool guaranteed_new);
+void *hash_insert (hash_t *self, void *key, void *value);
 
-// Look up a value in a hash table by key
+// Insert item without query. Caller should ensure the uniqueness of the key.
+// Return the item handle.
+void *hash_insert_nq (hash_t *self, void *key, void *value);
+
+// Update item by key. If item does not exist, insert it.
+// Return the item handle.
+void *hash_update (hash_t *self, void *key, void *value);
+
+// Look up item in a hash table by key.
+// Return the item handle
+void *hash_lookup_item (hash_t *self, const void *key);
+
+// Look up a value in a hash table by key.
+// Return the value.
 void *hash_lookup (hash_t *self, const void *key);
 
 // Remove an item from hash table by key

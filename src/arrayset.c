@@ -92,10 +92,7 @@ static void arrayset_insert (arrayset_t *self,
     // If foreign key is indexed, add it to hash table
     if (foreign_key) {
         assert (self->hash);
-        hash_handle = hash_insert (self->hash,
-                                  foreign_key,
-                                  (void *) entry,
-                                  true);
+        hash_handle = hash_insert_nq (self->hash, foreign_key, entry);
     }
 
     ++self->size;

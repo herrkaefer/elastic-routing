@@ -1,5 +1,5 @@
 /*  =========================================================================
-    evol - evolution algorithm
+    evol - evolution framework
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 

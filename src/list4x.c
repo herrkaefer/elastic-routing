@@ -31,10 +31,10 @@ struct _list4x_t {
     s_node_t *head;
     size_t size;
     int sorting_state;
-    destructor_t      destructor;
+    destructor_t destructor;
     duplicator_t duplicator;
-    comparator_t   comparator;
-    printer_t     printer;
+    comparator_t comparator;
+    printer_t printer;
 };
 
 

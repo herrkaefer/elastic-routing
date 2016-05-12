@@ -1,5 +1,5 @@
 /*  =========================================================================
-    globaldefs -
+    typedefs - global definations
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 
@@ -30,7 +30,6 @@ typedef void (*printer_t) (const void *obj);
 
 #define UUID_STR_LEN 32
 #define PI 3.1415926
-#define EARTH_RADIUS 6373.0
 
 #ifdef SIZE_MAX
 #define ID_NONE   SIZE_MAX

@@ -12,6 +12,8 @@
 
 #include "classes.h"
 
+#define EARTH_RADIUS 6373.0
+
 
 static double angle_degree_to_radian (double angle) {
     return angle * PI / 180.0;

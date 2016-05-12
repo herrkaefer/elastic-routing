@@ -227,7 +227,7 @@ size_t hash_size (hash_t *self) {
 }
 
 
-void *hash_insert (hash_t *self, void *key, void *value, bool guaranteed_new) {
+void *hash_insert_nq (hash_t *self, void *key, void *value) {
 	assert (self);
 	assert (key);
 	assert (value);
@@ -239,22 +239,7 @@ void *hash_insert (hash_t *self, void *key, void *value, bool guaranteed_new) {
 	// Compute the index into the table
 	size_t index = self->hashfunc (key) % self->table_size;
 
-	// The item is not guaranteed a new one, query first and replace
-	// the existing one if it exists.
-	if (!guaranteed_new) {
-		s_hash_item_t *rover = self->table[index].next;
-		while (rover != NULL) {
-			// If item with the same key is found, update it
-			if (self->key_matcher (rover->key, key)) {
-				print_info ("item exists, update it.\n");
-				hash_update_item (self, rover, key, value);
-				return rover;
-			}
-			rover = rover->next;
-		}
-	}
-
-	// Entry is guaranteed new or not found. Create a new item.
+	// Create and insert a new item.
 	s_hash_item_t *newitem =
 		(s_hash_item_t *) malloc (sizeof (s_hash_item_t));
 	assert (newitem);
@@ -267,46 +252,65 @@ void *hash_insert (hash_t *self, void *key, void *value, bool guaranteed_new) {
 }
 
 
-void *hash_lookup (hash_t *self, const void *key) {
+void *hash_insert (hash_t *self, void *key, void *value) {
 	assert (self);
+	assert (key);
+	assert (value);
+	s_hash_item_t *item = (s_hash_item_t *) hash_lookup_item (self, key);
+	if (item)
+		return item;
+	else
+		return hash_insert_nq (self, key, value);
+}
 
-	/* Generate the hash of the key and hence the index into the table */
+
+void *hash_update (hash_t *self, void *key, void *value) {
+	assert (self);
+	assert (key);
+	assert (value);
+	s_hash_item_t *item = (s_hash_item_t *) hash_lookup_item (self, key);
+	if (item) {
+		if (item->key != key && self->key_destructor != NULL)
+			self->key_destructor (&item->key);
+		if (item->value != value && self->value_destructor != NULL)
+			self->value_destructor (&item->value);
+		hash_set_item (self, item, key, value);
+		return item;
+	}
+	else
+		return hash_insert_nq (self, key, value);
+}
+
+
+void *hash_lookup_item (hash_t *self, const void *key) {
+	assert (self);
 	size_t index = self->hashfunc (key) % self->table_size;
-
-	// Walk the chain at this index until the corresponding item is found
 	s_hash_item_t *rover = self->table[index].next;
-
 	while (rover != NULL) {
-		// Found the item. Return the data.
 		if (self->key_matcher (key, rover->key))
-			return rover->value;
+			return rover;
 		rover = rover->next;
 	}
-
-	// Not found
 	return NULL;
+}
+
+
+void *hash_lookup (hash_t *self, const void *key) {
+	assert (self);
+	s_hash_item_t *item = (s_hash_item_t *) hash_lookup_item (self, key);
+	return item ? item->value : NULL;
 }
 
 
 void hash_remove (hash_t *self, void *key) {
 	assert (self);
 	assert (key);
-
-	size_t index = self->hashfunc (key) % self->table_size;
-	s_hash_item_t *rover = self->table[index].next;
-	s_hash_item_t *next;
-
-	while (rover != NULL) {
-		next = rover->next;
-		if (self->key_matcher (key, rover->key)) {
-			hash_remove_item (self, rover);
-			return;
-		}
-		rover = next;
+	void *item = hash_lookup_item (self, key);
+	if (item) {
+		hash_remove_item (self, item);
+		return;
 	}
-
-	// not found
-	print_warning ("no item found.\n");
+	print_warning ("item not found.\n");
 }
 
 
@@ -340,7 +344,6 @@ void hash_update_item (hash_t *self, void *handle, void *key, void *value) {
 
 	if (item->key != key && self->key_destructor != NULL)
 		self->key_destructor (&item->key);
-
 	if (item->value != value && self->value_destructor != NULL)
 		self->value_destructor (&item->value);
 
@@ -406,16 +409,16 @@ void hash_test (bool verbose) {
 
 	// Insert
 	void *handle;
-	handle = hash_insert (hash, "PADDINGTON", "goes to market", false);
+	handle = hash_insert (hash, "PADDINGTON", "goes to market");
 	assert (handle);
 	assert (streq (hash_key (handle), "PADDINGTON"));
 	assert (streq (hash_value (handle), "goes to market"));
 
-	handle = hash_insert (hash, "MIFFY", "on a scoot", false);
+	handle = hash_insert (hash, "MIFFY", "on a scoot");
 	assert (handle);
-	handle = hash_insert (hash, "MAISY", "goes shopping", false);
+	handle = hash_insert (hash, "MAISY", "goes shopping");
 	assert (handle);
-	handle = hash_insert (hash, "BUDDY", "plays a ball", false);
+	handle = hash_insert (hash, "BUDDY", "plays a ball");
 	assert (handle);
 	assert (hash_size (hash) == 4);
 
@@ -429,21 +432,6 @@ void hash_test (bool verbose) {
 	item = (char *) hash_lookup (hash, "MIFFY");
 	assert (streq (item, "on a scoot"));
 
-	// Look for non-existent items
-	item = (char *) hash_lookup (hash, "PIGGY");
-	assert (item == NULL);
-
-	// Try to insert duplicate items (update)
-	hash_insert (hash, "MIFFY", "visit a friend", false);
-	item = (char *) hash_lookup (hash, "MIFFY");
-	assert (streq (item, "visit a friend"));
-
-	// Delete a item
-	hash_remove (hash, "MAISY");
-	item = (char *) hash_lookup (hash, "MAISY");
-	assert (item == NULL);
-	assert (hash_size (hash) == 3);
-
 	// Iteration
 	handle = hash_first (hash);
 	while (handle != NULL) {
@@ -451,6 +439,23 @@ void hash_test (bool verbose) {
 		string_print (hash_value (handle));
 		handle = hash_next (hash);
 	}
+
+	// Look for non-existent items
+	item = (char *) hash_lookup (hash, "PIGGY");
+	assert (item == NULL);
+
+	// Try to insert duplicate items (no update)
+	hash_insert (hash, "MIFFY", "visit a friend");
+	item = (char *) hash_lookup (hash, "MIFFY");
+	assert (streq (item, "on a scoot"));
+
+	// Delete a item
+	hash_remove (hash, "MAISY");
+	item = (char *) hash_lookup (hash, "MAISY");
+	assert (item == NULL);
+	assert (hash_size (hash) == 3);
+
+
 
 	// Check that the queue is robust against random usage
 	struct {
@@ -472,7 +477,7 @@ void hash_test (bool verbose) {
 		else {
 			sprintf (testset [testnbr].name, "%.5f-%.5f",
 						rng_random (rng), rng_random (rng));
-			handle = hash_insert (hash, testset [testnbr].name, "", false);
+			handle = hash_insert (hash, testset [testnbr].name, "");
 			assert (handle);
 			testset [testnbr].exists = true;
 		}

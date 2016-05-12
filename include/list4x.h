@@ -35,8 +35,8 @@ list4x is a generic list container.
     // or start iteration from specified item (start from the NEXT one)
     // list4x_iterator_t iter = list4x_iter_init_from (list, handle, true);
     while ((item = (TYPE *) list4x_iter (list, &iter)) != NULL) {
-        // Do somethings with item
-        // ...
+        // Do stuff with item
+        //
         // If you need item handle, it is just iter.handle
         //
         // You can remove current item from list by

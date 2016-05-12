@@ -9,23 +9,6 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
     =========================================================================
 */
-/* @todo
-
-- [x]add list4x_iterator_t for iteration. 使用内置cursor变量的缺点是不支持对同一个
-  list的循环嵌套。
-
-- [x]优化list4x_count()
-
-- [x]写handle不变的sort, reverse, shuffle, ...
-
-- [x]不用reorder，改用list4x_pop(), change item, then insert_sorted()
-
-- [x]list4x_insert_sorted () and list4x_reorder () 需要进一步test，主要是
-  binary search寻找位置尚不能保证一定准确。
-
-- [x]s_node_t: Add a indicator: whether the node is in list or not.
-
-*/
 
 #include "classes.h"
 
@@ -214,8 +197,7 @@ static bool list4x_node_is_sorted_with_next (list4x_t *self,
 
 
 // Quick sort of list
-// Note that this implementation will keep bindings between items and their
-// handles.
+// This implementation will preserve bindings between items and their handles.
 static void list4x_quick_sort (list4x_t *self,
                                s_node_t *first_node,
                                s_node_t *last_node,
@@ -802,8 +784,8 @@ void list4x_reorder (list4x_t *self, void *handle) {
     self->size++;
 
     // @todo remove the following assertions after test
-    assert (list4x_node_is_sorted_with_prev (self, node));
-    assert (list4x_node_is_sorted_with_next (self, node));
+    // assert (list4x_node_is_sorted_with_prev (self, node));
+    // assert (list4x_node_is_sorted_with_next (self, node));
 }
 
 

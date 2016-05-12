@@ -354,9 +354,6 @@ void list4u_insert (list4u_t *self, size_t index, size_t value) {
 
     list4u_set_size (self, size + 1);
 
-    // for (size_t ind = size; ind > index; ind--)
-    //     list4u_set (self, ind, list4u_get (self, ind - 1));
-
     // move valus: [index, ..., size-1] -> [index+1, ..., size]
     memmove (self->data + real_index (index + 1),
              self->data + real_index (index),

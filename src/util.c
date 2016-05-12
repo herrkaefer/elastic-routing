@@ -76,7 +76,8 @@ char *string_random_alphanum (size_t min_length, size_t max_length, rng_t *rng) 
         own_rng = true;
     }
 
-    static const char alphanum[] =
+    // static const
+    char alphanum[] =
         "0123456789"
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         "abcdefghijklmnopqrstuvwxyz";
@@ -164,8 +165,7 @@ list4x_t *string_cut_and_splice (const char *str1,
 }
 
 
-time_t date_to_time(int year, int mon, int day, int hour, int min, int sec)
-{
+time_t date_to_time(int year, int mon, int day, int hour, int min, int sec) {
     struct tm t = {0};
     t.tm_sec  = sec;
     t.tm_min  = min;
@@ -177,15 +177,14 @@ time_t date_to_time(int year, int mon, int day, int hour, int min, int sec)
 }
 
 
-bool out_of_date(time_t expiry_t)
-{
+bool out_of_date(time_t expiry_t) {
     return (time(NULL) > expiry_t);
 }
 
 
-bool out_of_date_by_date (int expiry_year, int expiry_month, int expiry_day)
-{
-    return out_of_date (date_to_time (expiry_year, expiry_month, expiry_day, 0, 0, 0));
+bool out_of_date_by_date (int expiry_year, int expiry_month, int expiry_day) {
+    return out_of_date (
+            date_to_time (expiry_year, expiry_month, expiry_day, 0, 0, 0));
 }
 
 

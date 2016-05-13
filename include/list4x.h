@@ -212,6 +212,9 @@ void *list4x_find (list4x_t *self, void *item);
 // rather than "identical".
 bool list4x_includes (list4x_t *self, void *item);
 
+// Check if the item is itself (identical item) in the list
+bool list4x_includes_identical (list4x_t *self, void *item);
+
 // Count numbers of item in list
 size_t list4x_count (list4x_t *self, void *item);
 

@@ -912,6 +912,19 @@ bool list4x_includes (list4x_t *self, void *item) {
 }
 
 
+bool list4x_includes_identical (list4x_t *self, void *item) {
+    assert (self);
+    assert (item);
+    s_node_t *node = self->head->next;
+    while (node != self->head) {
+        if (node->item == item)
+            return true;
+        node = node->next;
+    }
+    return false;
+}
+
+
 size_t list4x_count (list4x_t *self, void *item) {
     assert (self);
     assert (item);

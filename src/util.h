@@ -48,14 +48,16 @@ inline int double_compare (const double *a, const double *b) {
 }
 
 // If two double values are equal
-inline bool double_equal (double a, double b) {
-    return ( fabs (a - b) < DOUBLE_THRESHOLD );
-}
+// inline bool double_equal (double a, double b) {
+//     return (fabs (a - b) < DOUBLE_THRESHOLD);
+// }
 
 // If double value is none
-inline bool double_is_none (double a) {
-    return isnan (a);
-}
+// inline bool double_is_none (double a) {
+//     return isnan (a);
+// }
+
+
 
 // ---------------------------------------------------------------------------
 

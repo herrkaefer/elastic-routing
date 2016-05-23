@@ -45,3 +45,5 @@ typedef void (*printer_t) (const void *obj);
 #define DOUBLE_NONE      NAN //DBL_MAX
 #define DOUBLE_THRESHOLD (2*DBL_MIN)
 
+#define double_is_none(a) (isnan (a))
+#define double_equal(a,b) (fabs (a - b) < DOUBLE_THRESHOLD)

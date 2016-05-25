@@ -25,13 +25,6 @@ typedef void (*copier_t) (void *dest, const void *src);
 
 typedef void (*printer_t) (const void *obj);
 
-typedef void *(*mapping_t) (const void *obj);
-
-// Note: NULL input should be properly handled
-typedef void *(*reducer_t) (const void *obj1, const void *obj2);
-
-typedef bool (*filter_t) (const void *obj);
-
 #define streq(s1,s2)    (!strcmp ((s1), (s2)))
 #define strneq(s1,s2)   (strcmp ((s1), (s2)))
 

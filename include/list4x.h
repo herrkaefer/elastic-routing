@@ -62,6 +62,16 @@ typedef struct {
     bool forward; // iteration direction. true: forward, false: backward
 } list4x_iterator_t;
 
+// mapping function: mapping (obj1) -> obj2
+typedef void *(*mapping_t) (const void *obj);
+
+// reducer function: reducer (obj1, obj2) -> obj3
+// Note: NULL input should be properly handled
+typedef void *(*reducer_t) (const void *obj1, const void *obj2);
+
+// filter function: filter (obj) -> true / false
+typedef bool (*filter_t) (const void *obj);
+
 // Create a new list
 list4x_t *list4x_new (void);
 

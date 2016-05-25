@@ -244,8 +244,8 @@ void *list4x_iter_pop (list4x_t *self, list4x_iterator_t *iterator);
 // The iterator will go back to last position.
 void list4x_iter_remove (list4x_t *self, list4x_iterator_t *iterator);
 
-// Apply operation on items in the list
-// Return a list of the results
+// Apply mapping on items in the list.
+// Return a list of the results.
 list4x_t *list4x_map (list4x_t *self, mapping_t mapping);
 
 // Apply a function of two arguments cumulatively to the items of a list,
@@ -253,14 +253,14 @@ list4x_t *list4x_map (list4x_t *self, mapping_t mapping);
 // initial item could be NULL.
 void *list4x_reduce (list4x_t *self, reducer_t reducer, void *initial);
 
-// Return a list contains items for which fn(item) is true
+// Return a list contains items for which filter (item) is true
 // The returned list has the same callbacks and sorting state with input list
 list4x_t *list4x_filter (list4x_t *self, filter_t filter);
 
-// All items in list satisfy fn (item) == true
+// All items in list satisfy filter (item) == true
 bool list4x_all (list4x_t *self, filter_t filter);
 
-// Any item in list satisfies fn (item) == true
+// Any item in list satisfies filter (item) == true
 bool list4x_any (list4x_t *self, filter_t filter);
 
 // Duplicate a list

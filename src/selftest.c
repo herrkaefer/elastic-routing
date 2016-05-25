@@ -26,10 +26,10 @@ all_tests [] = {
     // { "arrayset", arrayset_test },
     // { "vrp", vrp_test },
     // { "list4u", list4u_test },
-    // { "list4x", list4x_test },
+    { "list4x", list4x_test },
     // { "rng", rng_test },
     // { "timer", timer_test },
-    { "evol", evol_test },
+    // { "evol", evol_test },
 // #endif // WITH_DRAFTS
     {0, 0}          //  Sentinel
 };

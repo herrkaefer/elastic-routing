@@ -1,5 +1,10 @@
 # Elastic Routing
 
+![Language](https://img.shields.io/badge/language-C-lightgrey.svg?style=flat)
+[![License](https://img.shields.io/badge/license-GPL-brightgreen.svg?style=flat)](http://mit-license.org)
+[![Twitter](https://img.shields.io/badge/twitter-mrbeetle-blue.svg?style=flat)](http://twitter.com/mrbeetle)
+![Status](https://img.shields.io/badge/status-under%20development-orange.svg?style=flat)
+
 ``elastic routing`` — flexible and powerful vehicle routing solution for the real world written in C.
 
 **WARNING**: this project is not reach the minimal functional point, some key designs are in progress.

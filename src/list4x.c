@@ -1045,6 +1045,60 @@ void list4x_iter_remove (list4x_t *self, list4x_iterator_t *iterator) {
 }
 
 
+list4x_t *list4x_map (list4x_t *self, map_t fn) {
+    assert (self);
+    assert (fn);
+
+    list4x_t *output = list4x_new ();
+    assert (output);
+
+    for (s_node_t *node = self->head->next;
+         node != self->head;
+         node = node->next)
+        list4x_append (output, fn (node->item));
+
+    return output;
+}
+
+
+void *list4x_reduce (list4x_t *self, reduce_t fn, void *initial) {
+    assert (self);
+    assert (fn);
+
+    void *output = initial;
+
+    for (s_node_t *node = self->head->next;
+         node != self->head;
+         node = node->next)
+        output = fn (output, node->item);
+
+    return output;
+}
+
+
+list4x_t *list4x_filter (list4x_t *self, filter_t fn) {
+    assert (self);
+    assert (fn);
+
+    list4x_t *output = list4x_new ();
+    assert (output);
+
+    output->sorting_state = self->sorting_state;
+    output->destructor = self->destructor;
+    output->duplicator = self->duplicator;
+    output->comparator = self->comparator;
+    output->printer = self->printer;
+
+    for (s_node_t *node = self->head->next;
+         node != self->head;
+         node = node->next)
+        if (fn (node->item))
+            list4x_append (output, node->item);
+
+    return output;
+}
+
+
 list4x_t *list4x_duplicate (const list4x_t *self) {
     if (!self)
         return NULL;

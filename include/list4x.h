@@ -246,12 +246,12 @@ void list4x_iter_remove (list4x_t *self, list4x_iterator_t *iterator);
 
 // Apply operation on items in the list
 // Return a list of the results
-list4x_t *list4x_map (list4x_t *self, map_t fn);
+list4x_t *list4x_map (list4x_t *self, mapping_t fn);
 
 // Apply a function of two arguments cumulatively to the items of a list,
 // from left to right, so as to reduce the sequence to a single item.
 // initial item could be NULL.
-void *list4x_reduce (list4x_t *self, reduce_t fn, void *initial);
+void *list4x_reduce (list4x_t *self, reducer_t fn, void *initial);
 
 // Return a list contains items for which fn(item) is true
 // The returned list has the same callbacks and sorting state with input list

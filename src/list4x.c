@@ -1045,7 +1045,7 @@ void list4x_iter_remove (list4x_t *self, list4x_iterator_t *iterator) {
 }
 
 
-list4x_t *list4x_map (list4x_t *self, map_t fn) {
+list4x_t *list4x_map (list4x_t *self, mapping_t fn) {
     assert (self);
     assert (fn);
 
@@ -1061,16 +1061,22 @@ list4x_t *list4x_map (list4x_t *self, map_t fn) {
 }
 
 
-void *list4x_reduce (list4x_t *self, reduce_t fn, void *initial) {
+void *list4x_reduce (list4x_t *self, reducer_t fn, void *initial) {
     assert (self);
     assert (fn);
 
     void *output = initial;
+    void *tmp = NULL;
 
     for (s_node_t *node = self->head->next;
          node != self->head;
-         node = node->next)
+         node = node->next) {
+        tmp = output;
         output = fn (output, node->item);
+        // Free intermediate combining results except for the initial
+        if (self->destructor && tmp != initial)
+            self->destructor (&tmp);
+    }
 
     return output;
 }

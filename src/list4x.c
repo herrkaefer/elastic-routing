@@ -1045,9 +1045,9 @@ void list4x_iter_remove (list4x_t *self, list4x_iterator_t *iterator) {
 }
 
 
-list4x_t *list4x_map (list4x_t *self, mapping_t fn) {
+list4x_t *list4x_map (list4x_t *self, mapping_t mapping) {
     assert (self);
-    assert (fn);
+    assert (mapping);
 
     list4x_t *output = list4x_new ();
     assert (output);
@@ -1055,15 +1055,15 @@ list4x_t *list4x_map (list4x_t *self, mapping_t fn) {
     for (s_node_t *node = self->head->next;
          node != self->head;
          node = node->next)
-        list4x_append (output, fn (node->item));
+        list4x_append (output, mapping (node->item));
 
     return output;
 }
 
 
-void *list4x_reduce (list4x_t *self, reducer_t fn, void *initial) {
+void *list4x_reduce (list4x_t *self, reducer_t reducer, void *initial) {
     assert (self);
-    assert (fn);
+    assert (reducer);
 
     void *output = initial;
     void *tmp = NULL;
@@ -1072,7 +1072,7 @@ void *list4x_reduce (list4x_t *self, reducer_t fn, void *initial) {
          node != self->head;
          node = node->next) {
         tmp = output;
-        output = fn (output, node->item);
+        output = reducer (output, node->item);
         // Free intermediate combining results except for the initial
         if (self->destructor && tmp != initial)
             self->destructor (&tmp);
@@ -1082,9 +1082,9 @@ void *list4x_reduce (list4x_t *self, reducer_t fn, void *initial) {
 }
 
 
-list4x_t *list4x_filter (list4x_t *self, filter_t fn) {
+list4x_t *list4x_filter (list4x_t *self, filter_t filter) {
     assert (self);
-    assert (fn);
+    assert (filter);
 
     list4x_t *output = list4x_new ();
     assert (output);
@@ -1098,10 +1098,34 @@ list4x_t *list4x_filter (list4x_t *self, filter_t fn) {
     for (s_node_t *node = self->head->next;
          node != self->head;
          node = node->next)
-        if (fn (node->item))
+        if (filter (node->item))
             list4x_append (output, node->item);
 
     return output;
+}
+
+
+bool list4x_all (list4x_t *self, filter_t filter) {
+    assert (self);
+    assert (filter);
+    for (s_node_t *node = self->head->next;
+         node != self->head;
+         node = node->next)
+        if (!filter (node->item))
+            return false;
+    return true;
+}
+
+
+bool list4x_any (list4x_t *self, filter_t filter) {
+    assert (self);
+    assert (filter);
+    for (s_node_t *node = self->head->next;
+         node != self->head;
+         node = node->next)
+        if (filter (node->item))
+            return true;
+    return false;
 }
 
 

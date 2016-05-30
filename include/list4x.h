@@ -22,7 +22,7 @@ list4x is a generic list container.
     - by index: item can be get and set like in ordinary array. Using index is a
       litter slower than using item handle.
 
-    - through iteration (see below)
+    - by iterator (see below)
 
 - List iteration
 

@@ -578,10 +578,10 @@ void *list4x_pop_at (list4x_t *self, size_t index) {
 void list4x_extend (list4x_t *self, list4x_t *list) {
     assert (self);
     assert (list);
-    void *item;
-    list4x_iterator_t iter = list4x_iter_init (list, true);
-    while ((item = list4x_iter (list, &iter)) != NULL)
-        list4x_append (self, item);
+    for (s_node_t *node = list->head->next;
+         node != list->head;
+         node = node->next)
+        list4x_append (self, node->item);
 }
 
 

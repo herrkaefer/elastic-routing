@@ -65,9 +65,9 @@ typedef struct {
 // mapping function: mapping (obj1) -> obj2
 typedef void *(*mapping_t) (const void *obj);
 
-// reducer function: reducer (obj1, obj2) -> obj3
+// reducer function: reducer (accumulator, obj) -> accumulator
 // Note: NULL input should be properly handled
-typedef void *(*reducer_t) (const void *obj1, const void *obj2);
+typedef void *(*reducer_t) (const void *accumulator, const void *obj);
 
 // filter function: filter (obj) -> true / false
 typedef bool (*filter_t) (const void *obj);

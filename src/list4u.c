@@ -309,7 +309,7 @@ void list4u_append (list4u_t *self, size_t value) {
 }
 
 
-size_t list4u_pop (list4u_t *self) {
+size_t list4u_pop_last (list4u_t *self) {
     assert (self);
     size_t size = list4u_size (self);
     size_t value = list4u_get (self, size - 1);
@@ -343,7 +343,7 @@ void list4u_extend_array (list4u_t *self, size_t *array, size_t length) {
 }
 
 
-void list4u_insert (list4u_t *self, size_t index, size_t value) {
+void list4u_insert_at (list4u_t *self, size_t index, size_t value) {
     assert (self);
 
     size_t size = list4u_size (self);
@@ -378,7 +378,7 @@ void list4u_remove_slice (list4u_t *self, size_t index_begin, size_t index_end) 
 }
 
 
-void list4u_remove (list4u_t *self, size_t index) {
+void list4u_remove_at (list4u_t *self, size_t index) {
     assert (self);
     list4u_remove_slice (self, index, index);
 }
@@ -426,7 +426,7 @@ size_t list4u_insert_sorted (list4u_t *self, size_t value) {
     size_t index = (head < tail) ? mid : head;
 
     // insert item
-    list4u_insert (self, index, value);
+    list4u_insert_at (self, index, value);
 
     return index;
 }
@@ -471,7 +471,7 @@ int list4u_remove_value (list4u_t *self, size_t value) {
         size_t ind = 0;
         while (ind < list4u_size (self)) {
             if (list4u_get (self, ind) == value) {
-                list4u_remove (self, ind);
+                list4u_remove_at (self, ind);
                 result = 0;
             }
             else
@@ -680,8 +680,8 @@ void list4u_test (bool verbose) {
     list4u_set (list, 2, 99);
     list4u_print (list);
 
-    list4u_insert (list, 3, 77);
-    list4u_insert (list, 1, 55);
+    list4u_insert_at (list, 3, 77);
+    list4u_insert_at (list, 1, 55);
     list4u_set (list, 2, 33);
     list4u_print (list);
 
@@ -696,10 +696,10 @@ void list4u_test (bool verbose) {
     list4u_remove_slice (list, 2, 5);
     list4u_print (list);
 
-    list4u_remove (list, 0);
+    list4u_remove_at (list, 0);
     list4u_print (list);
 
-    list4u_remove (list, list4u_size (list)-1);
+    list4u_remove_at (list, list4u_size (list)-1);
     list4u_print (list);
 
     list4u_reverse (list);
@@ -721,8 +721,8 @@ void list4u_test (bool verbose) {
     assert (list4u_is_sorted_ascending (list) == false);
     assert (list4u_is_sorted_descending (list));
 
-    assert (list4u_pop (list) == 2);
-    assert (list4u_pop (list) == 7);
+    assert (list4u_pop_last (list) == 2);
+    assert (list4u_pop_last (list) == 7);
     list4u_print (list);
 
     list4u_free (&list);

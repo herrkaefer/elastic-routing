@@ -85,7 +85,7 @@ size_t *vrp_depot_ids (vrp_t *self);
 // Get id array of customers
 size_t *vrp_customer_ids (vrp_t *self);
 
-// Set distances between nodes (unit: km)
+// Set distances between nodes
 void vrp_set_distance (vrp_t *self,
                        size_t from_node_id,
                        size_t to_node_id,
@@ -176,8 +176,6 @@ void vrp_detach_route_from_vehicle (vrp_t *self, size_t vehicle_id);
 // Return request ID.
 size_t vrp_add_request (vrp_t *self, const char *request_ext_id);
 
-size_t vrp_query_request (vrp_t *self, const char *request_ext_id);
-
 // Set request task.
 // For task of visiting a node with some quantity (could be zero), set either
 // one of pickup_node_id and delivery_node_id (the other one to ID_NONE), and
@@ -202,10 +200,15 @@ void vrp_set_request_delivery_time (vrp_t *self,
                                     time_t delivery_latest,
                                     size_t delivery_duration);
 
+// Query a request by external ID.
+// Return request ID if request exists, ID_NONE if not.
+size_t vrp_query_request (vrp_t *self, const char *request_ext_id);
 
 // ---------------------------------------------------------------------------
 // Sub-model deciding
 // ---------------------------------------------------------------------------
+
+
 
 
 

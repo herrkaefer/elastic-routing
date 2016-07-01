@@ -119,7 +119,7 @@ int queue_push_tail (queue_t *self, void *data) {
     assert (data);
 
     queue_entry_t *new_entry =
-        (queue_entry_t *) malloc( sizeof (queue_entry_t));
+        (queue_entry_t *) malloc (sizeof (queue_entry_t));
 
     if (new_entry == NULL) {
         print_error ("Out of memory.\n");

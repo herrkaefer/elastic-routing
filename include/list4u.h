@@ -45,7 +45,7 @@ void list4u_set (list4u_t *self, size_t index, size_t value);
 void list4u_append (list4u_t *self, size_t value);
 
 // Remove and return value at the end
-size_t list4u_pop (list4u_t *self);
+size_t list4u_pop_last (list4u_t *self);
 
 // Extend list by appending values from another list
 void list4u_extend (list4u_t *self, list4u_t *list);
@@ -54,7 +54,7 @@ void list4u_extend (list4u_t *self, list4u_t *list);
 void list4u_extend_array (list4u_t *self, size_t *array, size_t length);
 
 // Insert value before index
-void list4u_insert (list4u_t *self, size_t index, size_t value);
+void list4u_insert_at (list4u_t *self, size_t index, size_t value);
 
 // Insert value to a sorted list.
 // If the list is not sorted, it will be sorted in ascending order.
@@ -62,7 +62,7 @@ void list4u_insert (list4u_t *self, size_t index, size_t value);
 size_t list4u_insert_sorted (list4u_t *self, size_t value);
 
 // Remove item at index
-void list4u_remove (list4u_t *self, size_t index);
+void list4u_remove_at (list4u_t *self, size_t index);
 
 // Remove slice
 void list4u_remove_slice (list4u_t *self, size_t index_begin, size_t index_end);

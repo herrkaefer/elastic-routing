@@ -158,6 +158,9 @@ typedef struct {
 
     request_state_t state;
 
+    // Task:
+    // RT_PICKUP_AND_DELIVERY: deliver quantity from pickup_node to delivery_node
+    // RT_VISIT: deliver quantity (could be zero) to a node (any one of pickup_node and delivery_node)
     size_t pickup_node_id;
     size_t delivery_node_id;
     double quantity;
@@ -595,7 +598,7 @@ vrp_t *vrp_new_from_file (const char *filename) {
             for (ind1 = 0; ind1 <= N; ind1++) {
                 matrix4d_set (c, ind1, ind1, 0);
                 for (ind2 = ind1+1; ind2 <= N; ind2++) {
-                    // NOTE: rounding the distance by
+                    // @note: rounding the distance by
                     // nint(sqrt(xd*xd+yd*yd)). see TSPLIB spec.
                     // for nint see
                     // https://www.iwr.uni-heidelberg.de/groups/comopt/software/TSPLIB95/TSPFAQ.html
@@ -683,7 +686,6 @@ void vrp_set_coord_sys (vrp_t *self, coord2d_sys_t coord_sys) {
 
 size_t vrp_add_node (vrp_t *self, const char *ext_id) {
     assert (self);
-
     s_node_t *node = s_node_new (ext_id);
     size_t id = arrayset_add (self->nodes, node, node->ext_id);
     node->id = id;
@@ -1051,12 +1053,6 @@ size_t vrp_add_request (vrp_t *self, const char *request_ext_id) {
 }
 
 
-size_t vrp_query_request (vrp_t *self, const char *request_ext_id) {
-    assert (self);
-    return arrayset_query (self->requests, request_ext_id);
-}
-
-
 void vrp_set_request_task (vrp_t *self,
                            size_t request_id,
                            size_t pickup_node_id,
@@ -1100,6 +1096,12 @@ void vrp_set_request_delivery_time (vrp_t *self,
     request->delivery_earliest = delivery_earliest;
     request->delivery_latest = delivery_latest;
     request->delivery_duration = delivery_duration;
+}
+
+
+size_t vrp_query_request (vrp_t *self, const char *request_ext_id) {
+    assert (self);
+    return arrayset_query (self->requests, request_ext_id);
 }
 
 

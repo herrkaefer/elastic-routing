@@ -1,5 +1,5 @@
 /*  =========================================================================
-    route - node sequence
+    tsp - TSP
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 
@@ -10,22 +10,26 @@
     =========================================================================
 */
 
-#ifndef __ROUTE_H_INCLUDED__
-#define __ROUTE_H_INCLUDED__
+#ifndef __TSP_H_INCLUDED__
+#define __TSP_H_INCLUDED__
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct _route_t route_t;
+typedef struct _tsp_t tsp_t;
 
-route_t *route_new (void);
+// Create a new tsp object
+tsp_t *tsp_new_from (vrp_t *vrp);
 
-void route_free (route_t **self_p);
+// Destroy tsp object
+void tsp_free (tsp_t **self_p);
 
-void route_print (route_t *self);
+void tsp_solve (tsp_t *self);
 
-void route_test (bool verbose);
+// Self test
+void tsp_test (bool verbose);
+
 
 #ifdef __cplusplus
 }

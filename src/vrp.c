@@ -779,13 +779,13 @@ size_t *vrp_node_ids (vrp_t *self) {
 
 size_t *vrp_depot_ids (vrp_t *self) {
     assert (self);
-    return list4u_dup_array (self->depot_ids);
+    return list4u_dump_array (self->depot_ids);
 }
 
 
 size_t *vrp_customer_ids (vrp_t *self) {
     assert (self);
-    return list4u_dup_array (self->customer_ids);
+    return list4u_dump_array (self->customer_ids);
 }
 
 
@@ -893,6 +893,12 @@ size_t vrp_add_vehicle (vrp_t *self, const char *vehicle_ext_id) {
 size_t vrp_num_vehicles (vrp_t *self) {
     assert (self);
     return arrayset_size (self->vehicles);
+}
+
+
+size_t *vrp_vehicle_ids (vrp_t *self) {
+    assert (self);
+    return arrayset_id_array (self->vehicles);
 }
 
 
@@ -1029,8 +1035,7 @@ void vrp_detach_route_from_vehicle (vrp_t *self, size_t vehicle_id) {
 // Requests
 // ---------------------------------------------------------------------------
 
-
-// Get request by id
+// Get vehicle by id
 static s_request_t *vrp_request (vrp_t *self, size_t request_id) {
     s_request_t *request =
         (s_request_t *) arrayset_data (self->requests, request_id);
@@ -1105,6 +1110,12 @@ size_t vrp_query_request (vrp_t *self, const char *request_ext_id) {
 }
 
 
+size_t vrp_num_requests (vrp_t* self) {
+    assert (self);
+    return arrayset_size (self->requests);
+}
+
+
 // ---------------------------------------------------------------------------
 // Plan
 // ---------------------------------------------------------------------------
@@ -1119,11 +1130,45 @@ size_t vrp_query_request (vrp_t *self, const char *request_ext_id) {
 // Submodels verifications
 // ---------------------------------------------------------------------------
 
-// Current state of fleet is homogeneous
-bool vrp_fleet_is_homogeneous (vrp_t *self);
 
-// CVRP verification
-bool vrp_is_cvrp (vrp_t *self);
+// bool vrp_fleet_is_homogeneous (vrp_t *self);
+
+
+// bool vrp_is_cvrp (vrp_t *self);
+
+
+bool vrp_is_tsp (vrp_t *self) {
+    assert (self);
+    bool result = true;
+
+    // One vehicle
+    if (vrp_num_vehicles (self) != 1)
+        return false;
+
+    // Check all requests
+    for (s_request_t *request = arrayset_first (self->requests);
+         request != NULL;
+         request = arrayset_next (self->requests)) {
+        // Visiting with zero quantity
+        if (request->type != RT_VISIT || !double_equal (request->quantity, 0))
+            return false;
+        assert ((request->pickup_node_id != ID_NONE && request->delivery_node_id == ID_NONE) &&
+            (request->pickup_node_id == ID_NONE && request->delivery_node_id != ID_NONE));
+
+        // No TW constraints
+        if (request->pickup_node_id != ID_NONE &&
+            (!double_is_none (request->pickup_earliest) ||
+             !double_is_none (request->pickup_latest)))
+                return false;
+        if (request->delivery_node_id != ID_NONE &&
+            (!double_is_none (request->delivery_earliest) ||
+             !double_is_none (request->delivery_latest)))
+                return false;
+    }
+
+    return result;
+}
+
 
 // ---------------------------------------------------------------------------
 void vrp_test (bool verbose) {

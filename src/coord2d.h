@@ -60,12 +60,8 @@ bool coord2d_is_none (const coord2d_t *point);
 
 // compare angles
 // Assume that param p1 and p2 are both polar2d
-inline int coord2d_compare_polar_angle (const coord2d_t *p1,
-                                        const coord2d_t *p2) {
-    return (p1->v2 < p2->v2) ?
-           -1 :
-           ((p1->v2 > p2->v2) ? 1 : 0);
-}
+int coord2d_compare_polar_angle (const coord2d_t *p1,
+                                 const coord2d_t *p2);
 
 #ifdef __cplusplus
 }

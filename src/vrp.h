@@ -120,6 +120,9 @@ size_t vrp_add_vehicle (vrp_t *self, const char *vehicle_ext_id);
 // Get number of vehicles in fleet
 size_t vrp_num_vehicles (vrp_t *self);
 
+// Get vehicle ID array
+size_t *vrp_vehicle_ids (vrp_t *self);
+
 // Get vehicle's external ID
 const char *vrp_vehicle_ext_id (vrp_t *self, size_t vehicle_id);
 
@@ -204,10 +207,22 @@ void vrp_set_request_delivery_time (vrp_t *self,
 // Return request ID if request exists, ID_NONE if not.
 size_t vrp_query_request (vrp_t *self, const char *request_ext_id);
 
+
+// Get number of requests
+size_t vrp_num_requests (vrp_t* self);
+
 // ---------------------------------------------------------------------------
-// Sub-model deciding
+// Sub-model verifications
 // ---------------------------------------------------------------------------
 
+// Current state of fleet is homogeneous
+bool vrp_fleet_is_homogeneous (vrp_t *self);
+
+// CVRP verification
+bool vrp_is_cvrp (vrp_t *self);
+
+// TSP verification
+bool vrp_is_tsp (vrp_t *self);
 
 
 

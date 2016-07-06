@@ -25,48 +25,48 @@ typedef void *genome_t;
 // Heuristic callback for generating genomes from context
 // Return a list of genome_t
 // This function is used to initialize population before evolution
-typedef list4x_t *(*evol_heuristic_t) (const void *context, size_t max_expected);
+typedef list4x_t *(*evol_heuristic_t) (void *context, size_t max_expected);
 
 // Fitness assessment callback
-typedef double (*evol_fitness_assessor_t) (const void *context,
-                                           const genome_t genome);
+typedef double (*evol_fitness_assessor_t) (void *context,
+                                           genome_t genome);
 
 // Feasibility assessment callback
-typedef bool (*evol_feasiblity_assessor_t) (const void *context,
-                                            const genome_t genome);
+typedef bool (*evol_feasiblity_assessor_t) (void *context,
+                                            genome_t genome);
 
 // Function of computing distance between individuals
-typedef double (*evol_distance_assessor_t) (const void *context,
-                                            const genome_t genome1,
-                                            const genome_t genome2);
+typedef double (*evol_distance_assessor_t) (void *context,
+                                            genome_t genome1,
+                                            genome_t genome2);
 
 // Crossover callback: generating child from parents
 // Return a list of children's genomes
 // Note that if you do not set genome duplicator for evol, leave the list's
 // free function as NULL, so that evol can use the genomes and release them.
-typedef list4x_t *(*evol_crossover_t) (const void *context,
-                                       const genome_t parent1,
-                                       const genome_t parent2);
+typedef list4x_t *(*evol_crossover_t) (void *context,
+                                       genome_t parent1,
+                                       genome_t parent2);
 
 // Mutation callback
-typedef genome_t (*evol_mutator_t) (const void *context, const genome_t genome);
+typedef genome_t (*evol_mutator_t) (void *context, genome_t genome);
 
 // Local improving callback (genome is improved in place)
-typedef void (*evol_local_improver_t) (const void *context, genome_t genome);
+typedef void (*evol_local_improver_t) (void *context, genome_t genome);
 
 // Callback to check whether renewer should be called to update the population.
 // This is mostly due to variation of context
-typedef bool (*evol_should_renew_t) (const void *context);
+typedef bool (*evol_should_renew_t) (void *context);
 
 // Genome renew callback (genome is updated in place)
 // When context varies during evolution, you can use this callback to update
 // current individuals accordingly.
 // Return 0 if genome should be keeped (modified or tansformed into a new one.)
 // Return -1 if genome should be dropped.
-typedef int (*evol_renewer_t) (const void *context, genome_t genome);
+typedef int (*evol_renewer_t) (void *context, genome_t genome);
 
 // Outside stopper callback
-typedef bool (*evol_stopper_t) (const void *context);
+typedef bool (*evol_stopper_t) (void *context);
 
 // ---------------------------------------------------------------------------
 

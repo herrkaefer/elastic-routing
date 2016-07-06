@@ -142,9 +142,9 @@ struct _evol_t {
     double step_max_time; // second
 
     // Callbacks
-    destructor_t                genome_destructor;
-    duplicator_t           genome_duplicator;
-    printer_t               genome_printer;
+    destructor_t               genome_destructor;
+    duplicator_t               genome_duplicator;
+    printer_t                  genome_printer;
     evol_feasiblity_assessor_t feasiblity_assessor;
     evol_fitness_assessor_t    fitness_assessor;
     evol_distance_assessor_t   distance_assessor;
@@ -780,15 +780,13 @@ static void evol_assess_feasibility_and_fitness (evol_t *self,
 }
 
 
-// Assess individual's diversity by its neighbors
+// Assess individual's local diversity as average distance to its neighbors
 static void evol_assess_diversity_locally (evol_t *self, s_indiv_t *indiv) {
     size_t num_neighbors = list4x_size (indiv->neighbors);
-    if (num_neighbors == 0) {
-        indiv->diversity = 0.0;
-        return;
-    }
-
     indiv->diversity = 0.0;
+    if (num_neighbors == 0)
+        return;
+
     s_neighbor_t *neighbor = NULL;
     list4x_iterator_t iter = list4x_iter_init (indiv->neighbors, true);
     while ((neighbor = (s_neighbor_t *) list4x_iter (indiv->neighbors, &iter))
@@ -843,6 +841,8 @@ static void evol_update_diversity_and_score_for_living (evol_t *self,
 static void evol_regularize_population (evol_t *self) {
     assert (!evol_population_is_regularized (self));
     assert (list4x_size (self->ancestors) == 0);
+    if (self->max_neighbors >= evol_num_livings (self))
+        print_warning ("Population are too small to establish full neighborhood.\n");
 
     s_indiv_t *indiv1;
     list4x_iterator_t iter1 = list4x_iter_init (self->livings_rank_fit, true);
@@ -863,12 +863,16 @@ static void evol_regularize_population (evol_t *self) {
             s_indiv_add_neighbor (indiv2, indiv1, dist, self->max_neighbors);
         }
 
-        assert (list4x_size (indiv1->neighbors) == self->max_neighbors);
+        assert (list4x_size (indiv1->neighbors) <= self->max_neighbors);
+        // if (list4x_size (indiv1->neighbors) < self->max_neighbors)
+        //     print_warning ("Individuals in population are two few to establish full neighborhood.\n");
         evol_assess_diversity_locally (self, indiv1);
     }
 
+    // Sort diversity list in descending order
     list4x_sort (self->livings_rank_div, false);
 
+    // Assess livings' score and sort in descending order
     iter1 = list4x_iter_init (self->livings_rank_fit, true);
     while ((indiv1 = (s_indiv_t *) list4x_iter (self->livings_rank_fit, &iter1))
            != NULL)
@@ -1926,7 +1930,7 @@ void evol_register_local_improver (evol_t *self, evol_local_improver_t fn) {
 void evol_run (evol_t *self) {
     assert (self);
 
-    print_info ("initilizing...\n");
+    print_info ("initializing...\n");
     // Fill livings group with heuristics
     evol_fill_livings_with_heuristics (self);
 
@@ -1934,14 +1938,13 @@ void evol_run (evol_t *self) {
     if (!evol_population_is_regularized (self))
         evol_regularize_population (self);
 
-    print_info ("population initilized. #livings in population: %zu\n",
+    print_info ("population initialized. #livings: %zu\n",
                 evol_num_livings (self));
 
     evol_reset_stats (self);
     evol_restart_recorders (self);
 
     while (!evol_should_stop (self)) {
-
         if (self->should_renew && self->should_renew (self->context)) {
             evol_renew_population (self);
             evol_reset_stats (self);
@@ -1953,7 +1956,6 @@ void evol_run (evol_t *self) {
             // evol_diversity_population (self);
             break;
         }
-
         evol_step (self);
         evol_update_recorders (self);
     }
@@ -1985,13 +1987,13 @@ typedef struct {
 
 
 // String fitness: length
-static double string_fitness1 (const void *context, char *str) {
+static double string_fitness1 (void *context, char *str) {
     return strlen (str);
 }
 
 
 // String fitness: average ASCII
-static double string_fitness2 (const void *context, char *str) {
+static double string_fitness2 (void *context, char *str) {
     size_t len = strlen (str);
     if (len == 0)
         return 0.0;
@@ -2006,19 +2008,19 @@ static double string_fitness2 (const void *context, char *str) {
     }
 }
 
-static double string_distance (const void *context, char *str1, char *str2) {
+static double string_distance (void *context, char *str1, char *str2) {
     return (double) string_levenshtein_distance (str1, str2);
 }
 
 
-static list4x_t *string_crossover (const str_evol_context_t *context,
-                                   const char *str1,
-                                   const char *str2) {
+static list4x_t *string_crossover (str_evol_context_t *context,
+                                   char *str1,
+                                   char *str2) {
     return string_cut_and_splice (str1, str2, context->rng);
 }
 
 
-static list4x_t *string_heuristic (const str_evol_context_t *context,
+static list4x_t *string_heuristic (str_evol_context_t *context,
                                    size_t max_expected) {
     list4x_t *list = list4x_new ();
     for (size_t cnt = 0; cnt < max_expected; cnt++)
@@ -2027,12 +2029,12 @@ static list4x_t *string_heuristic (const str_evol_context_t *context,
 }
 
 
-static bool string_should_renew (const str_evol_context_t *context) {
+static bool string_should_renew (str_evol_context_t *context) {
     return rng_random (context->rng) < 0.01;
 }
 
 
-static int string_renewer (const str_evol_context_t *context, char *str) {
+static int string_renewer (str_evol_context_t *context, char *str) {
     if (strlen (str) > 100)
         return -1;
     else if (rng_random (context->rng) < 0.03)

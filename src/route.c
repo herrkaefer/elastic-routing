@@ -45,6 +45,13 @@ void route_free (route_t **self_p) {
     print_info ("route freed.\n");
 }
 
+
+void route_print (route_t *self) {
+    printf ("route: length: %zu\n", list4u_size (self->seq));
+
+}
+
+
 void route_test (bool verbose) {
     print_info (" * route: \n");
     // roadnet_t *roadnet = roadnet_new ();

@@ -29,6 +29,9 @@ list4u_t *list4u_new (size_t alloc_size);
 // The last item depends on step
 list4u_t *list4u_new_range (size_t start, size_t stop, int step);
 
+// Create a new list from array
+list4u_t *list4u_new_from_array (const size_t *array, size_t len);
+
 // Destroy an list
 void list4u_free (list4u_t **self_p);
 
@@ -40,6 +43,9 @@ size_t list4u_get (list4u_t *self, size_t index);
 
 // Set value at index
 void list4u_set (list4u_t *self, size_t index, size_t value);
+
+// Add value to the first
+void list4u_prepend (list4u_t *self, size_t value);
 
 // Append value to the end
 void list4u_append (list4u_t *self, size_t value);
@@ -64,15 +70,27 @@ size_t list4u_insert_sorted (list4u_t *self, size_t value);
 // Remove item at index
 void list4u_remove_at (list4u_t *self, size_t index);
 
+// Remove first item
+void list4u_remove_first (list4u_t *self);
+
+// Remove last item
+void list4u_remove_last (list4u_t *self);
+
 // Remove slice
 void list4u_remove_slice (list4u_t *self, size_t index_begin, size_t index_end);
 
 // Find all items with value and remove them.
 // Return 0 if value is found and removed, -1 if not found
-int list4u_remove_value (list4u_t *self, size_t value);
+int list4u_remove (list4u_t *self, size_t value);
+
+// Swap two items
+void list4u_swap (list4u_t *self, size_t index1, size_t index2);
 
 // Clear list
 void list4u_purge (list4u_t *self);
+
+// Get data array (read only)
+const size_t *list4u_array (list4u_t *self);
 
 // Check if list is sorted
 bool list4u_is_sorted (list4u_t *self);
@@ -106,7 +124,13 @@ bool list4u_includes (list4u_t *self, size_t value);
 size_t list4u_count (list4u_t *self, size_t value);
 
 // Export list to array
-size_t *list4u_dup_array (list4u_t *self);
+size_t *list4u_dump_array (list4u_t *self);
+
+// Duplicator
+list4u_t *list4u_duplicate (list4u_t *self);
+
+// Printer
+void list4u_print (const list4u_t *self);
 
 // Self test
 void list4u_test (bool verbose);

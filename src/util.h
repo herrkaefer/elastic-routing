@@ -18,16 +18,16 @@ extern "C" {
 #endif
 
 #ifdef DEBUG
-    #define print_info(...)    fprintf (stdout, "INFO: %s: ", __func__); \
-                               fprintf (stdout, ##__VA_ARGS__)
-    #define print_warning(...) fprintf (stdout, "WARNING: %s: ", __func__); \
-                               fprintf (stdout, ##__VA_ARGS__)
-    #define print_error(...)   fprintf (stdout, "ERROR: %s: ", __func__); \
-                               fprintf (stderr, ##__VA_ARGS__)
-    #define print_debug(...)    fprintf (stderr, \
-                               "\n>>>>>>>> Debug @ %s (line %d) >>>>>>>>>>\n",\
-                               __func__, __LINE__); \
-                               fprintf (stderr, ##__VA_ARGS__)
+    #define print_info(...)    {fprintf (stdout, "INFO: %s: ", __func__); \
+                                fprintf (stdout, ##__VA_ARGS__);}
+    #define print_warning(...) {fprintf (stdout, "WARNING: %s: ", __func__); \
+                                fprintf (stdout, ##__VA_ARGS__);}
+    #define print_error(...)   {fprintf (stderr, "ERROR: %s: ", __func__); \
+                                fprintf (stderr, ##__VA_ARGS__);}
+    #define print_debug(...)   {fprintf (stderr, \
+                                "\n>>>>>>>> Debug @ %s (line %d) >>>>>>>>>>\n",\
+                                __func__, __LINE__); \
+                                fprintf (stderr, ##__VA_ARGS__);}
 #else
     #define print_info(...)
     #define print_warning(...)
@@ -58,6 +58,16 @@ inline int double_compare (const double *a, const double *b) {
 // }
 
 
+// Levenshtein distance between two unsigned int arrays
+size_t arrayu_levenshtein_distance (const size_t *array1, size_t len1,
+                                    const size_t *array2, size_t len2);
+
+
+// Check if unsigned int array includes value
+bool arrayu_includes (size_t *array, size_t len, size_t value);
+
+// Printer of unsigned int array
+void arrayu_print (size_t *array, size_t len);
 
 // ---------------------------------------------------------------------------
 
@@ -99,6 +109,16 @@ list4x_t *string_cut_and_splice (const char *str1, const char *str2, rng_t *rng)
 
 // ---------------------------------------------------------------------------
 
+// void safe_free (void **self_p) {
+//     assert (self_p);
+//     if (*self_p) {
+//         free (*self_p);
+//         *self_p = NULL;
+//     }
+// }
+
+// ---------------------------------------------------------------------------
+
 // Check whether the software passed the expiry date
 bool out_of_date (time_t expiry_t);
 
@@ -111,16 +131,22 @@ time_t date_to_time (int year, int mon, int day, int hour, int min, int sec);
 // ---------------------------------------------------------------------------
 
 // shuffle the n elements of array in place.
-// @todo to rewrite
 void array4i_shuffle (int *array, size_t length, rng_t *rng);
 
 // get a shuffled copy of the n elements of array
-// @todo to rewrite
+// Return result in param dest
 void array4i_shuffle_out (int *dest, const int *src, size_t length, rng_t *rng);
 
 // generate random permutation of integers in [a, b)
-// @todo to rewrite
+// Return result in param array
 void array4i_shuffle_range (int *array, int a, int b, rng_t *rng);
+
+// generate random permutation of unsigned integers in [a, b)
+void array4u_shuffle_range (size_t *array, size_t a, size_t b, rng_t *rng);
+
+// ---------------------------------------------------------------------------
+
+size_t factorial (size_t n);
 
 
 #ifdef __cplusplus

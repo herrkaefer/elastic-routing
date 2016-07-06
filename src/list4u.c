@@ -185,28 +185,6 @@ static bool list4u_item_is_sorted_with_next (list4u_t *self, size_t index) {
 }
 
 
-static void list4u_print (list4u_t *self) {
-    assert (self);
-    size_t size = list4u_size (self);
-    char sorting_state[16];
-    if (list4u_is_sorted_ascending (self))
-        sprintf (sorting_state, "ascending");
-    else if (list4u_is_sorted_descending (self))
-        sprintf (sorting_state, "descending");
-    else
-        sprintf (sorting_state, "no");
-
-    printf ("\nlist4u size: %zu, alloced: %zu, sorted: %s\n",
-        size, list4u_alloced (self), sorting_state);
-
-    printf ("--------------------------------------------------\n");
-    for (size_t index = 0; index < list4u_size (self); index++) {
-        printf ("%zu ", list4u_get (self, index));
-    }
-    printf ("\n\n");
-}
-
-
 // ---------------------------------------------------------------------------
 list4u_t *list4u_new (size_t alloc_size) {
     list4u_t *self = (list4u_t *) malloc (sizeof (list4u_t));
@@ -220,7 +198,7 @@ list4u_t *list4u_new (size_t alloc_size) {
     list4u_set_size (self, 0);
     list4u_set_sorting_state (self, LIST4U_NOT_SORTED);
 
-    print_info ("list4u created.\n");
+    // print_info ("list4u created.\n");
     return self;
 }
 
@@ -253,6 +231,16 @@ list4u_t *list4u_new_range (size_t start, size_t stop, int step) {
 }
 
 
+list4u_t *list4u_new_from_array (const size_t *array, size_t len) {
+    assert (array);
+    list4u_t *self = list4u_new (len);
+    assert (self);
+    memcpy (self->data + real_index (0), array, sizeof (size_t) * len);
+    list4u_set_size (self, len);
+    return self;
+}
+
+
 void list4u_free (list4u_t **self_p) {
     assert (self_p);
     if (*self_p) {
@@ -261,7 +249,7 @@ void list4u_free (list4u_t **self_p) {
         free (self);
         *self_p = NULL;
     }
-    print_info ("list4u freed.\n");
+    // print_info ("list4u freed.\n");
 }
 
 
@@ -290,6 +278,12 @@ void list4u_set (list4u_t *self, size_t index, size_t value) {
     if (!list4u_item_is_sorted_with_prev (self, index) ||
         !list4u_item_is_sorted_with_next (self, index))
         list4u_set_sorting_state (self, LIST4U_NOT_SORTED);
+}
+
+
+void list4u_prepend (list4u_t *self, size_t value) {
+    assert (self);
+    list4u_insert_at (self, 0, value);
 }
 
 
@@ -354,7 +348,7 @@ void list4u_insert_at (list4u_t *self, size_t index, size_t value) {
 
     list4u_set_size (self, size + 1);
 
-    // move valus: [index, ..., size-1] -> [index+1, ..., size]
+    // Move values at [index, ..., size-1] to [index+1, ..., size]
     memmove (self->data + real_index (index + 1),
              self->data + real_index (index),
              sizeof (size_t) * (size - index));
@@ -381,6 +375,19 @@ void list4u_remove_slice (list4u_t *self, size_t index_begin, size_t index_end) 
 void list4u_remove_at (list4u_t *self, size_t index) {
     assert (self);
     list4u_remove_slice (self, index, index);
+}
+
+
+void list4u_remove_first (list4u_t *self) {
+    assert (self);
+    list4u_remove_slice (self, 0, 0);
+}
+
+
+void list4u_remove_last (list4u_t *self) {
+    assert (self);
+    size_t size = list4u_size (self);
+    list4u_remove_slice (self, size-1, size-1);
 }
 
 
@@ -432,7 +439,7 @@ size_t list4u_insert_sorted (list4u_t *self, size_t value) {
 }
 
 
-int list4u_remove_value (list4u_t *self, size_t value) {
+int list4u_remove (list4u_t *self, size_t value) {
     assert (self);
 
     int result = -1;
@@ -483,9 +490,30 @@ int list4u_remove_value (list4u_t *self, size_t value) {
 }
 
 
+void list4u_swap (list4u_t *self, size_t index1, size_t index2) {
+    assert (self);
+    size_t size = list4u_size (self);
+    assert (index1 < size);
+    assert (index2 < size);
+
+    if (index1 == index2)
+        return;
+
+    size_t tmp = list4u_get (self, index1);
+    list4u_set (self, index1, list4u_get (self, index2));
+    list4u_set (self, index2, tmp);
+}
+
+
 void list4u_purge (list4u_t *self) {
     assert (self);
     list4u_remove_slice (self, 0, list4u_size (self) - 1);
+}
+
+
+const size_t *list4u_array (list4u_t *self) {
+    assert (self);
+    return self->data + real_index (0);
 }
 
 
@@ -645,13 +673,47 @@ size_t list4u_count (list4u_t *self, size_t value) {
 }
 
 
-size_t *list4u_dup_array (list4u_t *self) {
+size_t *list4u_dump_array (list4u_t *self) {
     assert (self);
     size_t size = list4u_size (self);
     size_t *array = (size_t *) malloc (sizeof (size_t) * size);
     assert (array);
     memcpy (array, self->data + real_index (0), sizeof (size_t) * size);
     return array;
+}
+
+
+list4u_t *list4u_duplicate (list4u_t *self) {
+    assert (self);
+    list4u_t *copy = list4u_new (list4u_alloced (self));
+    assert (copy);
+
+    // Note: only size bytes are necessary to be copied
+    memcpy (copy->data,
+            self->data,
+            sizeof (size_t) * (LIST4U_HEADER_SIZE + list4u_size (self)));
+    return copy;
+}
+
+
+void list4u_print (const list4u_t *self) {
+    assert (self);
+    size_t size = self->data[LIST4U_INDEX_SIZE];
+    char sorting_state[16];
+    if (self->data[LIST4U_INDEX_SORTED] == LIST4U_ASCENDING_SORTED)
+        sprintf (sorting_state, "ascending");
+    else if (self->data[LIST4U_INDEX_SORTED] == LIST4U_DESCENDING_SORTED)
+        sprintf (sorting_state, "descending");
+    else
+        sprintf (sorting_state, "no");
+
+    printf ("\nlist4u size: %zu, sorted: %s\n", size, sorting_state);
+
+    printf ("--------------------------------------------------\n");
+    for (size_t index = 0; index < size; index++) {
+        printf ("%zu ", self->data[real_index (index)]);
+    }
+    printf ("\n\n");
 }
 
 
@@ -713,7 +775,7 @@ void list4u_test (bool verbose) {
     assert (list4u_count (list, 0) == 0);
     assert (list4u_includes (list, 0) == false);
 
-    list4u_remove_value (list, 9);
+    list4u_remove (list, 9);
     list4u_print (list);
     assert (list4u_includes (list, 9) == false);
 

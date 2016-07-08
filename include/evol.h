@@ -139,7 +139,7 @@ void evol_register_local_improver (evol_t *self, evol_local_improver_t fn);
 void evol_run (evol_t *self);
 
 // Get genome with best fitness
-genome_t evol_best_genome (evol_t *self);
+const genome_t evol_best_genome (evol_t *self);
 
 void evol_test (bool verbose);
 

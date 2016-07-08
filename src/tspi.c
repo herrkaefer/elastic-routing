@@ -422,7 +422,7 @@ void tspi_set_round_trip (tspi_t *self, bool is_round_trip) {
 }
 
 
-void tspi_solve (tspi_t *self) {
+list4u_t *tspi_solve (tspi_t *self) {
     assert (self);
 
     // Input validation
@@ -430,7 +430,7 @@ void tspi_solve (tspi_t *self) {
         !tspi_validate_coords (self) ||
         !tspi_make_route_template (self)) {
         print_error ("model validation failed.\n");
-        return;
+        return NULL;
     }
 
     // Create evolution object
@@ -462,15 +462,17 @@ void tspi_solve (tspi_t *self) {
     evol_run (evol);
 
     // Get results
-    // @todo to add
+    list4u_t *result = list4u_duplicate ((list4u_t *) evol_best_genome (evol));
+    assert (result);
 
     // Destroy evolution object
     evol_free (&evol);
 
-
     // Post optimization
     // 2-opt, 3-opt, etc.
 
+
+    return result;
 }
 
 
@@ -571,7 +573,10 @@ void tspi_test (bool verbose) {
     tspi_generate_straight_distances_as_costs (tsp);
 
     // Solve problem by evolution
-    tspi_solve (tsp);
+    list4u_t *result = tspi_solve (tsp);
+    print_info ("solution:\n");
+    if (result)
+        list4u_print (result);
 
     rng_free (&rng);
     tspi_free (&tsp);

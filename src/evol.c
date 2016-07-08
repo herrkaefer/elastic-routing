@@ -1968,7 +1968,7 @@ void evol_run (evol_t *self) {
 }
 
 
-genome_t evol_best_genome (evol_t *self) {
+const genome_t evol_best_genome (evol_t *self) {
     assert (self);
 
     if (evol_num_livings (self) == 0)

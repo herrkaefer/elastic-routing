@@ -23,7 +23,7 @@
 
 # Generic Model (not done)
 
-The generic model describes and represents the largest set of the problem it can be solved. It provides a common I/O interface (API) to the outside caller. It aims to accept input and generate output solutions in a natural and dynamic way. It can of course represent a subset which corresponds to a specified sub-model (eg. CVRP, VRPTW, etc.). In the algorithm level, specific efficient algorithms can be developped for these sub-models.
+The generic model describes and represents the largest set of the problem it can be solved. It provides a common I/O interface (API) to the outside. It aims to accept input and generate output solutions in a natural and dynamic way. It can of course represent a subset which corresponds to a specified sub-model (eg. CVRP, VRPTW, etc.). In the algorithm level, specific efficient algorithms can be developped for these sub-models.
 
 ## Fleet
 

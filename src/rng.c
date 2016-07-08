@@ -63,6 +63,13 @@ int rng_random_int (rng_t *self, int a, int b) {
 }
 
 
+double rng_random_double (rng_t *self, double a, double b) {
+    assert (self);
+    double v = rng_random (self);
+    return (a <= b) ? (b-a)*v+a : (a-b)*v+b;
+}
+
+
 void rng_test (bool verbose) {
     print_info (" * rng: \n");
 

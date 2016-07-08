@@ -18,6 +18,7 @@
     - 当slow down条件满足后report结果，可以选择停止，或者进行diversify后继续。
     - a inner method: decrease weight_fit
 - 消息机制（放在evol还是solver?）
+- add setting interface of default parameter
 
 - [x]init() and renew()需要在最后保证livings group已经sort
 - [x]renew之后livings size可能小于2，cx无法进行，用heuristics fill
@@ -44,7 +45,7 @@
 #define EVOL_DEFAULT_WEIGHT_FITNESS 0.8
 
 #define EVOL_DEFAULT_UNIMPROVED_ITERS 2000
-#define EVOL_DEFAULT_UNIMPROVED_PERIOD 3.0 // seconds
+#define EVOL_DEFAULT_UNIMPROVED_PERIOD 4.0 // seconds
 #define EVOL_DEFAULT_MIN_IMPROVED_FITNESS 0.01 // percent
 
 
@@ -1691,7 +1692,7 @@ static void evol_update_stats (evol_t *self) {
 
 static void evol_report_stats (evol_t *self) {
     printf ("\n--------------------------------------\n");
-    printf ("Stats: \n");
+    printf ("Evolution stats: \n");
     printf ("Overall fitness improvement: %.2f%%\n",
         (evol_best_fitness (self) - self->initial_best_fit) /
         self->initial_best_fit * 100);
@@ -1699,7 +1700,7 @@ static void evol_report_stats (evol_t *self) {
             self->iters_cnt,
             timer_total (self->timer, 0));
 
-    printf ("Best fitness individual: \n");
+    printf ("Best-fitness individual: \n");
     evol_print_indiv (self,
                       (s_indiv_t *) list4x_first (self->livings_rank_fit));
     printf ("\n");
@@ -1934,12 +1935,13 @@ void evol_run (evol_t *self) {
     // Fill livings group with heuristics
     evol_fill_livings_with_heuristics (self);
 
-    // Make sure that the population is regularized
+    // Make sure that the population is sorted properly
     if (!evol_population_is_regularized (self))
         evol_regularize_population (self);
 
-    print_info ("population initialized. #livings: %zu\n",
-                evol_num_livings (self));
+    print_info ("population initialized. #livings: %zu (%s)\n",
+                evol_num_livings (self),
+                evol_num_livings (self) == self->max_livings ? "full" : "not full");
 
     evol_reset_stats (self);
     evol_restart_recorders (self);
@@ -1951,7 +1953,7 @@ void evol_run (evol_t *self) {
             evol_restart_recorders (self);
         }
         else if (evol_slowdown_happens (self)) {
-            print_info ("Improvement slows down.\n");
+            print_info ("improvement slows down.\n");
             // @todo when slowdown happens, diversity rather than simply quit
             // evol_diversity_population (self);
             break;

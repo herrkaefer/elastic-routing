@@ -286,8 +286,21 @@ void array4u_shuffle_range (size_t *array, size_t a, size_t b, rng_t *rng) {
 }
 
 
+// size_t factorial (size_t n) {
+//     if (n == 0)
+//         return 1;
+//     return (n * factorial (n-1));
+// }
+
+
 size_t factorial (size_t n) {
     if (n == 0)
         return 1;
-    return (n * factorial (n-1));
+    size_t f = 1;
+    for (size_t i = 1; i <= n; i++) {
+        f = f * i;
+        if (f == 0)
+            return SIZE_MAX;
+    }
+    return f;
 }

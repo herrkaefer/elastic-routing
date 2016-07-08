@@ -26,9 +26,6 @@ matrix4d_t *matrix4d_new (size_t initial_rows, size_t initial_cols);
 // Destroy matrix4d object
 void matrix4d_free (matrix4d_t **self_p);
 
-// Self test
-void matrix4d_test (bool verbose);
-
 // Get element at position (row, col)
 // You can use double_is_none () to verify the return value
 double matrix4d_get (matrix4d_t *self, size_t row, size_t col);
@@ -36,6 +33,12 @@ double matrix4d_get (matrix4d_t *self, size_t row, size_t col);
 // Set element at position (row, col)
 // value could be NAN
 void matrix4d_set (matrix4d_t *self, size_t row, size_t col, double value);
+
+// Printer
+void matrix4d_print (matrix4d_t *self);
+
+// Self test
+void matrix4d_test (bool verbose);
 
 #ifdef __cplusplus
 }

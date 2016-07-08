@@ -35,15 +35,15 @@ DEMOTARGET = $(TARGETDIR)/demo
 $(ODIR)/%.o: $(SRCDIR)/%.c
 	$(CC) -c $< -o $@ $(CFLAGS)
 
+test:
+	$(CC) $(TESTSRC) -o $(TESTTARGET) $(CFLAGS) $(LDIR) $(LIBS)
+	$(TESTTARGET)
+
 clib: $(OBJ)
 	ar rcs $(LIBTARGET) $(ODIR)/*.o
 
 cdll: $(OBJ)
 	$(CC) -shared -o $@ $^ -Wl,--out-implib,$(LIBTARGET) $(LDIR) $(LIBS)
-
-test:
-	$(CC) $(TESTSRC) -o $(TESTTARGET) $(CFLAGS) $(LDIR) $(LIBS)
-	$(TESTTARGET)
 
 exe:
 	$(CC) $(EXESRC) -o $(EXETARGET) $(CFLAGS) $(LDIR) $(LIBS)

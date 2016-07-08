@@ -119,6 +119,19 @@ void matrix4d_set (matrix4d_t *self, size_t row, size_t col, double value) {
 }
 
 
+void matrix4d_print (matrix4d_t *self) {
+    assert (self);
+
+    printf ("\nmatrix4d order: %zu\n", self->order);
+    printf ("-------------------------------------------\n");
+    for (size_t r = 0; r < self->order; r++) {
+        for (size_t c = 0; c < self->order; c++)
+            printf ("%6.1f ", matrix4d_get (self, r, c));
+        printf ("\n");
+    }
+}
+
+
 void matrix4d_test (bool verbose) {
     print_info (" * matrix4d: \n");
 

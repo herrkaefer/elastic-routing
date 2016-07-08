@@ -37,6 +37,10 @@ double rng_random (rng_t *self);
 // If a == b, return a.
 int rng_random_int (rng_t *self, int a, int b);
 
+// Generate random double value in [a, b) if a < b, or [b, a) if a > b,
+// or a if a == b
+double rng_random_double (rng_t *self, double a, double b);
+
 // Self test
 void rng_test (bool verbose);
 

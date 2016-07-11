@@ -25,12 +25,12 @@ all_tests [] = {
     // { "hash", hash_test },
     // { "arrayset", arrayset_test },
     // { "vrp", vrp_test },
-    // { "list4u", list4u_test },
+    { "list4u", list4u_test },
     // { "list4x", list4x_test },
     // { "rng", rng_test },
     // { "timer", timer_test },
     // { "evol", evol_test },
-    { "tspi", tspi_test },
+    // { "tspi", tspi_test },
 // #endif // WITH_DRAFTS
     {0, 0}          //  Sentinel
 };

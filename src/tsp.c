@@ -13,27 +13,49 @@
 #include "classes.h"
 
 
-// typedef struct {
-//     route_t *route;
-// } tsp_genome_t;
-
 
 struct _tsp_t {
-    vrp_t *vrp; // generic VRP model
+    vrp_t *vrp; // generic model
+
     size_t num_nodes; // number of nodes
-    size_t *node_ids; // nodes id array
+    list4u_t *template;
     size_t start_node_id;
     size_t end_node_id;
+    bool is_round_trip;
 
-    route_t *solution;
+    rng_t *rng;
 };
+
+
+// Heuristic: random generation
+static list4x_t *tsp_random_routes (tsp_t *self, size_t max_expected) {
+    list4x_t *list = list4x_new ();
+
+    size_t route_size = list4u_size (self->template);
+    size_t shuffle_start = (self->start_node != SIZE_NONE) ? 1 : 0;
+    size_t shuffle_end =
+        (self->end_node != SIZE_NONE) ? (route_size-2) : (route_size-1);
+
+    for (size_t cnt = 0; cnt < max_expected; cnt++) {
+        list4u_t *route = list4u_duplicate (self->template);
+        assert (route);
+        list4u_shuffle_slice (route, shuffle_start, shuffle_end, self->rng);
+        list4x_append (list, route);
+        // print_info ("random route:\n");
+        // list4u_print (route);
+    }
+
+    return list;
+}
 
 
 // ---------------------------------------------------------------------------
 tsp_t *tsp_new_from (vrp_t *vrp) {
     assert (vrp);
+
+    // Sub-model verification
     if (!vrp_is_tsp (vrp)) {
-        print_error ("TSP submodel verification failed.");
+        print_error ("TSP submodel verification failed.\n");
         return NULL;
     }
 
@@ -41,9 +63,6 @@ tsp_t *tsp_new_from (vrp_t *vrp) {
     assert (self);
 
     self->vrp = vrp;
-    self->num_nodes = vrp_num_nodes (vrp);
-    self->node_ids = vrp_node_ids (vrp);
-    assert (self->node_ids);
 
     size_t *vehicle_ids = vrp_vehicle_ids (vrp);
     assert (vehicle_ids);
@@ -51,9 +70,39 @@ tsp_t *tsp_new_from (vrp_t *vrp) {
     self->end_node_id = vrp_vehicle_end_node_id (vrp, vehicle_ids[0]);
     free (vehicle_ids);
 
-    self->solution = NULL;
+    // Make regularized route template
+    self->template = list4u_new (vrp_num_nodes (vrp) + 1);
+    size_t *node_ids = vrp_node_ids (vrp);
+    assert (node_ids);
+
+    if (self->start_node_id != ID_NONE)
+        list4u_append (self->template, self->start_node_id);
+
+    for (size_t cnt = 0; cnt < self->num_nodes; cnt++) {
+        if (node_ids[cnt] != self->start_node_id &&
+            node_ids[cnt] != self->end_node_id) {
+            list4u_append (self->template, node_ids[cnt]);
+        }
+    }
+
+    if (self->end_node_id != ID_NONE)
+        list4u_append (self->template, self->end_node_id);
+
+    free (node_ids);
+
+    self->is_round_trip = self->start_node_id != ID_NONE &&
+                          self->end_node_id != ID_NONE &&
+                          self->start_node_id == self->end_node_id;
+
+    self->num_nodes = self->is_round_trip ?
+                      list4u_size (self->template) - 1 :
+                      list4u_size (self->template);
 
     print_info ("tsp created from generic VRP model.\n");
+    print_info ("route template: #nodes: %zu, %s trip\n",
+                self->num_nodes, self->is_round_trip ? "round" : "one-way");
+    list4u_print (self->template);
+
     return self;
 }
 
@@ -63,9 +112,7 @@ void tsp_free (tsp_t **self_p) {
     if (*self_p) {
         tsp_t *self = *self_p;
 
-        free (self->node_ids);
-        if (self->solution != NULL)
-            route_free (&self->solution);
+        list4u_free (&self->template);
 
         free (self);
         *self_p = NULL;
@@ -74,38 +121,7 @@ void tsp_free (tsp_t **self_p) {
 }
 
 
-static double tsp_fitness (const tsp_t *self, route_t *route) {
-    // return strlen (str);
-    return 0;
-}
-
-
-static double tsp_distance (const tsp_t *self,
-                            const route_t *r1,
-                            const route_t *r2) {
-    return 0;
-}
-
-
-static list4x_t *tsp_heuristic (const tsp_t *self, size_t max_expected) {
-    list4x_t *list = list4x_new ();
-    // for (size_t cnt = 0; cnt < max_expected; cnt++)
-    //     list4x_append (list, string_random_alphanum (2, 10, context->rng));
-    return list;
-}
-
-
-static list4x_t *tsp_crossover (const tsp_t *self,
-                                const route_t *r1,
-                                const route_t *r2) {
-    list4x_t *list = list4x_new ();
-    // for (size_t cnt = 0; cnt < max_expected; cnt++)
-    //     list4x_append (list, string_random_alphanum (2, 10, context->rng));
-    return list;
-}
-
-
-void tsp_solve (tsp_t *self) {
+list4u_t *tsp_solve (tsp_t *self) {
     assert (self);
 
     // Create evolution object
@@ -115,47 +131,44 @@ void tsp_solve (tsp_t *self) {
     evol_set_context (evol, self);
 
     // Set all necessary callbacks
-    evol_set_genome_destructor (evol, (destructor_t) route_free);
-    evol_set_genome_printer (evol, (printer_t) route_print);
-    evol_set_fitness_assessor (evol, (evol_fitness_assessor_t) tsp_fitness);
-    evol_set_distance_assessor (evol, (evol_distance_assessor_t) tsp_distance);
+    evol_set_genome_destructor (evol, (destructor_t) list4u_free);
+    evol_set_genome_printer (evol, (printer_t) list4u_print);
+    evol_set_fitness_assessor (evol, (evol_fitness_assessor_t) tspi_fitness);
+    evol_set_distance_assessor (evol, (evol_distance_assessor_t) tspi_distance);
     evol_register_heuristic (evol,
-                             (evol_heuristic_t) tsp_heuristic,
+                             (evol_heuristic_t) tspi_sweep,
+                             false,
+                             1);
+    // size_t max_random_routes = factorial (list4u_size (self->template)-2);
+    // print_debug("");
+    // print_info ("num_nodes: %zu, max random routes: %zu\n",
+    //     list4u_size (self->template)-2, max_random_routes);
+    evol_register_heuristic (evol,
+                             (evol_heuristic_t) tspi_generate_random_route,
                              true,
-                             SIZE_MAX);
-    evol_register_crossover (evol, (evol_crossover_t) tsp_crossover);
+                             factorial (list4u_size (self->template)-2));
+    evol_register_crossover (evol, (evol_crossover_t) tspi_ox);
 
     // Run evolution
     evol_run (evol);
 
     // Get results
-    // @todo to add
+    list4u_t *result = list4u_duplicate ((list4u_t *) evol_best_genome (evol));
+    assert (result);
 
     // Destroy evolution object
     evol_free (&evol);
 
-
     // Post optimization
     // 2-opt, 3-opt, etc.
+
+
+    return result;
 
 }
 
 
-// void tsp_print_route(const TSP_Problem *vrp, const int *route, int start, int end)
-// {
-//     // printf("route[0] %d\n", route[end]);
-//     PRINT("\nroute[%d:%d]: ", start, end);
-//     // printf("print route: \n");
-//     // printf("%d\n", route[2]);
-//     for (int i = start; i <= end; i++) PRINT("%3d ", route[i]);
-//     if (vrp != NULL)
-//     {
-//         PRINT(" (cost: %.2f, demand: %.2f)",
-//               compute_route_cost(route, start, end, vrp->c, vrp->N),
-//               compute_route_demand(route, start, end, vrp->q, vrp->N));
-//     }
-//     PRINT("\n");
-// }
+
 
 
 void tsp_test (bool verbose) {

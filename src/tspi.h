@@ -54,7 +54,8 @@ void tspi_set_end_node (tspi_t *self, size_t end_node_id);
 // However, for round or one-way trip, each of start and end node is optional.
 void tspi_set_round_trip (tspi_t *self, bool is_round_trip);
 
-// Solve
+// Solve.
+// Return the optimized route (sequence of node ID)
 list4u_t *tspi_solve (tspi_t *self);
 
 // Self test

@@ -575,9 +575,6 @@ void list4u_reverse (list4u_t *self) {
 void list4u_shuffle (list4u_t *self, rng_t *rng) {
     assert (self);
 
-    // set not sorted anyway
-    list4u_set_sorting_state (self, LIST4U_NOT_SORTED);
-
     size_t size = list4u_size (self);
     if (size <= 1)
         return;
@@ -591,7 +588,8 @@ void list4u_shuffle (list4u_t *self, rng_t *rng) {
     size_t i, j;
     size_t tmp;
     for (i = 0; i < size - 1; i++) {
-        j = (size_t) rng_random_int (rng, i, size); // [i, size-1]
+        j = (size_t) rng_random_int (rng, i, size); // j in [i, size-1]
+        // Swap values at i and j
         tmp = list4u_get (self, j);
         list4u_set (self, j, list4u_get (self, i));
         list4u_set (self, i, tmp);
@@ -599,6 +597,44 @@ void list4u_shuffle (list4u_t *self, rng_t *rng) {
 
     if (own_rng)
         rng_free (&rng);
+
+    // set not sorted anyway
+    list4u_set_sorting_state (self, LIST4U_NOT_SORTED);
+}
+
+
+void list4u_shuffle_slice (list4u_t *self,
+                           size_t index_begin,
+                           size_t index_end,
+                           rng_t *rng) {
+    assert (self);
+    assert (index_begin <= index_end);
+    assert (index_end < list4u_size (self));
+
+    if (index_begin == index_end)
+        return;
+
+    bool own_rng = false;
+    if (rng == NULL) {
+        rng = rng_new ();
+        own_rng = true;
+    }
+
+    size_t i, j;
+    size_t tmp;
+    for (i = index_begin; i < index_end; i++) {
+        j = (size_t) rng_random_int (rng, i, index_end+1); // j in [i, index_end]
+        // Swap values at i and j
+        tmp = list4u_get (self, j);
+        list4u_set (self, j, list4u_get (self, i));
+        list4u_set (self, i, tmp);
+    }
+
+    if (own_rng)
+        rng_free (&rng);
+
+    // set not sorted anyway
+    list4u_set_sorting_state (self, LIST4U_NOT_SORTED);
 }
 
 
@@ -793,12 +829,18 @@ void list4u_test (bool verbose) {
     list = list4u_new_range (3, 180, 8);
     list4u_print (list);
 
+    print_debug ("shuffle\n");
     rng_t *rng = rng_new ();
     list4u_shuffle (list, rng);
     list4u_print (list);
     list4u_shuffle (list, rng);
     list4u_print (list);
     list4u_shuffle (list, rng);
+    list4u_print (list);
+    print_debug ("shuffle slice\n");
+    list4u_shuffle_slice (list, 1, list4u_size (list)-2, rng);
+    list4u_print (list);
+    list4u_shuffle_slice (list, 2, list4u_size (list)-3, rng);
     list4u_print (list);
 
 

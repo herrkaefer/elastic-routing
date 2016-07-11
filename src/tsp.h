@@ -25,7 +25,8 @@ tsp_t *tsp_new_from (vrp_t *vrp);
 // Destroy tsp object
 void tsp_free (tsp_t **self_p);
 
-void tsp_solve (tsp_t *self);
+// Solve
+list4u_t *tsp_solve (tsp_t *self);
 
 // Self test
 void tsp_test (bool verbose);

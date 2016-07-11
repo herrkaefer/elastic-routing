@@ -76,20 +76,20 @@ void list4u_remove_first (list4u_t *self);
 // Remove last item
 void list4u_remove_last (list4u_t *self);
 
-// Remove slice
+// Remove list slice [index_begin, index_end]
 void list4u_remove_slice (list4u_t *self, size_t index_begin, size_t index_end);
 
 // Find all items with value and remove them.
 // Return 0 if value is found and removed, -1 if not found
 int list4u_remove (list4u_t *self, size_t value);
 
-// Swap two items
+// Swap items at two indices
 void list4u_swap (list4u_t *self, size_t index1, size_t index2);
 
 // Clear list
 void list4u_purge (list4u_t *self);
 
-// Get data array (read only)
+// Dump data array (read only)
 const size_t *list4u_array (list4u_t *self);
 
 // Check if list is sorted
@@ -108,9 +108,15 @@ void list4u_sort (list4u_t *self, bool ascending);
 void list4u_reverse (list4u_t *self);
 
 // Shuffle list in place
-// Set rng to use your random number generator.
-// Set rng to NULL to use inner one.
+// Set rng to use your random number generator, or NULL to use the inner one.
 void list4u_shuffle (list4u_t *self, rng_t *rng);
+
+// Shuffle list slice [index_begin, index_end] in place.
+// Set rng to use your random number generator, or NULL to use the inner one.
+void list4u_shuffle_slice (list4u_t *self,
+                           size_t index_begin,
+                           size_t index_end,
+                           rng_t *rng);
 
 // Find the index of value.
 // Return the index if found, SIZE_NONE if not found.

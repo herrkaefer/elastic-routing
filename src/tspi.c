@@ -103,30 +103,19 @@ static list4x_t *tspi_sweep (tspi_t *self, size_t max_expected) {
 
 
 // Heuristic: random generation
-static list4x_t *tspi_generate_random_route (tspi_t *self,
-                                             size_t max_expected) {
+static list4x_t *tspi_random_routes (tspi_t *self, size_t max_expected) {
     list4x_t *list = list4x_new ();
+
+    size_t route_size = list4u_size (self->template);
+    size_t shuffle_start = (self->start_node != SIZE_NONE) ? 1 : 0;
+    size_t shuffle_end = 
+        (self->end_node != SIZE_NONE) ? (route_size-2) : (route_size-1);
 
     for (size_t cnt = 0; cnt < max_expected; cnt++) {
         list4u_t *route = list4u_duplicate (self->template);
         assert (route);
-
-        // Remove start and end nodes if defined
-        if (self->start_node != SIZE_NONE)
-            list4u_remove_first (route);
-        if (self->end_node != SIZE_NONE)
-            list4u_remove_last (route);
-
-        list4u_shuffle (route, self->rng);
-
-        // Add back start and end nodes if defined
-        if (self->start_node != SIZE_NONE)
-            list4u_prepend (route, self->start_node);
-        if (self->end_node != SIZE_NONE)
-            list4u_append (route, self->end_node);
-
+        list4u_shuffle_slice (route, shuffle_start, shuffle_end, self->rng);
         list4x_append (list, route);
-
         // print_info ("random route:\n");
         // list4u_print (route);
     }
@@ -256,7 +245,7 @@ static bool tspi_validate_coords (tspi_t *self) {
 }
 
 
-static bool tspi_make_route_template (tspi_t *self) {
+static bool tspi_regularize_template (tspi_t *self) {
     // For round trip, check and set start and end nodes properly
     if (self->is_round_trip) {
         if (self->start_node != SIZE_NONE &&
@@ -428,7 +417,7 @@ list4u_t *tspi_solve (tspi_t *self) {
     // Input validation
     if (!tspi_validate_costs (self) ||
         !tspi_validate_coords (self) ||
-        !tspi_make_route_template (self)) {
+        !tspi_regularize_template (self)) {
         print_error ("model validation failed.\n");
         return NULL;
     }
@@ -453,7 +442,7 @@ list4u_t *tspi_solve (tspi_t *self) {
     // print_info ("num_nodes: %zu, max random routes: %zu\n",
     //     list4u_size (self->template)-2, max_random_routes);
     evol_register_heuristic (evol,
-                             (evol_heuristic_t) tspi_generate_random_route,
+                             (evol_heuristic_t) tspi_random_routes,
                              true,
                              factorial (list4u_size (self->template)-2));
     evol_register_crossover (evol, (evol_crossover_t) tspi_ox);

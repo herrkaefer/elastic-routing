@@ -25,7 +25,7 @@ typedef void *genome_t;
 // Heuristic callback for generating genomes from context
 // Return a list of genome_t
 // This function is used to initialize population before evolution
-typedef list4x_t *(*evol_heuristic_t) (void *context, size_t max_expected);
+typedef listx_t *(*evol_heuristic_t) (void *context, size_t max_expected);
 
 // Fitness assessment callback
 typedef double (*evol_fitness_assessor_t) (void *context,
@@ -44,7 +44,7 @@ typedef double (*evol_distance_assessor_t) (void *context,
 // Return a list of children's genomes
 // Note that if you do not set genome duplicator for evol, leave the list's
 // free function as NULL, so that evol can use the genomes and release them.
-typedef list4x_t *(*evol_crossover_t) (void *context,
+typedef listx_t *(*evol_crossover_t) (void *context,
                                        genome_t parent1,
                                        genome_t parent2);
 

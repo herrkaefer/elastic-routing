@@ -123,7 +123,7 @@ size_t string_levenshtein_distance (const char *str1, const char *str2);
 // ======>
 // child1: +++++++|*************
 // child2: **********|++++++++++++
-list4x_t *string_cut_and_splice (const char *str1, const char *str2, rng_t *rng);
+listx_t *string_cut_and_splice (const char *str1, const char *str2, rng_t *rng);
 
 // ---------------------------------------------------------------------------
 

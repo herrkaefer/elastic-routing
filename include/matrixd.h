@@ -1,5 +1,5 @@
 /*  =========================================================================
-    matrix4d - a double type matrix
+    matrixd - a double type matrix
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 
@@ -10,35 +10,35 @@
     =========================================================================
 */
 
-#ifndef __MATRIX4D_H_INCLUDED__
-#define __MATRIX4D_H_INCLUDED__
+#ifndef __MATRIXD_H_INCLUDED__
+#define __MATRIXD_H_INCLUDED__
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct _matrix4d_t matrix4d_t;
+typedef struct _matrixd_t matrixd_t;
 
-// Create a new matrix4d object
+// Create a new matrixd object
 // initial_rows and initial_cols could be 0 if they are not known.
-matrix4d_t *matrix4d_new (size_t initial_rows, size_t initial_cols);
+matrixd_t *matrixd_new (size_t initial_rows, size_t initial_cols);
 
-// Destroy matrix4d object
-void matrix4d_free (matrix4d_t **self_p);
+// Destroy matrixd object
+void matrixd_free (matrixd_t **self_p);
 
 // Get element at position (row, col)
 // You can use double_is_none () to verify the return value
-double matrix4d_get (matrix4d_t *self, size_t row, size_t col);
+double matrixd_get (matrixd_t *self, size_t row, size_t col);
 
 // Set element at position (row, col)
 // value could be NAN
-void matrix4d_set (matrix4d_t *self, size_t row, size_t col, double value);
+void matrixd_set (matrixd_t *self, size_t row, size_t col, double value);
 
 // Printer
-void matrix4d_print (matrix4d_t *self);
+void matrixd_print (matrixd_t *self);
 
 // Self test
-void matrix4d_test (bool verbose);
+void matrixd_test (bool verbose);
 
 #ifdef __cplusplus
 }

@@ -17,9 +17,9 @@ CFLAGS += -std=c99
 LDIR = -L/usr/local/lib
 LIBS = -lczmq -lzmq
 
-_OBJ = util.o entropy.o rng.o timer.o matrix4d.o queue.o hash.o arrayset.o coord2d.o list4u.o list4x.o route.o vrp.o evol.o tspi.o tsp.o
+_OBJ = util.o entropy.o rng.o timer.o matrixd.o queue.o hash.o arrayset.o coord2d.o listu.o listx.o route.o vrp.o evol.o tspi.o tsp.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
-_LIBSRC = util.c deps/pcg/entropy.c rng.c timer.c matrix4d.c queue.c hash.c arrayset.c coord2d.c list4u.c list4x.c route.c vrp.c evol.c tspi.c tsp.c
+_LIBSRC = util.c deps/pcg/entropy.c rng.c timer.c matrixd.c queue.c hash.c arrayset.c coord2d.c listu.c listx.c route.c vrp.c evol.c tspi.c tsp.c
 LIBSRC = $(patsubst %,$(SRCDIR)/%,$(_LIBSRC))
 LIBTARGET = liber.a
 TESTSRC = $(SRCDIR)/selftest.c $(LIBSRC)

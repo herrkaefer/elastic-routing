@@ -35,9 +35,9 @@
 #include "hash.h"
 #include "queue.h"
 #include "arrayset.h"
-#include "matrix4d.h"
-#include "list4u.h"
-#include "list4x.h"
+#include "matrixd.h"
+#include "listu.h"
+#include "listx.h"
 #include "evol.h"
 #include "solver.h"
 

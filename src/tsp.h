@@ -26,7 +26,7 @@ tsp_t *tsp_new_from (vrp_t *vrp);
 void tsp_free (tsp_t **self_p);
 
 // Solve
-list4u_t *tsp_solve (tsp_t *self);
+listu_t *tsp_solve (tsp_t *self);
 
 // Self test
 void tsp_test (bool verbose);

@@ -14,7 +14,7 @@
 
 
 struct _route_t {
-    list4u_t *seq; // sequence of node ids
+    listu_t *seq; // sequence of node ids
     size_t vehicle_id; // vehicle assigned to
 };
 
@@ -47,7 +47,7 @@ void route_free (route_t **self_p) {
 
 
 void route_print (route_t *self) {
-    printf ("route: length: %zu\n", list4u_size (self->seq));
+    printf ("route: length: %zu\n", listu_size (self->seq));
 
 }
 

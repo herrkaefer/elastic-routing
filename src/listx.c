@@ -1,5 +1,5 @@
 /*  =========================================================================
-    list4x - a generic list container
+    listx - a generic list container
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 
@@ -27,7 +27,7 @@ typedef struct _s_node_t {
 } s_node_t;
 
 
-struct _list4x_t {
+struct _listx_t {
     s_node_t *head;
     size_t size;
     int sorting_state;
@@ -84,7 +84,7 @@ static s_node_t *s_node_walk (s_node_t *node, size_t num_steps, bool forward) {
 
 // Create a new node from item for list.
 // Duplicate the item if deplicate function is set.
-static s_node_t *list4x_new_node (list4x_t *self, void *item) {
+static s_node_t *listx_new_node (listx_t *self, void *item) {
     if (self->duplicator) {
         item = self->duplicator (item);
         assert (item);
@@ -95,54 +95,54 @@ static s_node_t *list4x_new_node (list4x_t *self, void *item) {
 
 
 // Get node by index
-static s_node_t *list4x_node (list4x_t *self, size_t index) {
+static s_node_t *listx_node (listx_t *self, size_t index) {
     return (index < self->size / 2) ?
            s_node_walk (self->head->next, index, true) :
            s_node_walk (self->head->prev, self->size-index-1, false);
 }
 
 
-static void list4x_set_sorted (list4x_t *self, bool ascending) {
+static void listx_set_sorted (listx_t *self, bool ascending) {
     self->sorting_state = ascending ?
                           LIST4X_ASCENDING_SORTED :
                           LIST4X_DESCENDING_SORTED;
 }
 
 
-static void list4x_set_not_sorted (list4x_t *self) {
+static void listx_set_not_sorted (listx_t *self) {
     self->sorting_state = LIST4X_NOT_SORTED;
 }
 
 
 // Check if node is sorted properly with its previous node
-static bool list4x_node_is_sorted_with_prev (list4x_t *self,
+static bool listx_node_is_sorted_with_prev (listx_t *self,
                                              s_node_t *node) {
     if (node->prev == self->head) // first node
-        return list4x_is_sorted (self);
+        return listx_is_sorted (self);
     else
-        return (list4x_is_sorted_ascending (self) &&
+        return (listx_is_sorted_ascending (self) &&
                 self->comparator (node->item, node->prev->item) >= 0) ||
-               (list4x_is_sorted_descending (self) &&
+               (listx_is_sorted_descending (self) &&
                 self->comparator (node->item, node->prev->item) <= 0);
 }
 
 
 // Check if node is sorted properly with its next node
-static bool list4x_node_is_sorted_with_next (list4x_t *self,
+static bool listx_node_is_sorted_with_next (listx_t *self,
                                              s_node_t *node) {
     if (node->next == self->head) // last node
-        return list4x_is_sorted (self);
+        return listx_is_sorted (self);
     else
-        return (list4x_is_sorted_ascending (self) &&
+        return (listx_is_sorted_ascending (self) &&
                 self->comparator (node->item, node->next->item) <= 0) ||
-               (list4x_is_sorted_descending (self) &&
+               (listx_is_sorted_descending (self) &&
                 self->comparator (node->item, node->next->item) >= 0);
 }
 
 
 // Quick sort of list
 // Note that this implementation will detach items from their node handles
-// static void list4x_quick_sort1 (list4x_t *self,
+// static void listx_quick_sort1 (listx_t *self,
 //                                s_node_t *first_node,
 //                                s_node_t *last_node,
 //                                size_t length,
@@ -191,14 +191,14 @@ static bool list4x_node_is_sorted_with_next (list4x_t *self,
 
 //     node_i->item = test;
 
-//     list4x_quick_sort1 (self, first_node, node_i->prev, i, ascending);
-//     list4x_quick_sort1 (self, node_i->next, last_node, length-i-1, ascending);
+//     listx_quick_sort1 (self, first_node, node_i->prev, i, ascending);
+//     listx_quick_sort1 (self, node_i->next, last_node, length-i-1, ascending);
 // }
 
 
 // Quick sort of list
 // This implementation will preserve bindings between items and their handles.
-static void list4x_quick_sort (list4x_t *self,
+static void listx_quick_sort (listx_t *self,
                                s_node_t *first_node,
                                s_node_t *last_node,
                                bool ascending) {
@@ -261,8 +261,8 @@ static void list4x_quick_sort (list4x_t *self,
         node_h = tmp;
     }
 
-    list4x_quick_sort (self, first_node->next, test->prev, ascending);
-    list4x_quick_sort (self, test->next, last_node->prev, ascending);
+    listx_quick_sort (self, first_node->next, test->prev, ascending);
+    listx_quick_sort (self, test->next, last_node->prev, ascending);
 }
 
 
@@ -271,9 +271,9 @@ static void list4x_quick_sort (list4x_t *self,
 // coorsponding node pointer. If item is not found, the index is SIZE_NONE
 // (by which you can know that item is not found), and the node pointer is the
 // node just sorted after the given item.
-static s_indicator_t list4x_binary_search (list4x_t *self, void *item) {
+static s_indicator_t listx_binary_search (listx_t *self, void *item) {
     size_t head = 0,
-           tail = list4x_size (self),
+           tail = listx_size (self),
            mid;
     s_node_t *node_head = self->head->next,
              *node_tail = self->head,
@@ -281,7 +281,7 @@ static s_indicator_t list4x_binary_search (list4x_t *self, void *item) {
 
     int compare_result;
 
-    if (list4x_is_sorted_ascending (self)) {
+    if (listx_is_sorted_ascending (self)) {
         while (head < tail) {
             mid = (head + tail) / 2;
             node_mid = s_node_walk (node_head, mid - head, true);
@@ -298,7 +298,7 @@ static s_indicator_t list4x_binary_search (list4x_t *self, void *item) {
             }
         }
     }
-    else if (list4x_is_sorted_descending (self)) {
+    else if (listx_is_sorted_descending (self)) {
         while (head < tail) {
             mid = (head + tail) / 2;
             node_mid = s_node_walk (node_head, mid - head, true);
@@ -326,14 +326,14 @@ static s_indicator_t list4x_binary_search (list4x_t *self, void *item) {
 // Find item in list.
 // Return struct s_indicator_t which includes the index of item and
 // coorsponding node pointer. If item is not found, return {SIZE_NONE, NULL}.
-static s_indicator_t list4x_find_node (list4x_t *self, void *item) {
+static s_indicator_t listx_find_node (listx_t *self, void *item) {
     s_indicator_t indicator = {SIZE_NONE, NULL};
     if (self->size == 0)
         return indicator;
 
     // For sorted list, do binary search
-    if (list4x_is_sorted (self)) {
-        indicator = list4x_binary_search (self, item);
+    if (listx_is_sorted (self)) {
+        indicator = listx_binary_search (self, item);
         if (indicator.index == SIZE_NONE) {
             indicator.node = NULL;
             return indicator;
@@ -362,8 +362,8 @@ static s_indicator_t list4x_find_node (list4x_t *self, void *item) {
 // ---------------------------------------------------------------------------
 
 
-list4x_t *list4x_new () {
-    list4x_t *self = (list4x_t *) malloc (sizeof (list4x_t));
+listx_t *listx_new () {
+    listx_t *self = (listx_t *) malloc (sizeof (listx_t));
     assert (self);
     self->head = s_node_new (NULL);
     self->size = 0;
@@ -376,11 +376,11 @@ list4x_t *list4x_new () {
 }
 
 
-void list4x_free (list4x_t **self_p) {
+void listx_free (listx_t **self_p) {
     assert (self_p);
     if (*self_p) {
-        list4x_t *self = *self_p;
-        list4x_purge (self);
+        listx_t *self = *self_p;
+        listx_purge (self);
         free (self->head);
         free (self);
         *self_p = NULL;
@@ -388,56 +388,56 @@ void list4x_free (list4x_t **self_p) {
 }
 
 
-void list4x_set_destructor (list4x_t *self, destructor_t destructor) {
+void listx_set_destructor (listx_t *self, destructor_t destructor) {
     assert (self);
     self->destructor = destructor;
 }
 
 
-void list4x_set_duplicator (list4x_t *self,
+void listx_set_duplicator (listx_t *self,
                                 duplicator_t duplicator) {
     assert (self);
     self->duplicator = duplicator;
 }
 
 
-void list4x_set_comparator (list4x_t *self, comparator_t comparator) {
+void listx_set_comparator (listx_t *self, comparator_t comparator) {
     assert (self);
     self->comparator = comparator;
 }
 
 
-void list4x_set_printer (list4x_t *self, printer_t printer) {
+void listx_set_printer (listx_t *self, printer_t printer) {
     assert (self);
     self->printer = printer;
 }
 
 
-size_t list4x_size (list4x_t *self) {
+size_t listx_size (listx_t *self) {
     assert (self);
     return self->size;
 }
 
 
-bool list4x_is_sorted (list4x_t *self) {
+bool listx_is_sorted (listx_t *self) {
     assert (self);
     return self->sorting_state != LIST4X_NOT_SORTED;
 }
 
 
-bool list4x_is_sorted_ascending (list4x_t *self) {
+bool listx_is_sorted_ascending (listx_t *self) {
     assert (self);
     return self->sorting_state == LIST4X_ASCENDING_SORTED;
 }
 
 
-bool list4x_is_sorted_descending (list4x_t *self) {
+bool listx_is_sorted_descending (listx_t *self) {
     assert (self);
     return self->sorting_state == LIST4X_DESCENDING_SORTED;
 }
 
 
-void *list4x_item (list4x_t *self, void *handle) {
+void *listx_item (listx_t *self, void *handle) {
     assert (self);
     assert (handle);
     assert (((s_node_t *) handle)->attached);
@@ -445,15 +445,15 @@ void *list4x_item (list4x_t *self, void *handle) {
 }
 
 
-void *list4x_item_at (list4x_t *self, size_t index) {
+void *listx_item_at (listx_t *self, size_t index) {
     assert (self);
     assert (index < self->size);
-    s_node_t *node = list4x_node (self, index);
+    s_node_t *node = listx_node (self, index);
     return node->item;
 }
 
 
-void *list4x_first (list4x_t *self) {
+void *listx_first (listx_t *self) {
     assert (self);
     return (self->head->next == self->head) ?
            NULL :
@@ -461,7 +461,7 @@ void *list4x_first (list4x_t *self) {
 }
 
 
-void *list4x_last (list4x_t *self) {
+void *listx_last (listx_t *self) {
     assert (self);
     return (self->head->prev == self->head) ?
            NULL :
@@ -469,7 +469,7 @@ void *list4x_last (list4x_t *self) {
 }
 
 
-void list4x_set_item (list4x_t *self, void *handle, void *item) {
+void listx_set_item (listx_t *self, void *handle, void *item) {
     assert (self);
     assert (handle);
     assert (item);
@@ -489,56 +489,56 @@ void list4x_set_item (list4x_t *self, void *handle, void *item) {
     node->item = item;
 
     // Adjust sorting state
-    if (!list4x_node_is_sorted_with_prev (self, node) ||
-        !list4x_node_is_sorted_with_next (self, node))
-        list4x_set_not_sorted (self);
+    if (!listx_node_is_sorted_with_prev (self, node) ||
+        !listx_node_is_sorted_with_next (self, node))
+        listx_set_not_sorted (self);
 }
 
 
-void list4x_set_item_at (list4x_t *self, size_t index, void *item) {
+void listx_set_item_at (listx_t *self, size_t index, void *item) {
     assert (self);
     assert (index < self->size);
     assert (item);
-    s_node_t *node = list4x_node (self, index);
-    list4x_set_item (self, node, item);
+    s_node_t *node = listx_node (self, index);
+    listx_set_item (self, node, item);
 }
 
 
-void *list4x_prepend (list4x_t *self, void *item) {
+void *listx_prepend (listx_t *self, void *item) {
     assert (self);
     assert (item);
 
-    s_node_t *node = list4x_new_node (self, item);
+    s_node_t *node = listx_new_node (self, item);
     s_node_relink (node, self->head, self->head->next);
     node->attached = true;
     self->size++;
 
     // Adjust sorting state
-    if (!list4x_node_is_sorted_with_next (self, node))
-        list4x_set_not_sorted (self);
+    if (!listx_node_is_sorted_with_next (self, node))
+        listx_set_not_sorted (self);
 
     return node;
 }
 
 
-void *list4x_append (list4x_t *self, void *item) {
+void *listx_append (listx_t *self, void *item) {
     assert (self);
     assert (item);
 
-    s_node_t *node = list4x_new_node (self, item);
+    s_node_t *node = listx_new_node (self, item);
     s_node_relink (node, self->head->prev, self->head);
     node->attached = true;
     self->size++;
 
     // Adjust sorting state
-    if (!list4x_node_is_sorted_with_prev (self, node))
-        list4x_set_not_sorted (self);
+    if (!listx_node_is_sorted_with_prev (self, node))
+        listx_set_not_sorted (self);
 
     return node;
 }
 
 
-void *list4x_pop (list4x_t *self, void *handle) {
+void *listx_pop (listx_t *self, void *handle) {
     assert (self);
     assert (handle);
     s_node_t *node = (s_node_t *) handle;
@@ -551,108 +551,108 @@ void *list4x_pop (list4x_t *self, void *handle) {
 }
 
 
-void *list4x_pop_first (list4x_t *self) {
+void *listx_pop_first (listx_t *self) {
     assert (self);
     if (self->size == 0)
         return NULL;
-    return list4x_pop (self, self->head->next);
+    return listx_pop (self, self->head->next);
 }
 
 
-void *list4x_pop_last (list4x_t *self) {
+void *listx_pop_last (listx_t *self) {
     assert (self);
     if (self->size == 0)
         return NULL;
-    return list4x_pop (self, self->head->prev);
+    return listx_pop (self, self->head->prev);
 }
 
 
-void *list4x_pop_at (list4x_t *self, size_t index) {
+void *listx_pop_at (listx_t *self, size_t index) {
     assert (self);
-    assert (index < list4x_size (self));
-    s_node_t *node = list4x_node (self, index);
-    return list4x_pop (self, node);
+    assert (index < listx_size (self));
+    s_node_t *node = listx_node (self, index);
+    return listx_pop (self, node);
 }
 
 
-void list4x_extend (list4x_t *self, list4x_t *list) {
+void listx_extend (listx_t *self, listx_t *list) {
     assert (self);
     assert (list);
     for (s_node_t *node = list->head->next;
          node != list->head;
          node = node->next)
-        list4x_append (self, node->item);
+        listx_append (self, node->item);
 }
 
 
-void list4x_extend_array (list4x_t *self, void **array, size_t length) {
+void listx_extend_array (listx_t *self, void **array, size_t length) {
     assert (self);
     assert (array);
 
     s_node_t *node;
     for (size_t index = 0; index < length; index++) {
-        node = list4x_new_node (self, array[index]);
-        list4x_append (self, node);
+        node = listx_new_node (self, array[index]);
+        listx_append (self, node);
     }
 }
 
 
-void *list4x_insert_at (list4x_t *self, size_t index, void *item) {
+void *listx_insert_at (listx_t *self, size_t index, void *item) {
     assert (self);
-    assert (index < list4x_size (self));
+    assert (index < listx_size (self));
     assert (item);
 
-    s_node_t *node = list4x_node (self, index);
-    s_node_t *new_node = list4x_new_node (self, item);
+    s_node_t *node = listx_node (self, index);
+    s_node_t *new_node = listx_new_node (self, item);
     s_node_relink (new_node, node->prev, node);
     new_node->attached = true;
     self->size++;
 
     // Adjust sorting state
-    if (!list4x_node_is_sorted_with_prev (self, new_node) ||
-        !list4x_node_is_sorted_with_next (self, new_node))
-        list4x_set_not_sorted (self);
+    if (!listx_node_is_sorted_with_prev (self, new_node) ||
+        !listx_node_is_sorted_with_next (self, new_node))
+        listx_set_not_sorted (self);
 
     return new_node;
 }
 
 
-void *list4x_insert_sorted (list4x_t *self, void *item) {
+void *listx_insert_sorted (listx_t *self, void *item) {
     assert (self);
 
     // If list is not sorted, sort it in ascending order
-    if (!list4x_is_sorted (self)) {
+    if (!listx_is_sorted (self)) {
         print_warning ("List is not sorted yet. Sort it in ascending order.\n");
-        list4x_sort (self, true);
+        listx_sort (self, true);
     }
 
     // Create new node from item
-    s_node_t *node = list4x_new_node (self, item);
+    s_node_t *node = listx_new_node (self, item);
 
     // Insert the new node to the right position
-    // list4x_reorder() will deal with list size correctly
-    list4x_reorder (self, node);
+    // listx_reorder() will deal with list size correctly
+    listx_reorder (self, node);
 
     return node;
 }
 
 
-void list4x_remove (list4x_t *self, void *handle) {
+void listx_remove (listx_t *self, void *handle) {
     assert (self);
     assert (handle);
-    void *item = list4x_pop (self, handle);
+    void *item = listx_pop (self, handle);
     if (self->destructor)
         self->destructor (&item);
 }
 
 
-void list4x_remove_item (list4x_t *self, void *item) {
+void listx_remove_item (listx_t *self, void *item) {
     assert (self);
     assert (item);
 
     // If list is sorted, find item then count to head and tail
-    if (list4x_is_sorted (self)) {
-        s_node_t *node_found = (s_node_t *) list4x_find (self, item);
+    if (listx_is_sorted (self)) {
+        s_node_t *node_found = (s_node_t *) listx_find (self, item);
         if (node_found == NULL)
             return;
 
@@ -662,7 +662,7 @@ void list4x_remove_item (list4x_t *self, void *item) {
         while (node != self->head) {
             next = node->next;
             if (self->comparator (node->item, item) == 0)
-                list4x_remove (self, node);
+                listx_remove (self, node);
             else
                 break;
             node = next;
@@ -673,14 +673,14 @@ void list4x_remove_item (list4x_t *self, void *item) {
         while (node != self->head) {
             next = node->prev;
             if (self->comparator (node->item, item) == 0)
-                list4x_remove (self, node);
+                listx_remove (self, node);
             else
                 break;
             node = next;
         }
 
         // Remove the found node
-        list4x_remove (self, node_found);
+        listx_remove (self, node_found);
     }
 
     // If list is not sorted, remove from head to tail
@@ -690,80 +690,80 @@ void list4x_remove_item (list4x_t *self, void *item) {
         while (node != self->head) {
             next = node->next;
             if (self->comparator (node->item, item) == 0)
-                list4x_remove (self, node);
+                listx_remove (self, node);
             node = next;
         }
     }
 }
 
 
-void list4x_remove_first (list4x_t *self) {
+void listx_remove_first (listx_t *self) {
     assert (self);
     if (self->size == 0)
         return;
-    list4x_remove (self, self->head->next);
+    listx_remove (self, self->head->next);
 }
 
 
-void list4x_remove_last (list4x_t *self) {
+void listx_remove_last (listx_t *self) {
     assert (self);
     if (self->size == 0)
         return;
-    list4x_remove (self, self->head->prev);
+    listx_remove (self, self->head->prev);
 }
 
 
-void list4x_remove_at (list4x_t *self, size_t index) {
+void listx_remove_at (listx_t *self, size_t index) {
     assert (self);
-    assert (index < list4x_size (self));
-    s_node_t *node = list4x_node (self, index);
-    list4x_remove (self, node);
+    assert (index < listx_size (self));
+    s_node_t *node = listx_node (self, index);
+    listx_remove (self, node);
 }
 
 
-void list4x_remove_slice (list4x_t *self, size_t from_index, size_t to_index) {
+void listx_remove_slice (listx_t *self, size_t from_index, size_t to_index) {
     assert (self);
-    size_t size = list4x_size (self);
+    size_t size = listx_size (self);
     assert (from_index <= to_index);
     assert (to_index < size);
-    s_node_t *node_preceding = list4x_node (self, from_index)->prev;
+    s_node_t *node_preceding = listx_node (self, from_index)->prev;
     for (size_t cnt = 0; cnt < to_index - from_index + 1; cnt++)
-        list4x_remove (self, node_preceding->next);
+        listx_remove (self, node_preceding->next);
 }
 
 
-void list4x_purge (list4x_t *self) {
+void listx_purge (listx_t *self) {
     assert (self);
     if (self->size == 0)
         return;
-    list4x_remove_slice (self, 0, self->size - 1);
+    listx_remove_slice (self, 0, self->size - 1);
 }
 
 
-void list4x_sort (list4x_t *self, bool ascending) {
+void listx_sort (listx_t *self, bool ascending) {
     assert (self);
 
     // If the list is sorted in opposite order, reverse it
-    if ((ascending && list4x_is_sorted_descending (self)) ||
-        (!ascending && list4x_is_sorted_ascending (self)))
-        list4x_reverse (self);
+    if ((ascending && listx_is_sorted_descending (self)) ||
+        (!ascending && listx_is_sorted_ascending (self)))
+        listx_reverse (self);
 
     // Otherwise, do a quick sort
     else {
-        list4x_quick_sort (self,
+        listx_quick_sort (self,
                            self->head->next,
                            self->head->prev,
                            ascending);
-        list4x_set_sorted (self, ascending);
+        listx_set_sorted (self, ascending);
     }
 }
 
 
-void list4x_reorder (list4x_t *self, void *handle) {
+void listx_reorder (listx_t *self, void *handle) {
     assert (self);
     assert (handle);
     // list should be sorted
-    assert (list4x_is_sorted (self));
+    assert (listx_is_sorted (self));
 
     s_node_t *node = (s_node_t *) handle;
 
@@ -775,7 +775,7 @@ void list4x_reorder (list4x_t *self, void *handle) {
     }
 
     // Binary search the position to insert
-    s_indicator_t indicator = list4x_binary_search (self, node->item);
+    s_indicator_t indicator = listx_binary_search (self, node->item);
     s_node_t *node_after = indicator.node;
 
     // Insert the node back
@@ -784,16 +784,16 @@ void list4x_reorder (list4x_t *self, void *handle) {
     self->size++;
 
     // @todo remove the following assertions after test
-    // assert (list4x_node_is_sorted_with_prev (self, node));
-    // assert (list4x_node_is_sorted_with_next (self, node));
+    // assert (listx_node_is_sorted_with_prev (self, node));
+    // assert (listx_node_is_sorted_with_next (self, node));
 }
 
 
-void list4x_reverse (list4x_t *self) {
+void listx_reverse (listx_t *self) {
     assert (self);
 
-    bool is_sorted_before = list4x_is_sorted (self);
-    bool ascending_before = list4x_is_sorted_ascending (self);
+    bool is_sorted_before = listx_is_sorted (self);
+    bool ascending_before = listx_is_sorted_ascending (self);
 
     s_node_t *node = self->head,
              *next = node->next;
@@ -820,17 +820,17 @@ void list4x_reverse (list4x_t *self) {
     // }
 
     if (is_sorted_before)
-        list4x_set_sorted (self, !ascending_before);
+        listx_set_sorted (self, !ascending_before);
 }
 
 
-void list4x_shuffle (list4x_t *self, rng_t *rng) {
+void listx_shuffle (listx_t *self, rng_t *rng) {
     assert (self);
 
     // Set as not sorted regardless of actual state
-    list4x_set_not_sorted (self);
+    listx_set_not_sorted (self);
 
-    size_t size = list4x_size (self);
+    size_t size = listx_size (self);
     if (size <= 1)
         return;
 
@@ -889,30 +889,30 @@ void list4x_shuffle (list4x_t *self, rng_t *rng) {
 }
 
 
-size_t list4x_index (list4x_t *self, void *item) {
+size_t listx_index (listx_t *self, void *item) {
     assert (self);
     assert (item);
-    s_indicator_t indicator = list4x_find_node (self, item);
+    s_indicator_t indicator = listx_find_node (self, item);
     return indicator.index;
 }
 
 
-void *list4x_find (list4x_t *self, void *item) {
+void *listx_find (listx_t *self, void *item) {
     assert (self);
     assert (item);
-    s_indicator_t indicator = list4x_find_node (self, item);
+    s_indicator_t indicator = listx_find_node (self, item);
     return indicator.node;
 }
 
 
-bool list4x_includes (list4x_t *self, void *item) {
+bool listx_includes (listx_t *self, void *item) {
     assert (self);
     assert (item);
-    return list4x_find (self, item) != NULL;
+    return listx_find (self, item) != NULL;
 }
 
 
-bool list4x_includes_identical (list4x_t *self, void *item) {
+bool listx_includes_identical (listx_t *self, void *item) {
     assert (self);
     assert (item);
     s_node_t *node = self->head->next;
@@ -925,14 +925,14 @@ bool list4x_includes_identical (list4x_t *self, void *item) {
 }
 
 
-size_t list4x_count (list4x_t *self, void *item) {
+size_t listx_count (listx_t *self, void *item) {
     assert (self);
     assert (item);
     size_t cnt;
 
     // If list is sorted, find value then count to head and tail
-    if (list4x_is_sorted (self)) {
-        s_node_t *node_found = (s_node_t *) list4x_find (self, item);
+    if (listx_is_sorted (self)) {
+        s_node_t *node_found = (s_node_t *) listx_find (self, item);
         if (node_found == NULL)
             return 0;
         cnt = 1;
@@ -971,7 +971,7 @@ size_t list4x_count (list4x_t *self, void *item) {
 }
 
 
-// void *list4x_next (list4x_t *self, void *handle) {
+// void *listx_next (listx_t *self, void *handle) {
 //     assert (self);
 //     assert (handle);
 //     assert (((s_node_t *) handle)->attached);
@@ -980,7 +980,7 @@ size_t list4x_count (list4x_t *self, void *item) {
 // }
 
 
-// void *list4x_prev (list4x_t *self, void *handle) {
+// void *listx_prev (listx_t *self, void *handle) {
 //     assert (self);
 //     assert (handle);
 //     assert (((s_node_t *) handle)->attached);
@@ -989,24 +989,24 @@ size_t list4x_count (list4x_t *self, void *item) {
 // }
 
 
-list4x_iterator_t list4x_iter_init (list4x_t *self, bool forward) {
+listx_iterator_t listx_iter_init (listx_t *self, bool forward) {
     assert (self);
-    return (list4x_iterator_t) {self->head, forward};
+    return (listx_iterator_t) {self->head, forward};
 }
 
 
-list4x_iterator_t list4x_iter_init_from (list4x_t *self,
+listx_iterator_t listx_iter_init_from (listx_t *self,
                                          void *handle,
                                          bool forward) {
     assert (self);
     assert (handle);
     s_node_t *node = (s_node_t *) handle;
     assert (node->attached);
-    return (list4x_iterator_t) {node, forward};
+    return (listx_iterator_t) {node, forward};
 }
 
 
-void *list4x_iter (list4x_t *self, list4x_iterator_t *iterator) {
+void *listx_iter (listx_t *self, listx_iterator_t *iterator) {
     assert (self);
     assert (iterator);
     iterator->handle = iterator->forward ?
@@ -1019,7 +1019,7 @@ void *list4x_iter (list4x_t *self, list4x_iterator_t *iterator) {
 }
 
 
-void *list4x_iter_pop (list4x_t *self, list4x_iterator_t *iterator) {
+void *listx_iter_pop (listx_t *self, listx_iterator_t *iterator) {
     assert (self);
     assert (iterator);
 
@@ -1031,37 +1031,37 @@ void *list4x_iter_pop (list4x_t *self, list4x_iterator_t *iterator) {
                        node->prev :
                        node->next;
 
-    return list4x_pop (self, node);
+    return listx_pop (self, node);
 }
 
 
-void list4x_iter_remove (list4x_t *self, list4x_iterator_t *iterator) {
+void listx_iter_remove (listx_t *self, listx_iterator_t *iterator) {
     assert (self);
     assert (iterator);
     assert ((s_node_t *)(iterator->handle) != self->head);
-    void *item = list4x_iter_pop (self, iterator);
+    void *item = listx_iter_pop (self, iterator);
     if (self->destructor)
         self->destructor (&item);
 }
 
 
-list4x_t *list4x_map (list4x_t *self, mapping_t mapping) {
+listx_t *listx_map (listx_t *self, mapping_t mapping) {
     assert (self);
     assert (mapping);
 
-    list4x_t *output = list4x_new ();
+    listx_t *output = listx_new ();
     assert (output);
 
     for (s_node_t *node = self->head->next;
          node != self->head;
          node = node->next)
-        list4x_append (output, mapping (node->item));
+        listx_append (output, mapping (node->item));
 
     return output;
 }
 
 
-void *list4x_reduce (list4x_t *self, reducer_t reducer, void *initial) {
+void *listx_reduce (listx_t *self, reducer_t reducer, void *initial) {
     assert (self);
     assert (reducer);
 
@@ -1082,11 +1082,11 @@ void *list4x_reduce (list4x_t *self, reducer_t reducer, void *initial) {
 }
 
 
-list4x_t *list4x_filter (list4x_t *self, filter_t filter) {
+listx_t *listx_filter (listx_t *self, filter_t filter) {
     assert (self);
     assert (filter);
 
-    list4x_t *output = list4x_new ();
+    listx_t *output = listx_new ();
     assert (output);
 
     output->sorting_state = self->sorting_state;
@@ -1099,13 +1099,13 @@ list4x_t *list4x_filter (list4x_t *self, filter_t filter) {
          node != self->head;
          node = node->next)
         if (filter (node->item))
-            list4x_append (output, node->item);
+            listx_append (output, node->item);
 
     return output;
 }
 
 
-bool list4x_all (list4x_t *self, filter_t filter) {
+bool listx_all (listx_t *self, filter_t filter) {
     assert (self);
     assert (filter);
     for (s_node_t *node = self->head->next;
@@ -1117,7 +1117,7 @@ bool list4x_all (list4x_t *self, filter_t filter) {
 }
 
 
-bool list4x_any (list4x_t *self, filter_t filter) {
+bool listx_any (listx_t *self, filter_t filter) {
     assert (self);
     assert (filter);
     for (s_node_t *node = self->head->next;
@@ -1129,11 +1129,11 @@ bool list4x_any (list4x_t *self, filter_t filter) {
 }
 
 
-list4x_t *list4x_duplicate (const list4x_t *self) {
+listx_t *listx_duplicate (const listx_t *self) {
     if (!self)
         return NULL;
 
-    list4x_t *copy = list4x_new ();
+    listx_t *copy = listx_new ();
 
     copy->sorting_state = self->sorting_state;
     copy->destructor = self->destructor;
@@ -1145,13 +1145,13 @@ list4x_t *list4x_duplicate (const list4x_t *self) {
     for (s_node_t *node = self->head->next;
          node != self->head;
          node = node->next)
-        list4x_append (copy, node->item);
+        listx_append (copy, node->item);
 
     return copy;
 }
 
 
-bool list4x_equal (const list4x_t *self, const list4x_t *list) {
+bool listx_equal (const listx_t *self, const listx_t *list) {
     if (self == NULL && list == NULL)
         return true;
     else if (self == NULL || list == NULL)
@@ -1177,9 +1177,9 @@ bool list4x_equal (const list4x_t *self, const list4x_t *list) {
 }
 
 
-void list4x_print (const list4x_t *self) {
+void listx_print (const listx_t *self) {
     assert (self);
-    printf ("\nlist4x size: %zu, sorted: %s\n", self->size,
+    printf ("\nlistx size: %zu, sorted: %s\n", self->size,
             (self->sorting_state == LIST4X_ASCENDING_SORTED) ?
             "ascending" : (self->sorting_state == LIST4X_DESCENDING_SORTED ?
                           "descending" :
@@ -1204,259 +1204,259 @@ void list4x_print (const list4x_t *self) {
 }
 
 
-void list4x_assert_sort (list4x_t *self, const char *order) {
+void listx_assert_sort (listx_t *self, const char *order) {
     assert (self);
     if (streq (order, "ascending")) {
-        assert (list4x_is_sorted (self));
-        assert (list4x_is_sorted_ascending (self));
-        assert (!list4x_is_sorted_descending (self));
+        assert (listx_is_sorted (self));
+        assert (listx_is_sorted_ascending (self));
+        assert (!listx_is_sorted_descending (self));
     }
     else if (streq (order, "descending")) {
-        assert (list4x_is_sorted (self));
-        assert (!list4x_is_sorted_ascending (self));
-        assert (list4x_is_sorted_descending (self));
+        assert (listx_is_sorted (self));
+        assert (!listx_is_sorted_ascending (self));
+        assert (listx_is_sorted_descending (self));
     }
     else if (streq (order, "no")) {
-        assert (!list4x_is_sorted (self));
-        assert (!list4x_is_sorted_ascending (self));
-        assert (!list4x_is_sorted_descending (self));
+        assert (!listx_is_sorted (self));
+        assert (!listx_is_sorted_ascending (self));
+        assert (!listx_is_sorted_descending (self));
     }
     else
         assert (false);
 
-    if (list4x_is_sorted (self)) {
+    if (listx_is_sorted (self)) {
         assert (self->comparator);
         s_node_t *node = self->head->next;
         while (node != self->head) {
-            assert (list4x_node_is_sorted_with_prev (self, node));
-            assert (list4x_node_is_sorted_with_next (self, node));
+            assert (listx_node_is_sorted_with_prev (self, node));
+            assert (listx_node_is_sorted_with_next (self, node));
             node = node->next;
         }
     }
 }
 
 
-void list4x_test (bool verbose) {
-    print_info (" * list4x: \n");
+void listx_test (bool verbose) {
+    print_info (" * listx: \n");
 
-    list4x_t *list = list4x_new ();
+    listx_t *list = listx_new ();
     assert (list);
-    assert (list4x_size (list) == 0);
-    assert (list4x_is_sorted (list) == false);
-    assert (list4x_is_sorted_ascending (list) == false);
-    assert (list4x_is_sorted_descending (list) == false);
+    assert (listx_size (list) == 0);
+    assert (listx_is_sorted (list) == false);
+    assert (listx_is_sorted_ascending (list) == false);
+    assert (listx_is_sorted_descending (list) == false);
 
     // Operations on empty list
-    assert (list4x_first (list) == NULL);
-    assert (list4x_last (list) == NULL);
-    assert (list4x_pop_first (list) == NULL);
-    assert (list4x_pop_last (list) == NULL);
+    assert (listx_first (list) == NULL);
+    assert (listx_last (list) == NULL);
+    assert (listx_pop_first (list) == NULL);
+    assert (listx_pop_last (list) == NULL);
 
     printf ("\nIterate empty list: \n");
-    list4x_iterator_t iter = list4x_iter_init (list, true);
+    listx_iterator_t iter = listx_iter_init (list, true);
     char *str;
-    while ((str = (char *) list4x_iter (list, &iter)) != NULL)
+    while ((str = (char *) listx_iter (list, &iter)) != NULL)
         printf ("%s, ", str);
     printf ("\n");
 
-    list4x_set_destructor (list, (destructor_t) string_free);
-    list4x_set_duplicator (list, (duplicator_t) string_duplicate);
-    list4x_set_comparator (list, (comparator_t) string_compare);
-    list4x_set_printer (list, (printer_t) string_print);
+    listx_set_destructor (list, (destructor_t) string_free);
+    listx_set_duplicator (list, (duplicator_t) string_duplicate);
+    listx_set_comparator (list, (comparator_t) string_compare);
+    listx_set_printer (list, (printer_t) string_print);
 
-    assert (list4x_find (list, "hello") == NULL);
-    assert (list4x_index (list, "hello") == SIZE_NONE);
+    assert (listx_find (list, "hello") == NULL);
+    assert (listx_index (list, "hello") == SIZE_NONE);
 
-    list4x_sort (list, true);
-    assert (list4x_size (list) == 0);
-    assert (list4x_is_sorted (list));
-    assert (list4x_is_sorted_ascending (list));
-    assert (list4x_is_sorted_descending (list) == false);
-    list4x_sort (list, false);
-    assert (list4x_size (list) == 0);
-    assert (list4x_is_sorted (list));
-    assert (list4x_is_sorted_descending (list));
-    assert (list4x_is_sorted_ascending (list) == false);
-    list4x_reverse (list);
-    assert (list4x_size (list) == 0);
-    assert (list4x_is_sorted (list));
-    assert (list4x_is_sorted_ascending (list));
-    assert (list4x_is_sorted_descending (list) == false);
+    listx_sort (list, true);
+    assert (listx_size (list) == 0);
+    assert (listx_is_sorted (list));
+    assert (listx_is_sorted_ascending (list));
+    assert (listx_is_sorted_descending (list) == false);
+    listx_sort (list, false);
+    assert (listx_size (list) == 0);
+    assert (listx_is_sorted (list));
+    assert (listx_is_sorted_descending (list));
+    assert (listx_is_sorted_ascending (list) == false);
+    listx_reverse (list);
+    assert (listx_size (list) == 0);
+    assert (listx_is_sorted (list));
+    assert (listx_is_sorted_ascending (list));
+    assert (listx_is_sorted_descending (list) == false);
     rng_t *rng = rng_new ();
-    list4x_shuffle (list, rng);
+    listx_shuffle (list, rng);
     rng_free (&rng);
-    assert (list4x_size (list) == 0);
-    assert (list4x_is_sorted (list) == false);
-    assert (list4x_is_sorted_ascending (list) == false);
-    assert (list4x_is_sorted_descending (list) == false);
-    list4x_purge (list);
+    assert (listx_size (list) == 0);
+    assert (listx_is_sorted (list) == false);
+    assert (listx_is_sorted_ascending (list) == false);
+    assert (listx_is_sorted_descending (list) == false);
+    listx_purge (list);
 
 
     //
-    list4x_append (list, "world");
-    assert (list4x_size (list) == 1);
-    assert (streq ((char *) list4x_first (list), "world"));
-    assert (streq ((char *) list4x_last (list), "world"));
-    assert (streq ((char *) list4x_item_at (list, 0), "world"));
-    list4x_print (list);
+    listx_append (list, "world");
+    assert (listx_size (list) == 1);
+    assert (streq ((char *) listx_first (list), "world"));
+    assert (streq ((char *) listx_last (list), "world"));
+    assert (streq ((char *) listx_item_at (list, 0), "world"));
+    listx_print (list);
 
-    list4x_append (list, "hello");
-    list4x_print (list);
-    assert (list4x_size (list) == 2);
-    assert (streq ((char *) list4x_first (list), "world"));
-    assert (streq ((char *) list4x_last (list), "hello"));
-    assert (streq ((char *) list4x_item_at (list, 0), "world"));
-    assert (streq ((char *) list4x_item_at (list, 1), "hello"));
-    assert (list4x_index (list, "hello") == 1);
-    assert (list4x_index (list, "world") == 0);
-    void *h1 = list4x_find (list, "world");
-    void *h2 = list4x_find (list, "hello");
-    assert (streq ((char *) list4x_item (list, h1), "world"));
-    assert (streq ((char *) list4x_item (list, h2), "hello"));
+    listx_append (list, "hello");
+    listx_print (list);
+    assert (listx_size (list) == 2);
+    assert (streq ((char *) listx_first (list), "world"));
+    assert (streq ((char *) listx_last (list), "hello"));
+    assert (streq ((char *) listx_item_at (list, 0), "world"));
+    assert (streq ((char *) listx_item_at (list, 1), "hello"));
+    assert (listx_index (list, "hello") == 1);
+    assert (listx_index (list, "world") == 0);
+    void *h1 = listx_find (list, "world");
+    void *h2 = listx_find (list, "hello");
+    assert (streq ((char *) listx_item (list, h1), "world"));
+    assert (streq ((char *) listx_item (list, h2), "hello"));
 
-    list4x_sort (list, true);
-    list4x_print (list);
+    listx_sort (list, true);
+    listx_print (list);
 
-    list4x_append (list, "mini");
-    list4x_sort (list, false);
-    list4x_print (list);
-    list4x_sort (list, true);
-    list4x_print (list);
+    listx_append (list, "mini");
+    listx_sort (list, false);
+    listx_print (list);
+    listx_sort (list, true);
+    listx_print (list);
     print_debug ("");
 
-    assert (list4x_size (list) == 3);
-    assert (list4x_index (list, "hello") == 0);
-    assert (list4x_index (list, "world") == 2);
-    assert (streq (list4x_item_at (list, 0), "hello"));
-    assert (streq (list4x_item_at (list, 1), "mini"));
-    list4x_remove_at (list, 0);
-    assert (list4x_size (list) == 2);
-    list4x_print (list);
+    assert (listx_size (list) == 3);
+    assert (listx_index (list, "hello") == 0);
+    assert (listx_index (list, "world") == 2);
+    assert (streq (listx_item_at (list, 0), "hello"));
+    assert (streq (listx_item_at (list, 1), "mini"));
+    listx_remove_at (list, 0);
+    assert (listx_size (list) == 2);
+    listx_print (list);
 
-    char *string = (char *) list4x_pop_last (list);
+    char *string = (char *) listx_pop_last (list);
     assert (streq (string, "world"));
     free (string);
-    assert (list4x_size (list) == 1);
+    assert (listx_size (list) == 1);
 
-    list4x_purge (list);
-    assert (list4x_size (list) == 0);
+    listx_purge (list);
+    assert (listx_size (list) == 0);
 
     // Now populate the list with items
-    list4x_prepend (list, "five");
-    list4x_append (list, "six");
-    list4x_prepend (list, "four");
-    list4x_append (list, "seven");
-    list4x_prepend (list, "three");
-    list4x_append (list, "eight");
-    list4x_prepend (list, "two");
-    list4x_append (list, "nine");
-    list4x_prepend (list, "one");
-    list4x_append (list, "ten");
-    list4x_print (list);
+    listx_prepend (list, "five");
+    listx_append (list, "six");
+    listx_prepend (list, "four");
+    listx_append (list, "seven");
+    listx_prepend (list, "three");
+    listx_append (list, "eight");
+    listx_prepend (list, "two");
+    listx_append (list, "nine");
+    listx_prepend (list, "one");
+    listx_append (list, "ten");
+    listx_print (list);
 
     // Reverse
     for (size_t i = 0; i < 101; i++)
-        list4x_reverse (list);
+        listx_reverse (list);
     print_debug ("after reverse: \n");
-    list4x_print (list);
+    listx_print (list);
 
     // Shuffle
     rng = rng_new ();
     for (size_t i = 0; i < 100; i++)
-        list4x_shuffle (list, rng);
+        listx_shuffle (list, rng);
     print_debug ("after shuffle: \n");
-    list4x_print (list);
+    listx_print (list);
     rng_free (&rng);
 
 
     // Sort by alphabetical order
-    list4x_sort (list, true);
+    listx_sort (list, true);
     print_debug ("after sort: \n");
-    list4x_print (list);
-    assert (streq ((char *) list4x_first (list), "eight"));
-    assert (streq ((char *) list4x_last (list), "two"));
-    list4x_reverse (list);
-    list4x_print (list);
+    listx_print (list);
+    assert (streq ((char *) listx_first (list), "eight"));
+    assert (streq ((char *) listx_last (list), "two"));
+    listx_reverse (list);
+    listx_print (list);
 
-    list4x_insert_sorted (list, "eleven");
-    list4x_insert_sorted (list, "eleven");
-    void *h3 = list4x_insert_sorted (list, "eleven");
-    list4x_remove (list, h3);
-    list4x_insert_sorted (list, "twelve");
+    listx_insert_sorted (list, "eleven");
+    listx_insert_sorted (list, "eleven");
+    void *h3 = listx_insert_sorted (list, "eleven");
+    listx_remove (list, h3);
+    listx_insert_sorted (list, "twelve");
     print_debug ("");
-    list4x_print (list);
+    listx_print (list);
 
-    list4x_remove_item (list, "eleven");
-    list4x_remove_item (list, "six");
+    listx_remove_item (list, "eleven");
+    listx_remove_item (list, "six");
     print_debug ("");
-    list4x_print (list);
+    listx_print (list);
 
-    assert (list4x_includes (list, "nine"));
-    assert (list4x_includes (list, "ninty") == false);
-    assert (streq ((char *) list4x_item_at (list, list4x_index (list, "three")), "three"));
-    assert (streq ((char *) list4x_item (list, list4x_find (list, "one")), "one"));
+    assert (listx_includes (list, "nine"));
+    assert (listx_includes (list, "ninty") == false);
+    assert (streq ((char *) listx_item_at (list, listx_index (list, "three")), "three"));
+    assert (streq ((char *) listx_item (list, listx_find (list, "one")), "one"));
 
     // Copy a list
-    list4x_t *copy = list4x_duplicate (list);
+    listx_t *copy = listx_duplicate (list);
     assert (copy);
-    assert (list4x_equal (list, copy));
-    assert (list4x_size (copy) == 10);
-    list4x_sort (copy, false);
-    list4x_print (copy);
-    assert (streq ((char *) list4x_first (copy), "two"));
-    assert (streq ((char *) list4x_last (copy), "eight"));
-    list4x_free (&copy);
+    assert (listx_equal (list, copy));
+    assert (listx_size (copy) == 10);
+    listx_sort (copy, false);
+    listx_print (copy);
+    assert (streq ((char *) listx_first (copy), "two"));
+    assert (streq ((char *) listx_last (copy), "eight"));
+    listx_free (&copy);
 
     // Insert to sorted list
-    list4x_sort (list, false);
-    void *handle = list4x_insert_sorted (list, "fk");
-    assert (streq (list4x_item (list, handle), "fk"));
-    list4x_print (list);
+    listx_sort (list, false);
+    void *handle = listx_insert_sorted (list, "fk");
+    assert (streq (listx_item (list, handle), "fk"));
+    listx_print (list);
 
     // iteration
-    iter = list4x_iter_init (list, true);
-    while ((str = (char *) list4x_iter (list, &iter)) != NULL)
+    iter = listx_iter_init (list, true);
+    while ((str = (char *) listx_iter (list, &iter)) != NULL)
         printf ("%s, ", str);
     printf ("\n");
 
-    iter = list4x_iter_init (list, false);
-    while ((str = (char *) list4x_iter (list, &iter)) != NULL) {
+    iter = listx_iter_init (list, false);
+    while ((str = (char *) listx_iter (list, &iter)) != NULL) {
         if (streq (str, "eleven"))
-            list4x_iter_remove (list, &iter);
+            listx_iter_remove (list, &iter);
         // printf ("%s, ", str);
     }
     // printf ("\n")
 
-    iter = list4x_iter_init (list, true);
-    while ((str = (char *) list4x_iter (list, &iter)) != NULL)
+    iter = listx_iter_init (list, true);
+    while ((str = (char *) listx_iter (list, &iter)) != NULL)
         printf ("%s, ", str);
     printf ("\n");
 
-    list4x_sort (list, false);
-    list4x_print (list);
-    handle = list4x_find (list, "ten");
+    listx_sort (list, false);
+    listx_print (list);
+    handle = listx_find (list, "ten");
     print_debug ("");
-    iter = list4x_iter_init_from (list, handle, false);
-    while ((str = (char *) list4x_iter (list, &iter)) != NULL)
+    iter = listx_iter_init_from (list, handle, false);
+    while ((str = (char *) listx_iter (list, &iter)) != NULL)
         printf ("%s, ", str);
     printf ("\n");
 
-    assert (streq (list4x_item (list, handle), "ten"));
-    char *item = list4x_item (list, handle);
+    assert (streq (listx_item (list, handle), "ten"));
+    char *item = listx_item (list, handle);
     item[0] = 'a';
-    list4x_print (list);
-    list4x_reorder (list, handle);
-    assert (streq (list4x_item (list, handle), "aen"));
-    list4x_print (list);
+    listx_print (list);
+    listx_reorder (list, handle);
+    assert (streq (listx_item (list, handle), "aen"));
+    listx_print (list);
 
-    list4x_purge (list);
-    list4x_sort (list, false);
-    list4x_insert_sorted (list, "mall");
-    list4x_insert_sorted (list, "hotel");
-    list4x_insert_sorted (list, "zoo");
-    list4x_print (list);
+    listx_purge (list);
+    listx_sort (list, false);
+    listx_insert_sorted (list, "mall");
+    listx_insert_sorted (list, "hotel");
+    listx_insert_sorted (list, "zoo");
+    listx_print (list);
 
 
-    list4x_free (&list);
+    listx_free (&list);
     print_info ("OK\n");
 }

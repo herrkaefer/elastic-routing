@@ -164,7 +164,7 @@ size_t string_levenshtein_distance (const char *str1, const char *str2) {
 }
 
 
-list4x_t *string_cut_and_splice (const char *str1,
+listx_t *string_cut_and_splice (const char *str1,
                                  const char *str2,
                                  rng_t *rng) {
     assert (str1 && str2);
@@ -195,9 +195,9 @@ list4x_t *string_cut_and_splice (const char *str1,
     strncpy (child2 + cut2, str1 + cut1, len1 - cut1);
     child2 [len2c] = '\0';
 
-    list4x_t *list = list4x_new ();
-    list4x_append (list, child1);
-    list4x_append (list, child2);
+    listx_t *list = listx_new ();
+    listx_append (list, child1);
+    listx_append (list, child2);
 
     if (own_rng)
         rng_free (&rng);

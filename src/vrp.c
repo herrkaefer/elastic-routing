@@ -234,14 +234,14 @@ static void s_request_free (s_request_t **self_p) {
 typedef struct {
     size_t id;
 
-    list4u_t *node_ids;
-    list4u_t *node_request_ids;
+    listu_t *node_ids;
+    listu_t *node_request_ids;
 
     // vehicle attached to. One route is attached to one vehicle.
     size_t vehicle_id;
 
     // requests attached
-    // list4u_t request_ids;
+    // listu_t request_ids;
 } s_route_t;
 
 
@@ -254,11 +254,11 @@ static s_route_t *s_route_new (const char *ext_id) {
 
     self->id = ID_NONE;
 
-    self->node_ids = list4u_new (0);
-    self->node_request_ids = list4u_new (0);
+    self->node_ids = listu_new (0);
+    self->node_request_ids = listu_new (0);
 
     self->vehicle_id = ID_NONE;
-    // self->request_ids = list4u_new ();
+    // self->request_ids = listu_new ();
 
     print_info ("route created.\n");
     return self;
@@ -271,10 +271,10 @@ static void s_route_free (s_route_t **self_p) {
     if (*self_p) {
         s_route_t *self = *self_p;
 
-        list4u_free (&self->node_ids);
-        list4u_free (&self->node_request_ids);
+        listu_free (&self->node_ids);
+        listu_free (&self->node_request_ids);
 
-        // list4u_free (&self->request_ids);
+        // listu_free (&self->request_ids);
 
         free (self);
         *self_p = NULL;
@@ -287,8 +287,8 @@ static void s_route_free (s_route_t **self_p) {
 struct _vrp_t {
     // Roadgraph
     arrayset_t *nodes; // vertices of road graph
-    matrix4d_t *distances; // arc distance matrix
-    matrix4d_t *durations; // arc duration matrix
+    matrixd_t *distances; // arc distance matrix
+    matrixd_t *durations; // arc duration matrix
     coord2d_sys_t coord_sys; // coordinate system
 
     // Fleet
@@ -306,9 +306,9 @@ struct _vrp_t {
     // ...
 
     // Auxiliaries
-    list4u_t *depot_ids;
-    list4u_t *customer_ids;
-    list4u_t *pending_requests;
+    listu_t *depot_ids;
+    listu_t *customer_ids;
+    listu_t *pending_requests;
     // bool vehicles_are_homogeneous; // @todo what is the meaning related to state?
 };
 
@@ -330,8 +330,8 @@ vrp_t *vrp_new (void) {
                              (matcher_t) string_equal,
                              NULL);
 
-    self->distances = matrix4d_new (0, 0);
-    self->durations = matrix4d_new (0, 0);
+    self->distances = matrixd_new (0, 0);
+    self->durations = matrixd_new (0, 0);
     self->coord_sys = CS_NONE;
 
     // Fleet
@@ -365,9 +365,9 @@ vrp_t *vrp_new (void) {
 
     // Auxiliaries
 
-    self->depot_ids = list4u_new (0);
-    self->customer_ids = list4u_new (0);
-    self->pending_requests = list4u_new (0);
+    self->depot_ids = listu_new (0);
+    self->customer_ids = listu_new (0);
+    self->pending_requests = listu_new (0);
 
     print_info ("vrp created.\n");
     return self;
@@ -380,16 +380,16 @@ void vrp_free (vrp_t **self_p) {
         vrp_t *self = *self_p;
 
         arrayset_free (&self->nodes);
-        matrix4d_free (&self->distances);
-        matrix4d_free (&self->durations);
+        matrixd_free (&self->distances);
+        matrixd_free (&self->durations);
         arrayset_free (&self->vehicles);
         arrayset_free (&self->requests);
         arrayset_free (&self->plan);
 
         // auxiliaries
-        list4u_free (&self->depot_ids);
-        list4u_free (&self->customer_ids);
-        list4u_free (&self->pending_requests);
+        listu_free (&self->depot_ids);
+        listu_free (&self->customer_ids);
+        listu_free (&self->pending_requests);
 
         free (self);
         *self_p = NULL;
@@ -425,7 +425,7 @@ vrp_t *vrp_new_from_file (const char *filename) {
     int N; // num_nodes
     double Q; // capacity
     double *q = NULL; // demands
-    matrix4d_t *c = NULL;
+    matrixd_t *c = NULL;
     coord2d_t *coords = NULL; // corrds
 
     const int LINE_LEN = 128;
@@ -484,7 +484,7 @@ vrp_t *vrp_new_from_file (const char *filename) {
                 q = (double *) malloc ((N+1) * sizeof (double));
                 assert (q);
                 // c = (double *) malloc ((N+1) * (N+1) * sizeof (double));
-                c = matrix4d_new (N+1, N+1);
+                c = matrixd_new (N+1, N+1);
                 assert (c);
             }
 
@@ -549,7 +549,7 @@ vrp_t *vrp_new_from_file (const char *filename) {
 
                                 if (ind1 == 0 && ind2 == 0) {
                                     // c[0] = 0;
-                                    matrix4d_set (c, 0, 0, 0);
+                                    matrixd_set (c, 0, 0, 0);
                                     ind1 = 1; // start at position (1, 0)
                                 }
 
@@ -559,13 +559,13 @@ vrp_t *vrp_new_from_file (const char *filename) {
                                     // c[(N+1)*ind1+ind2] = strtod (p, NULL);
                                     // c[(N+1)*ind2+ind1] = c [(N+1)*ind1+ind2];
                                     value_d = strtod (p, NULL);
-                                    matrix4d_set (c, ind1, ind2, value_d);
-                                    matrix4d_set (c, ind2, ind1, value_d);
+                                    matrixd_set (c, ind1, ind2, value_d);
+                                    matrixd_set (c, ind2, ind1, value_d);
 
                                     ind2 += 1;
                                     if (ind2 == ind1) {
                                         // c[(N+1)*ind1+ind2] = 0; // asign 0 to diagonal
-                                        matrix4d_set (c, ind1, ind2, 0);
+                                        matrixd_set (c, ind1, ind2, 0);
                                         ind1 += 1; // new line
                                         ind2 = 0;
                                     }
@@ -596,7 +596,7 @@ vrp_t *vrp_new_from_file (const char *filename) {
         // compute cost as Euclidian distance
         if (edge_weight_type == EUC_2D) {
             for (ind1 = 0; ind1 <= N; ind1++) {
-                matrix4d_set (c, ind1, ind1, 0);
+                matrixd_set (c, ind1, ind1, 0);
                 for (ind2 = ind1+1; ind2 <= N; ind2++) {
                     // @note: rounding the distance by
                     // nint(sqrt(xd*xd+yd*yd)). see TSPLIB spec.
@@ -606,8 +606,8 @@ vrp_t *vrp_new_from_file (const char *filename) {
                       coord2d_distance (&coords[ind1], &coords[ind2],
                                         CS_CARTESIAN2D)
                       + 0.5);
-                    matrix4d_set (c, ind1, ind2, (double) value_i);
-                    matrix4d_set (c, ind2, ind1, (double) value_i);
+                    matrixd_set (c, ind1, ind2, (double) value_i);
+                    matrixd_set (c, ind2, ind1, (double) value_i);
                 }
             }
         }
@@ -642,8 +642,8 @@ vrp_t *vrp_new_from_file (const char *filename) {
             }
 
             for (size_t cnt1 = 0; cnt1 <= cnt; cnt1++) {
-                vrp_set_distance (self, cnt1, cnt, matrix4d_get (c, cnt1, cnt));
-                vrp_set_distance (self, cnt, cnt1, matrix4d_get (c, cnt, cnt1));
+                vrp_set_distance (self, cnt1, cnt, matrixd_get (c, cnt1, cnt));
+                vrp_set_distance (self, cnt, cnt1, matrixd_get (c, cnt, cnt1));
             }
         }
 
@@ -657,7 +657,7 @@ vrp_t *vrp_new_from_file (const char *filename) {
 
     // free memory
     free(q);
-    matrix4d_free (&c);
+    matrixd_free (&c);
     free(coords);
 
     return self;
@@ -704,7 +704,7 @@ void vrp_set_node_as_depot (vrp_t *self, size_t node_id) {
     s_node_t *node = vrp_node (self, node_id);
     assert (node->type == NT_NONE);
     node->type = NT_DEPOT;
-    list4u_append (self->depot_ids, node_id);
+    listu_append (self->depot_ids, node_id);
 }
 
 
@@ -713,7 +713,7 @@ void vrp_set_node_as_customer (vrp_t *self, size_t node_id) {
     s_node_t *node = vrp_node (self, node_id);
     assert (node->type == NT_NONE);
     node->type = NT_CUSTOMER;
-    list4u_append (self->customer_ids, node_id);
+    listu_append (self->customer_ids, node_id);
 }
 
 
@@ -767,13 +767,13 @@ size_t vrp_num_nodes (vrp_t *self) {
 
 size_t vrp_num_depots (vrp_t *self) {
     assert (self);
-    return list4u_size (self->depot_ids);
+    return listu_size (self->depot_ids);
 }
 
 
 size_t vrp_num_customers (vrp_t *self) {
     assert (self);
-    return list4u_size (self->customer_ids);
+    return listu_size (self->customer_ids);
 }
 
 
@@ -785,13 +785,13 @@ size_t *vrp_node_ids (vrp_t *self) {
 
 size_t *vrp_depot_ids (vrp_t *self) {
     assert (self);
-    return list4u_dump_array (self->depot_ids);
+    return listu_dump_array (self->depot_ids);
 }
 
 
 size_t *vrp_customer_ids (vrp_t *self) {
     assert (self);
-    return list4u_dump_array (self->customer_ids);
+    return listu_dump_array (self->customer_ids);
 }
 
 
@@ -801,7 +801,7 @@ void vrp_set_distance (vrp_t *self,
                        double distance) {
     assert (self);
     assert (distance >= 0);
-    matrix4d_set (self->distances, from_node_id, to_node_id, distance);
+    matrixd_set (self->distances, from_node_id, to_node_id, distance);
 }
 
 
@@ -829,7 +829,7 @@ int vrp_generate_straight_distances (vrp_t *self) {
 
 double vrp_distance (vrp_t *self, size_t from_node_id, size_t to_node_id) {
     assert (self);
-    return matrix4d_get (self->distances, from_node_id, to_node_id);
+    return matrixd_get (self->distances, from_node_id, to_node_id);
 }
 
 
@@ -839,7 +839,7 @@ void vrp_set_duration (vrp_t *self,
                        double duration) {
     assert (self);
     assert (duration >= 0);
-    matrix4d_set (self->durations, from_node_id, to_node_id, duration);
+    matrixd_set (self->durations, from_node_id, to_node_id, duration);
 }
 
 
@@ -855,9 +855,9 @@ int vrp_generate_durations (vrp_t *self, double speed) {
 
     for (cnt1 = 0; cnt1 < num_nodes; cnt1++) {
         for (cnt2 = 0; cnt2 < num_nodes; cnt2++) {
-            dist = matrix4d_get (self->distances, ids[cnt1], ids[cnt2]);
+            dist = matrixd_get (self->distances, ids[cnt1], ids[cnt2]);
             assert (!double_is_none (dist));
-            matrix4d_set (self->durations, ids[cnt1], ids[cnt2], dist / speed);
+            matrixd_set (self->durations, ids[cnt1], ids[cnt2], dist / speed);
         }
     }
 
@@ -869,7 +869,7 @@ int vrp_generate_durations (vrp_t *self, double speed) {
 
 double vrp_duration (vrp_t *self, size_t from_node_id, size_t to_node_id) {
     assert (self);
-    return matrix4d_get (self->durations, from_node_id, to_node_id);
+    return matrixd_get (self->durations, from_node_id, to_node_id);
 }
 
 

@@ -83,7 +83,7 @@ size_t vrp_num_customers (vrp_t *self);
 size_t *vrp_node_ids (vrp_t *self);
 
 // Get list of node ids
-// list4u_t *vrp_node_ids_list (vrp_t *self);
+// listu_t *vrp_node_ids_list (vrp_t *self);
 
 // Get id array of depots
 size_t *vrp_depot_ids (vrp_t *self);

@@ -20,7 +20,7 @@ struct _cvrp_t {
     size_t *node_ids; // nodes id array. 0: depot; 1~num_customers: customer
     double *demands; // customer demands array (q).
                      // size: (N+1). q[i], i=0,1,...,N. q[0]=0.
-    // matrix4d *costs; // cost matrix (c).
+    // matrixd *costs; // cost matrix (c).
     // coord2d_t *coords; // coordinates of depot and customers.
     roadgraph_t *roadgraph;
 };

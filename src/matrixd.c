@@ -1,5 +1,5 @@
 /*  =========================================================================
-    matrix4d - a double type matrix
+    matrixd - a double type matrix
 
     Internally, datas of a square matrix with large enough size are stored in
     left-upper-block-major order. i.e.
@@ -24,14 +24,14 @@
 #define MATRIX4D_DEFAULT_ORDER 32
 
 
-struct _matrix4d_t {
+struct _matrixd_t {
     double *data;
     size_t order; // order of the internal square matrix
 };
 
 
-// Enlarge matrix4d to order larger than new_order_at_least
-static void matrix4d_enlarge (matrix4d_t *self, size_t new_order_at_least) {
+// Enlarge matrixd to order larger than new_order_at_least
+static void matrixd_enlarge (matrixd_t *self, size_t new_order_at_least) {
     assert (self);
     assert (new_order_at_least > self->order);
 
@@ -53,12 +53,12 @@ static void matrix4d_enlarge (matrix4d_t *self, size_t new_order_at_least) {
     for (size_t i = old_order * old_order; i < new_order * new_order; i++)
         self->data[i] = DOUBLE_NONE;
 
-    print_info ("matrix4d enlarged to order %zu.\n", self->order);
+    print_info ("matrixd enlarged to order %zu.\n", self->order);
 }
 
 
-matrix4d_t *matrix4d_new (size_t initial_rows, size_t initial_cols) {
-    matrix4d_t *self = (matrix4d_t *) malloc (sizeof (matrix4d_t));
+matrixd_t *matrixd_new (size_t initial_rows, size_t initial_cols) {
+    matrixd_t *self = (matrixd_t *) malloc (sizeof (matrixd_t));
     assert (self);
 
     size_t initial_order =
@@ -74,24 +74,24 @@ matrix4d_t *matrix4d_new (size_t initial_rows, size_t initial_cols) {
     for (size_t i = 0; i < initial_order * initial_order; i++)
         self->data[i] = DOUBLE_NONE;
 
-    print_info ("matrix4d created with order %zu.\n", self->order);
+    print_info ("matrixd created with order %zu.\n", self->order);
     return self;
 }
 
 
-void matrix4d_free (matrix4d_t **self_p) {
+void matrixd_free (matrixd_t **self_p) {
     assert (self_p);
     if (*self_p) {
-        matrix4d_t *self = *self_p;
+        matrixd_t *self = *self_p;
         free (self->data);
         free (self);
         *self_p = NULL;
     }
-    print_info ("matrix4d freed.\n");
+    print_info ("matrixd freed.\n");
 }
 
 
-double matrix4d_get (matrix4d_t *self, size_t row, size_t col) {
+double matrixd_get (matrixd_t *self, size_t row, size_t col) {
     assert (self);
     assert (row < self->order);
     assert (col < self->order);
@@ -103,97 +103,99 @@ double matrix4d_get (matrix4d_t *self, size_t row, size_t col) {
 }
 
 
-void matrix4d_set (matrix4d_t *self, size_t row, size_t col, double value) {
+void matrixd_set (matrixd_t *self, size_t row, size_t col, double value) {
     assert (self);
 
     if (row > col) {
         if (row > self->order - 1)
-            matrix4d_enlarge (self, row + 1);
+            matrixd_enlarge (self, row + 1);
         self->data[row*row+col] = value;
     }
     else {
         if (col > self->order - 1)
-            matrix4d_enlarge (self, col + 1);
+            matrixd_enlarge (self, col + 1);
         self->data[col*col+2*col-row] = value;
     }
 }
 
 
-void matrix4d_print (matrix4d_t *self) {
+void matrixd_print (matrixd_t *self) {
     assert (self);
 
-    printf ("\nmatrix4d order: %zu\n", self->order);
+    printf ("\nmatrixd order: %zu\n", self->order);
     printf ("-------------------------------------------\n");
     for (size_t r = 0; r < self->order; r++) {
         for (size_t c = 0; c < self->order; c++)
-            printf ("%6.1f ", matrix4d_get (self, r, c));
+            printf ("%6.1f ", matrixd_get (self, r, c));
         printf ("\n");
     }
 }
 
 
-void matrix4d_test (bool verbose) {
-    print_info (" * matrix4d: \n");
+void matrixd_test (bool verbose) {
+    print_info (" * matrixd: \n");
 
     size_t row, col, order = 400, rows = 200, cols = 300;
     double value;
-    matrix4d_t *mat = NULL;
+    matrixd_t *mat = NULL;
 
     // 1
-    mat = matrix4d_new (rows, cols);
+    mat = matrixd_new (rows, cols);
     assert (mat);
     for (size_t row = 0; row < order; row++) {
         for (size_t col = 0; col < order; col++) {
-            matrix4d_set (mat, row, col, row * col * col);
+            matrixd_set (mat, row, col, row * col * col);
         }
     }
 
     for (row = 0; row < order; row++) {
         for (col = 0; col < order; col++) {
-            value = matrix4d_get (mat, row, col);
+            value = matrixd_get (mat, row, col);
             // print_info ("row: %zu, col: %zu, value: %f.\n", row, col, value);
             assert (double_equal (value, row * col * col));
         }
     }
 
-    matrix4d_free (&mat);
+    matrixd_free (&mat);
 
     // 2
-    mat = matrix4d_new (0, 0);
+    mat = matrixd_new (0, 0);
     assert (mat);
     for (row = 0; row < 3*order; row++) {
         for (col = 0; col < 3*order; col++) {
             // print_info ("set: row: %zu, col: %zu.\n", row, col);
-            matrix4d_set (mat, row, col, row*col + 3*col - sqrt (row));
+            matrixd_set (mat, row, col, row*col + 3*col - sqrt (row));
         }
     }
 
     for (row = 0; row < 3*order; row++) {
         for (col = 0; col < 3*order; col++) {
-            value = matrix4d_get (mat, row, col);
+            value = matrixd_get (mat, row, col);
             // print_info ("get: row: %zu, col: %zu, value: %f.\n", row, col, value);
             assert (double_equal (value, row*col + 3*col - sqrt (row)));
         }
     }
 
+    matrixd_free (&mat);
+
     // 3
-    mat = matrix4d_new (0, 0);
+    mat = matrixd_new (0, 0);
     assert (mat);
     for (row = 0; row < 3*order; row++) {
         for (col = 0; col < 3*order; col++) {
             // print_info ("set: row: %zu, col: %zu.\n", row, col);
             if (col == 1) {
-                matrix4d_set (mat, row, col, DOUBLE_NONE);
+                matrixd_set (mat, row, col, DOUBLE_NONE);
             }
             else {
-                matrix4d_set (mat, row, col, row*col + 3*col - sqrt (row));
+                matrixd_set (mat, row, col, row*col + 3*col - sqrt (row));
             }
         }
     }
 
     for (row = 0; row < 3*order; row++) {
         for (col = 0; col < 3*order; col++) {
-            value = matrix4d_get (mat, row, col);
+            value = matrixd_get (mat, row, col);
             // print_info ("get: row: %zu, col: %zu, value: %f.\n", row, col, value);
             if (col == 1) {
                 // printf ("value: %f\n", value);
@@ -206,7 +208,7 @@ void matrix4d_test (bool verbose) {
         }
     }
 
-    matrix4d_free (&mat);
+    matrixd_free (&mat);
     assert (mat == NULL);
     print_info ("OK\n");
 }

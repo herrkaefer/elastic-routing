@@ -56,7 +56,7 @@ void tspi_set_round_trip (tspi_t *self, bool is_round_trip);
 
 // Solve.
 // Return the optimized route (sequence of node ID)
-list4u_t *tspi_solve (tspi_t *self);
+listu_t *tspi_solve (tspi_t *self);
 
 // Self test
 void tspi_test (bool verbose);

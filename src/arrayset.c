@@ -73,11 +73,10 @@ static void arrayset_enlarge (arrayset_t *self) {
 
 
 // Insert data to arrayset at index
-static void arrayset_insert (arrayset_t *self,
-                             size_t index,
-                             void *data,
-                             void *foreign_key) {
-    assert (self);
+static void arrayset_insert_at (arrayset_t *self,
+                                size_t index,
+                                void *data,
+                                void *foreign_key) {
     assert (index <= self->length);
     assert (data);
     // assert (foreign_key);
@@ -104,6 +103,31 @@ static void arrayset_insert (arrayset_t *self,
     }
 
     arrayset_set_entry (self, entry, index, true, data, hash_handle);
+}
+
+
+// Add data without query
+static size_t arrayset_insert (arrayset_t *self,
+                               void *data,
+                               void *foreign_key) {
+    assert (data);
+    size_t id;
+
+    // try to get a hole
+    void *hole = queue_pop_head (self->holes);
+
+    // If hole exists, place the entry there
+    if (hole != NULL) {
+        arrayset_entry_t *entry = (arrayset_entry_t *) hole;
+        id = entry->id;
+        arrayset_insert_at (self, id, data, foreign_key);
+        return id;
+    }
+
+    // If no hole exists, append entry to the end
+    id = self->length;
+    arrayset_insert_at (self, id, data, foreign_key);
+    return id;
 }
 
 
@@ -211,13 +235,29 @@ size_t arrayset_add (arrayset_t *self, void *data, void *foreign_key) {
     assert (self);
     assert (data);
 
+    // If foreign key is indexed and data already exists, update the data
+    if (foreign_key && arrayset_query (self, foreign_key) != ID_NONE) {
+        print_warning ("data already exists in arrayset. Adding data failed.\n");
+        return ID_NONE;
+    }
+
+    // If foreign key is not indexed, or data does not exists, insert it.
+    return arrayset_insert (self, data, foreign_key);
+}
+
+
+size_t arrayset_update (arrayset_t *self, void *data, void *foreign_key) {
+    assert (self);
+    assert (data);
+
     size_t id;
 
     // If foreign key is indexed and data already exists, update the data
     if (foreign_key) {
         id = arrayset_query (self, foreign_key);
         if (id != ID_NONE) {
-            print_warning ("data already exists in arrayset. id: %zu\n", id);
+            print_warning ("data already exists in arrayset with id: %zu."
+                           "Replaced with new data.\n", id);
             arrayset_entry_t *entry = &self->entries[id];
             assert (entry->valid);
 
@@ -231,21 +271,7 @@ size_t arrayset_add (arrayset_t *self, void *data, void *foreign_key) {
     }
 
     // If foreign key is not indexed, or data does not exists,
-    // try to get a hole
-    void *hole = queue_pop_head (self->holes);
-
-    // If hole exists, place the entry there
-    if (hole != NULL) {
-        arrayset_entry_t *entry = (arrayset_entry_t *) hole;
-        id = entry->id;
-        arrayset_insert (self, id, data, foreign_key);
-        return id;
-    }
-
-    // If no hole exists, append entry to the end
-    id = self->length;
-    arrayset_insert (self, id, data, foreign_key);
-    return id;
+    return arrayset_insert (self, data, foreign_key);
 }
 
 

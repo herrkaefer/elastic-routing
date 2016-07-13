@@ -67,13 +67,14 @@ size_t arrayset_size (arrayset_t *self);
 // Return ID_NONE if the set is empty.
 size_t arrayset_max_id (arrayset_t *self);
 
-// Add a data to arrayset.
-// foreign_key is an foreign key to be indexed by which the uniqueness
-// is guaranteed.
-// Set foreign_key to NULL if foreign key is not used, so that data is never
-// replaced.
-// Return id of data in the arrayset.
+// Add data to arrayset, and fail if data exists.
+// If foreign_key is not set, data is always added.
+// Return data id if added, ID_NONE if failed.
 size_t arrayset_add (arrayset_t *self, void *data, void *foreign_key);
+
+// Add data to arrayset, and update data if it exists.
+// Return data id.
+size_t arrayset_update (arrayset_t *self, void *data, void *foreign_key);
 
 // Remove a data from arrayset
 void arrayset_remove (arrayset_t *self, size_t id);

@@ -25,12 +25,15 @@ hash_t *hash_new (hashfunc_t hashfunc, matcher_t key_matcher);
 // Destroy a hash table
 void hash_free (hash_t **self_p);
 
-// Set destructors of key and value structures
+// Set destructors of key and value structures. Default: NULL.
+// If set, hash table is responsible for freeing the key or value after using it.
 void hash_set_destructors (hash_t *self,
                            destructor_t key_destructor,
                            destructor_t value_destructor);
 
-// Set duplicators of key and value structures
+// Set duplicators of key and value structures. Default: NULL.
+// If set, key or value will be duplications are inserted to hash table rather
+// than the original one.
 void hash_set_duplicators (hash_t *self,
                            duplicator_t key_duplicator,
                            duplicator_t value_duplicator);
@@ -44,12 +47,8 @@ void *hash_key (void *handle);
 // Get item's value by item handle
 void *hash_value (void *handle);
 
-// Insert item into a hash table. If the item already exists, do not update it.
+// Insert item into a hash table. If the item already exists, DO NOT update it.
 // Return the item handle.
-// If the item is guaranteed new one (item with the key does not exist in
-// the table), setting guaranteed_new to be true will accelerate the insertion.
-// Otherwise set it to be false, and then the old item will be updated by the
-// given one if their keys are equal.
 void *hash_insert (hash_t *self, void *key, void *value);
 
 // Insert item without query. Caller should ensure the uniqueness of the key.
@@ -61,7 +60,7 @@ void *hash_insert_nq (hash_t *self, void *key, void *value);
 void *hash_update (hash_t *self, void *key, void *value);
 
 // Look up item in a hash table by key.
-// Return the item handle
+// Return the item handle.
 void *hash_lookup_item (hash_t *self, const void *key);
 
 // Look up a value in a hash table by key.

@@ -80,33 +80,33 @@ The concept of state is introduced to resolve a dynamic problem into discrete up
 # Distributed Solver (not done)
 
 
-# Fundamental Data Structures
+# Handy Data Structures
 
-The following data structures are developped for the project, but they themselves can be used for generic purpose.
+The following data structures are developped for the project, but they themselves can be used for universal purpose.
 
-## list4u
+## listu
 
-list container of usigned integers.
+a list container of usigned integers implemented with array.
 
-## list4x
+## listx
 
-a generic list container.
+a generic list container implemented with double-linked list.
 
 ## arrayset
 
-set with a built-in hash table.
+set with a built-in hash table, implemented with array.
 
 ## queue
 
-simple queue container.
+a simple queue container.
 
 ## hash
 
-hash table container.
+hash table, or dictionary.
 
-## matrix4d
+## matrixd
 
-a double type matrix.
+double type matrix, automatically resizable.
 
 ## rng
 

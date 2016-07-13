@@ -21,9 +21,9 @@ static test_item_t
 all_tests [] = {
 // #ifdef WITH_DRAFTS
     // { "queue", queue_test },
-    { "matrixd", matrixd_test },
+    // { "matrixd", matrixd_test },
     // { "hash", hash_test },
-    // { "arrayset", arrayset_test },
+    { "arrayset", arrayset_test },
     // { "vrp", vrp_test },
     // { "listu", listu_test },
     // { "listx", listx_test },

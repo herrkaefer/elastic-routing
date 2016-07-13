@@ -39,6 +39,9 @@ void vrp_free (vrp_t **self_p);
 // Set coordinate system
 void vrp_set_coord_sys (vrp_t *self, coord2d_sys_t coord_sys);
 
+// Get coordinate system
+coord2d_sys_t vrp_coord_sys (vrp_t *self);
+
 // Add a new node
 size_t vrp_add_node (vrp_t *self, const char *ext_id);
 
@@ -65,7 +68,7 @@ bool vrp_node_exists (vrp_t *self, size_t node_id);
 void vrp_set_node_coord (vrp_t *self, size_t node_id, coord2d_t coord);
 
 // Get node coordinate
-const coord2d_t *vrp_node_coord (vrp_t *self, size_t node_id);
+coord2d_t vrp_node_coord (vrp_t *self, size_t node_id);
 
 // Get number of nodes
 size_t vrp_num_nodes (vrp_t *self);

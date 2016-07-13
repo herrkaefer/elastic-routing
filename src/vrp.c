@@ -684,6 +684,12 @@ void vrp_set_coord_sys (vrp_t *self, coord2d_sys_t coord_sys) {
 }
 
 
+coord2d_sys_t vrp_coord_sys (vrp_t *self) {
+    assert (self);
+    return self->coord_sys;
+}
+
+
 size_t vrp_add_node (vrp_t *self, const char *ext_id) {
     assert (self);
     s_node_t *node = s_node_new (ext_id);
@@ -738,10 +744,10 @@ bool vrp_node_exists (vrp_t *self, size_t node_id) {
 }
 
 
-const coord2d_t *vrp_node_coord (vrp_t *self, size_t node_id) {
+coord2d_t vrp_node_coord (vrp_t *self, size_t node_id) {
     assert (self);
     s_node_t *node = vrp_node (self, node_id);
-    return &node->coord;
+    return node->coord;
 }
 
 
@@ -809,9 +815,9 @@ int vrp_generate_straight_distances (vrp_t *self) {
 
     for (cnt1 = 0; cnt1 < num_nodes; cnt1++) {
         for (cnt2 = 0; cnt2 < num_nodes; cnt2++) {
-            dist = coord2d_distance (vrp_node_coord (self, ids[cnt1]),
-                                     vrp_node_coord (self, ids[cnt1]),
-                                     self->coord_sys);
+            coord2d_t coord1 = vrp_node_coord (self, ids[cnt1]);
+            coord2d_t coord2 = vrp_node_coord (self, ids[cnt2]);
+            dist = coord2d_distance (&coord1, &coord2, self->coord_sys);
             vrp_set_distance (self, ids[cnt1], ids[cnt2], dist);
         }
     }

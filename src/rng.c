@@ -11,8 +11,8 @@
 */
 
 #include "classes.h"
-#include "pcg/pcg_variants.h"
-#include "pcg/entropy.h"
+#include "deps/pcg/pcg_variants.h"
+#include "deps/pcg/entropy.h"
 
 struct _rng_t {
     pcg32_random_t rng;

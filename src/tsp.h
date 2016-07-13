@@ -1,5 +1,5 @@
 /*  =========================================================================
-    tsp - TSP
+    tsp - TSP model derived from generic model
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 

@@ -132,7 +132,7 @@ static listx_t *tsp_random_routes (tsp_t *self, size_t max_expected) {
     assert (shuffle_start <= shuffle_end);
 
     for (size_t cnt = 0; cnt < max_expected; cnt++) {
-        listu_t *route = listu_duplicate (self->template);
+        listu_t *route = listu_dup (self->template);
         assert (route);
         listu_shuffle_slice (route, shuffle_start, shuffle_end, self->rng);
         listx_append (list, route);
@@ -330,7 +330,7 @@ listu_t *tsp_solve (tsp_t *self) {
     evol_run (evol);
 
     // Get results
-    listu_t *result = listu_duplicate ((listu_t *) evol_best_genome (evol));
+    listu_t *result = listu_dup ((listu_t *) evol_best_genome (evol));
     assert (result);
 
     // Destroy evolution object

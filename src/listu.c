@@ -719,12 +719,14 @@ size_t *listu_dump_array (listu_t *self) {
 }
 
 
-listu_t *listu_duplicate (listu_t *self) {
-    assert (self);
+listu_t *listu_dup (listu_t *self) {
+    if (!self)
+        return NULL;
+
     listu_t *copy = listu_new (listu_alloced (self));
     assert (copy);
 
-    // Note: only size bytes are necessary to be copied
+    // Only size bytes are necessary to be copied
     memcpy (copy->data,
             self->data,
             sizeof (size_t) * (LIST4U_HEADER_SIZE + listu_size (self)));

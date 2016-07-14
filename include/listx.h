@@ -274,7 +274,7 @@ bool listx_all (listx_t *self, filter_t filter);
 bool listx_any (listx_t *self, filter_t filter);
 
 // Duplicate a list
-listx_t *listx_duplicate (const listx_t *self);
+listx_t *listx_dup (const listx_t *self);
 
 // Check if two lists are equal: same items in the same sequence.
 bool listx_equal (const listx_t *self, const listx_t *list);

@@ -133,7 +133,7 @@ size_t listu_count (listu_t *self, size_t value);
 size_t *listu_dump_array (listu_t *self);
 
 // Duplicator
-listu_t *listu_duplicate (listu_t *self);
+listu_t *listu_dup (listu_t *self);
 
 // Printer
 void listu_print (const listu_t *self);

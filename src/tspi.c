@@ -108,11 +108,11 @@ static listx_t *tspi_random_routes (tspi_t *self, size_t max_expected) {
 
     size_t route_size = listu_size (self->template);
     size_t shuffle_start = (self->start_node != SIZE_NONE) ? 1 : 0;
-    size_t shuffle_end = 
+    size_t shuffle_end =
         (self->end_node != SIZE_NONE) ? (route_size-2) : (route_size-1);
 
     for (size_t cnt = 0; cnt < max_expected; cnt++) {
-        listu_t *route = listu_duplicate (self->template);
+        listu_t *route = listu_dup (self->template);
         assert (route);
         listu_shuffle_slice (route, shuffle_start, shuffle_end, self->rng);
         listx_append (list, route);
@@ -451,7 +451,7 @@ listu_t *tspi_solve (tspi_t *self) {
     evol_run (evol);
 
     // Get results
-    listu_t *result = listu_duplicate ((listu_t *) evol_best_genome (evol));
+    listu_t *result = listu_dup ((listu_t *) evol_best_genome (evol));
     assert (result);
 
     // Destroy evolution object

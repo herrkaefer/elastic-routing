@@ -1129,7 +1129,7 @@ bool listx_any (listx_t *self, filter_t filter) {
 }
 
 
-listx_t *listx_duplicate (const listx_t *self) {
+listx_t *listx_dup (const listx_t *self) {
     if (!self)
         return NULL;
 
@@ -1397,7 +1397,7 @@ void listx_test (bool verbose) {
     assert (streq ((char *) listx_item (list, listx_find (list, "one")), "one"));
 
     // Copy a list
-    listx_t *copy = listx_duplicate (list);
+    listx_t *copy = listx_dup (list);
     assert (copy);
     assert (listx_equal (list, copy));
     assert (listx_size (copy) == 10);

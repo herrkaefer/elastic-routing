@@ -90,7 +90,7 @@ a list container of usigned integers implemented with array.
 
 ## listx
 
-a generic list container implemented with double-linked list.
+a generic double-linked list container.
 
 ## arrayset
 
@@ -98,7 +98,7 @@ set with a built-in hash table, implemented with array.
 
 ## queue
 
-a simple queue container.
+a simple queue container, implemented with double-linked list.
 
 ## hash
 
@@ -106,7 +106,7 @@ hash table, or dictionary.
 
 ## matrixd
 
-double type matrix, automatically resizable.
+double type dense matrix. You set and get, it resize silently.
 
 ## rng
 

@@ -14,7 +14,7 @@
 #define __ER_H_INCLUDED__
 
 // External dependencies
-// #include <czmq.h>
+#include <czmq.h>
 
 // version macros for compile-time API detection
 #define GLOBDOM_VERSION_MAJOR 0

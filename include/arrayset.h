@@ -45,13 +45,13 @@ arrayset_t *arrayset_new (size_t alloc_size);
 // Destroy an arrayset
 void arrayset_free (arrayset_t **self_p);
 
-// Set data free function.
-// If data free function is set, arrayset is responsible for freeing data.
+// Set data free function. Default: not set (NULL).
+// If this is set, arrayset is responsible for freeing data after using it.
 void arrayset_set_data_free_func (arrayset_t *self, destructor_t data_free_func);
 
 // Set hash functions if you want to index a foreign key associated with data.
 // Set foreign_key_free_func so that arrayset is responsible for freeing the key
-// structure.
+// structure, or NULL if caller will free the key structure.
 void arrayset_set_hash_funcs (arrayset_t *self,
                               hashfunc_t hash_func,
                               matcher_t foreign_key_equal_func,
@@ -80,30 +80,29 @@ size_t arrayset_update (arrayset_t *self, void *data, void *foreign_key);
 void arrayset_remove (arrayset_t *self, size_t id);
 
 // Query data by foreign key
-// Return data, and id as data's id if data is found; NULL if data not found.
-// void *arrayset_query (arrayset_t *self, void *foreign_key, size_t *id);
-
-// Query data by foreign key
 // Return id if data is found; ID_NONE if not found
 size_t arrayset_query (arrayset_t *self, const void *foreign_key);
 
 // Get an array of data ids
 size_t *arrayset_id_array (arrayset_t *self);
 
-// Get an array of data
+// Get an array of data (references array, datas are not copied out)
 void **arrayset_data_array (arrayset_t *self);
 
-// Get first data item in arrayset (with lowest id)
-// Return NULL if the set is empty
-// Combine arrayset_first() and arrayset_next() for iteration
+// Get first data item in arrayset (with lowest id).
+// Return NULL if the set is empty.
+// Combine arrayset_first() and arrayset_next() for iteration. But note that
+// iterations can not be nested.
 void *arrayset_first (arrayset_t *self);
 
 // Get the next data item (ascending id order).
 // Return NULL if no more data exists.
 void *arrayset_next (arrayset_t *self);
 
-// Get last data item in arrayset (with highest id)
-// Return NULL if the set is empty
+// Get last data item in arrayset (with highest id).
+// Return NULL if the set is empty.
+// Combine arrayset_last() and arrayset_prev() for iteration. But note that
+// iterations can not be nested.
 void *arrayset_last (arrayset_t *self);
 
 // Get the previous data item (descending id order).

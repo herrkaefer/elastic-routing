@@ -79,7 +79,6 @@ static void arrayset_insert_at (arrayset_t *self,
                                 void *foreign_key) {
     assert (index <= self->length);
     assert (data);
-    // assert (foreign_key);
 
     if (index == self->length && self->length + 1 > self->alloced)
         arrayset_enlarge (self);
@@ -96,7 +95,7 @@ static void arrayset_insert_at (arrayset_t *self,
 
     ++self->size;
 
-    // if entry is used for the first time (or length is increased)
+    // if position is used for the first time (or length is increased)
     if (index == self->length) {
         ++self->length;
         entry->data = NULL;
@@ -194,6 +193,7 @@ void arrayset_set_hash_funcs (arrayset_t *self,
     assert (self->hash == NULL);
 
     self->hash = hash_new (hash_func, foreign_key_equal_func);
+    assert (self->hash);
     hash_set_destructors (self->hash, foreign_key_free_func, NULL);
     assert (self->hash);
 }
@@ -234,6 +234,7 @@ size_t arrayset_max_id (arrayset_t *self) {
 size_t arrayset_add (arrayset_t *self, void *data, void *foreign_key) {
     assert (self);
     assert (data);
+    assert ((foreign_key == NULL) || (foreign_key && self->hash));
 
     // If foreign key is indexed and data already exists, update the data
     if (foreign_key && arrayset_query (self, foreign_key) != ID_NONE) {
@@ -249,6 +250,7 @@ size_t arrayset_add (arrayset_t *self, void *data, void *foreign_key) {
 size_t arrayset_update (arrayset_t *self, void *data, void *foreign_key) {
     assert (self);
     assert (data);
+    assert ((foreign_key == NULL) || (foreign_key && self->hash));
 
     size_t id;
 
@@ -300,24 +302,6 @@ void arrayset_remove (arrayset_t *self, size_t id) {
 }
 
 
-// void *arrayset_query (arrayset_t *self, void *foreign_key, size_t *id) {
-//     assert (self);
-//     assert (foreign_key);
-//     assert (self->hash);
-//     // assert (id);
-
-//     arrayset_entry_t *entry =
-//         (arrayset_entry_t *) hash_lookup (self->hash, foreign_key);
-//     if (entry) {
-//         if (id != NULL)
-//             *id = entry->id;
-//         return entry->data;
-//     }
-//     else
-//         return NULL;
-// }
-
-
 size_t arrayset_query (arrayset_t *self, const void *foreign_key) {
     assert (self);
     assert (foreign_key);
@@ -354,16 +338,16 @@ void **arrayset_data_array (arrayset_t *self) {
         (void **) malloc (sizeof (void *) * self->size);
     assert (array);
 
-    size_t count = 0;
+    size_t cnt = 0;
     arrayset_entry_t *entry = NULL;
     for (size_t id = 0; id < self->length; id++) {
         entry = &self->entries[id];
         if (entry->valid) {
-            array[count] = entry->data;
-            count++;
+            array[cnt] = entry->data;
+            cnt++;
         }
     }
-    assert (count == self->size);
+    assert (cnt == self->size);
     return array;
 }
 

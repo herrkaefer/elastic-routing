@@ -19,7 +19,7 @@ extern "C" {
 
 typedef struct _matrixd_t matrixd_t;
 
-// Create a new matrixd object
+// Create a new matrixd object.
 // initial_rows and initial_cols could be 0 if they are not known.
 matrixd_t *matrixd_new (size_t initial_rows, size_t initial_cols);
 

@@ -121,17 +121,3 @@ timer.
 
 # Todos
 
-## large ones
-
-- VRP base model and sub-models
-- Asynchronization
-
-## to fix or test
-
-- arrayset_add(): add a param replacing or not
-- add a ref_cnt to arrayset,  delete it when ref_cnt decreases to 0.
-
-## general ideas
-
-- optional type of c
-- memory db in c

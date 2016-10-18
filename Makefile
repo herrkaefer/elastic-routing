@@ -11,6 +11,7 @@ CFLAGS = -I$(IDIR) -g -Wall
 CFLAGS += -DDEBUG -DWITHSTATS
 CFLAGS += -O3
 CFLAGS += -std=c99
+CFLAGS += -lm
 
 # LDIR = -L./lib3rd/libyaml
 # LIBS = -lyaml

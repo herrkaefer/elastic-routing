@@ -30,7 +30,7 @@ void tspi_free (tspi_t **self_p);
 
 // Set arc cost from node with ID node_id1 to node with ID node_id2.
 // Set arc cost one by one, or generate them using
-// tspi_generate_straight_distances_as_costs() if nodes' coordinates are set.
+// tspi_generate_beeline_distances_as_costs() if nodes' coordinates are set.
 void tspi_set_cost (tspi_t *self, size_t node_id1, size_t node_id2, double cost);
 
 // Set coordinate system (must set if coordinates of nodes are set)
@@ -40,7 +40,7 @@ void tspi_set_coord_system (tspi_t *self, coord2d_sys_t coord_sys);
 void tspi_set_node_coord (tspi_t *self, size_t node_id, coord2d_t coord);
 
 // Generate arc costs by straight distances (nodes' coordinates should be set)
-void tspi_generate_straight_distances_as_costs (tspi_t *self);
+void tspi_generate_beeline_distances_as_costs (tspi_t *self);
 
 // Set start node (optional)
 void tspi_set_start_node (tspi_t *self, size_t start_node_id);

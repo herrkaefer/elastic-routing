@@ -805,7 +805,7 @@ void vrp_set_distance (vrp_t *self,
 }
 
 
-int vrp_generate_straight_distances (vrp_t *self) {
+int vrp_generate_beeline_distances (vrp_t *self) {
     assert (self);
 
     size_t num_nodes = vrp_num_nodes (self);

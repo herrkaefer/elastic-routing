@@ -53,7 +53,7 @@ extern "C" {
     #define print_debug(...)
 #endif
 
-#define MIN3(a, b, c) ((a) < (b) ? ((a) < (c) ? (a) : (c)) : ((b) < (c) ? (b) : (c)))
+#define min3(a, b, c) ((a) < (b) ? ((a) < (c) ? (a) : (c)) : ((b) < (c) ? (b) : (c)))
 
 // Compare two int values, for sorting
 inline int int_compare (const int *a, const int *b) {

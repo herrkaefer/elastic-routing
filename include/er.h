@@ -17,16 +17,16 @@
 #include <czmq.h>
 
 // version macros for compile-time API detection
-#define GLOBDOM_VERSION_MAJOR 0
-#define GLOBDOM_VERSION_MINOR 1
-#define GLOBDOM_VERSION_PATCH 0
+#define ER_VERSION_MAJOR 0
+#define ER_VERSION_MINOR 1
+#define ER_VERSION_PATCH 0
 
-#define GLOBDOM_MAKE_VERSION(major, minor, patch) \
+#define ER_MAKE_VERSION(major, minor, patch) \
     ((major) * 10000 + (minor) * 100 + (patch))
-#define GLOBDOM_VERSION \
-    GLOBDOM_MAKE_VERSION(GLOBDOM_VERSION_MAJOR, \
-    GLOBDOM_VERSION_MINOR, \
-    GLOBDOM_VERSION_PATCH)
+#define ER_VERSION \
+    ER_MAKE_VERSION(ER_VERSION_MAJOR, \
+    ER_VERSION_MINOR, \
+    ER_VERSION_PATCH)
 
 // Public API classes
 #include "typedefs.h"

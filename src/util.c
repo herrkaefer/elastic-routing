@@ -27,7 +27,7 @@ size_t arrayu_levenshtein_distance (const size_t *array1, size_t len1,
     for (x = 1; x <= len2; x++)
         for (y = 1; y <= len1; y++)
             matrix[x*(len1+1)+y] =
-                MIN3 (matrix[(x-1)*(len1+1)+y] + 1,
+                min3 (matrix[(x-1)*(len1+1)+y] + 1,
                       matrix[x*(len1+1)+(y-1)] + 1,
                       matrix[(x-1)*(len1+1)+(y-1)] +
                         (array1[y-1] == array2[x-1] ? 0 : 1));
@@ -153,7 +153,7 @@ size_t string_levenshtein_distance (const char *str1, const char *str2) {
     for (x = 1; x <= s2len; x++)
         for (y = 1; y <= s1len; y++)
             matrix[x*(s1len+1)+y] =
-                MIN3 (matrix[(x-1)*(s1len+1)+y] + 1,
+                min3 (matrix[(x-1)*(s1len+1)+y] + 1,
                       matrix[x*(s1len+1)+(y-1)] + 1,
                       matrix[(x-1)*(s1len+1)+(y-1)] +
                         (str1[y-1] == str2[x-1] ? 0 : 1));

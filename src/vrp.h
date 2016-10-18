@@ -98,7 +98,7 @@ void vrp_set_distance (vrp_t *self,
                        double distance);
 
 // Automatically generate straight arc distances accroding to coordinates
-int vrp_generate_straight_distances (vrp_t *self);
+int vrp_generate_beeline_distances (vrp_t *self);
 
 // Get distance between two nodes
 double vrp_distance (vrp_t *self, size_t from_node_id, size_t to_node_id);

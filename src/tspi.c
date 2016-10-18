@@ -370,7 +370,7 @@ void tspi_set_node_coord (tspi_t *self, size_t node_id, coord2d_t coord) {
 }
 
 
-void tspi_generate_straight_distances_as_costs (tspi_t *self) {
+void tspi_generate_beeline_distances_as_costs (tspi_t *self) {
     assert (self);
     assert (self->coords);
     if (!tspi_validate_coords (self)) {
@@ -522,7 +522,7 @@ void tspi_test (bool verbose) {
     tspi_set_round_trip (tsp, false);
 
     // Use straight distances as costs
-    tspi_generate_straight_distances_as_costs (tsp);
+    tspi_generate_beeline_distances_as_costs (tsp);
 
     // Solve problem by evolution
     tspi_solve (tsp);
@@ -559,7 +559,7 @@ void tspi_test (bool verbose) {
     tspi_set_round_trip (tsp, true);
 
     // Use straight distances as costs
-    tspi_generate_straight_distances_as_costs (tsp);
+    tspi_generate_beeline_distances_as_costs (tsp);
 
     // Solve problem by evolution
     listu_t *result = tspi_solve (tsp);

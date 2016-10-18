@@ -13,23 +13,23 @@
 #ifndef __CLASSES_H_INCLUDED__
 #define __CLASSES_H_INCLUDED__
 
-// Standard ANSI include files
-#include <ctype.h>
-#include <limits.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stddef.h>
-#include <string.h>
-#include <time.h>
-#include <errno.h>
-#include <float.h>
-#include <math.h>
-#include <signal.h>
-#include <setjmp.h>
-#include <assert.h>
+// Standard ANSI include files. Not necessary if czmq.h is included.
+// #include <ctype.h>
+// #include <limits.h>
+// #include <stdarg.h>
+// #include <stdio.h>
+// #include <stdlib.h>
+// #include <stddef.h>
+// #include <string.h>
+// #include <time.h>
+// #include <errno.h>
+// #include <float.h>
+// #include <math.h>
+// #include <signal.h>
+// #include <setjmp.h>
+// #include <assert.h>
 
-#include <stdbool.h>
+// #include <stdbool.h>
 
 // External APIs
 #include "../include/er.h"
@@ -41,6 +41,5 @@
 #include "vrp.h"
 #include "tspi.h"
 #include "tsp.h"
-
 
 #endif

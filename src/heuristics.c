@@ -1,6 +1,8 @@
 /*  =========================================================================
-    heuristic.c - Elastic Routing: heuristic algorithms
+    heuristic - implementation
+
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
+
     This file is part of the Elastic Routing Project.
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this

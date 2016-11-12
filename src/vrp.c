@@ -1,5 +1,5 @@
 /*  =========================================================================
-    vrp - generic VRP model
+    vrp - implementation
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 

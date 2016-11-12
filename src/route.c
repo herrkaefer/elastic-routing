@@ -1,5 +1,5 @@
 /*  =========================================================================
-    route - route sequence
+    route - implementation
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 

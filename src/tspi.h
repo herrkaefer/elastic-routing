@@ -1,5 +1,5 @@
 /*  =========================================================================
-    tspi - TSP (independent static model, not related with generic model)
+    tspi - TSP model (independent, i.e. not related with generic model)
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 

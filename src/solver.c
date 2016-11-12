@@ -1,5 +1,5 @@
 /*  =========================================================================
-    solver - Elastic Routing: Solver
+    solver - implementation
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 

@@ -1,5 +1,5 @@
 /*  =========================================================================
-    gdom_selftest.c - run selftests
+    selftest.c - selftests
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 

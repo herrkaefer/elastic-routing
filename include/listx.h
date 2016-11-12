@@ -8,8 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
     =========================================================================
-*/
-/*
+
 listx is a generic list container.
 
 - Item can be accessed
@@ -19,8 +18,8 @@ listx is a generic list container.
       reorder, reverse, shuffle, etc, unless the item is explicitly altered.
       So actually, the handle could be served as item's ID in the list.
 
-    - by index: item can be get and set like in ordinary array. Using index is a
-      litter slower than using item handle.
+    - by index: item can be get and set like in ordinary array. Note that using
+      index is a litte slower than using item handle.
 
     - by iterator (see below)
 
@@ -281,6 +280,7 @@ bool listx_equal (const listx_t *self, const listx_t *list);
 
 // Print a list.
 // Items are displayed using provided printer if available.
+// If printer is not set, just display some basic infomations.
 void listx_print (const listx_t *self);
 
 // ---------------------------------------------------------------------------

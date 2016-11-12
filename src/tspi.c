@@ -1,5 +1,5 @@
 /*  =========================================================================
-    tspi.c - TSPI
+    tspi - implementation
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 

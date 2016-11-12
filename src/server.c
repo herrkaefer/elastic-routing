@@ -1,5 +1,5 @@
 /*  =========================================================================
-    server.c - elastic routing server
+    server - implementation
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 

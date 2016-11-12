@@ -1,7 +1,9 @@
 /*  =========================================================================
-    matrixd - a double type matrix
+    matrixd - implementation
 
-    Internally, datas of a square matrix with large enough size are stored in
+    An illustration:
+
+    Internally, values of a square matrix with large enough size are stored in
     left-upper-block-major order. i.e.
 
     0  3  8 15  |

@@ -1,5 +1,5 @@
 /*  =========================================================================
-    coord - 2D coordinate
+    coord2d - implementation
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 

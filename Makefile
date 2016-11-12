@@ -18,9 +18,55 @@ CFLAGS += -lm
 LDIR = -L/usr/local/lib
 LIBS = -lczmq -lzmq
 
-_OBJ = util.o entropy.o rng.o timer.o matrixd.o queue.o hash.o arrayset.o coord2d.o listu.o listx.o route.o vrp.o evol.o tspi.o tsp.o
+# _OBJ = numeric_ext.o \
+# 	   string_ext.o \
+# 	   date_ext.o \
+# 	   arrayi.o \
+# 	   arrayu.o \
+# 	   util.o \
+# 	   entropy.o \
+# 	   rng.o \
+# 	   timer.o \
+# 	   matrixd.o \
+# 	   queue.o \
+# 	   hash.o \
+# 	   arrayset.o \
+# 	   coord2d.o \
+# 	   listu.o \
+# 	   listx.o \
+# 	   route.o \
+# 	   vrp.o \
+# 	   evol.o \
+# 	   tspi.o \
+# 	   tsp.o
+
+_MODULES = numeric_ext \
+	       string_ext \
+	       date_ext \
+	       arrayi \
+	       arrayu \
+	       util \
+	       deps/pcg/entropy \
+	       rng \
+	       timer \
+	       matrixd \
+	       queue \
+	       hash \
+	       arrayset \
+	       coord2d \
+	       listu \
+	       listx \
+	       route \
+	       vrp \
+	       evol \
+	       tspi \
+	       tsp \
+	       solver
+
+_OBJ = $(_MODULES:=.o)
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
-_LIBSRC = util.c deps/pcg/entropy.c rng.c timer.c matrixd.c queue.c hash.c arrayset.c coord2d.c listu.c listx.c route.c vrp.c evol.c tspi.c tsp.c
+# _LIBSRC = numeric_ext.c string_ext.c date_ext.c arrayi.c arrayu.c util.c deps/pcg/entropy.c rng.c timer.c matrixd.c queue.c hash.c arrayset.c coord2d.c listu.c listx.c route.c vrp.c evol.c tspi.c tsp.c
+_LIBSRC = $(_MODULES:=.c)
 LIBSRC = $(patsubst %,$(SRCDIR)/%,$(_LIBSRC))
 LIBTARGET = liber.a
 TESTSRC = $(SRCDIR)/selftest.c $(LIBSRC)
@@ -29,6 +75,9 @@ EXESRC = $(SRCDIR)/main.c $(LIBSRC)
 EXETARGET = $(TARGETDIR)/er
 DEMOSRC = $(DEMODIR)/demo.c
 DEMOTARGET = $(TARGETDIR)/demo
+
+FILES_IN = abc def
+FILES_OUT = $(FILES_IN:=.o)
 
 
 .PHONY: clib cdll test exe demo pylib clean

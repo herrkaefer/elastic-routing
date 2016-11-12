@@ -1,5 +1,5 @@
 /*  =========================================================================
-    cvrp.c - a compact CVRP specific model
+    cvrp - implementation
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 

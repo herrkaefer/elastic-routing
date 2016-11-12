@@ -28,13 +28,17 @@
 // #include <signal.h>
 // #include <setjmp.h>
 // #include <assert.h>
-
 // #include <stdbool.h>
 
 // External APIs
 #include "../include/er.h"
 
 // Internal APIs
+#include "numeric_ext.h"
+#include "string_ext.h"
+#include "date_ext.h"
+#include "arrayi.h"
+#include "arrayu.h"
 #include "coord2d.h"
 #include "util.h"
 #include "route.h"

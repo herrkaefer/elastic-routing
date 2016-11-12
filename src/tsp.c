@@ -1,5 +1,5 @@
 /*  =========================================================================
-    tsp.c - TSP model derived from generic model
+    tsp - implementation
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 

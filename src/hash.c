@@ -1,5 +1,5 @@
 /*  =========================================================================
-    hash - hash table container
+    hash - implementation
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 

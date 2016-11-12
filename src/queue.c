@@ -1,5 +1,5 @@
 /*  =========================================================================
-    queue - simple queue container
+    queue - implementation
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 

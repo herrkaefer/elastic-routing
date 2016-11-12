@@ -1,5 +1,5 @@
 /*  =========================================================================
-    arrayset - set with a built-in hash table
+    arrayset - implementation
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 

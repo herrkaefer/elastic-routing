@@ -1,5 +1,5 @@
 /*  =========================================================================
-    typedefs - global definations
+    numeric - extension of numeric types (int, double, size_t, id, ...)
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 
@@ -10,27 +10,14 @@
     =========================================================================
 */
 
-#ifndef __TYPEDEFS_H_INCLUDED__
-#define __TYPEDEFS_H_INCLUDED__
+#ifndef __NUMERIC_EXT_H_INCLUDED__
+#define __NUMERIC_EXT_H_INCLUDED__
 
-typedef size_t (*hashfunc_t) (const void *obj);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-typedef void (*destructor_t) (void **obj_p);
 
-typedef int (*comparator_t) (const void *obj1, const void *obj2);
-
-typedef bool (*matcher_t) (const void *obj1, const void *obj2);
-
-typedef void *(*duplicator_t) (void *obj);
-
-typedef void (*copier_t) (void *dest, const void *src);
-
-typedef void (*printer_t) (const void *obj);
-
-#define streq(s1,s2)    (!strcmp ((s1), (s2)))
-#define strneq(s1,s2)   (strcmp ((s1), (s2)))
-
-#define UUID_STR_LEN 32
 #define PI 3.1415926
 
 #ifdef SIZE_MAX
@@ -41,13 +28,33 @@ typedef void (*printer_t) (const void *obj);
 #define SIZE_NONE ((size_t)-1)
 #endif
 
-#define TIME_NONE (time_t)(0)
-
 #define DOUBLE_MAX       DBL_MAX
-#define DOUBLE_NONE      NAN //DBL_MAX
+#define DOUBLE_MIN       DBL_MIN
+#define DOUBLE_NONE      NAN
 #define DOUBLE_THRESHOLD (2*DBL_MIN)
 
 #define double_is_none(a) (isnan (a))
 #define double_equal(a,b) (fabs ((a) - (b)) < DOUBLE_THRESHOLD)
+
+// Compare two double values, for sorting
+inline int double_compare (const double *a, const double *b) {
+    return (*a < *b) ? -1 : ((*a > *b) ? 1 : 0);
+}
+
+// Compare two int values, for sorting
+inline int int_compare (const int *a, const int *b) {
+    return (*a - *b);
+}
+
+#define min3(a, b, c) ((a) < (b) ? ((a) < (c) ? (a) : (c)) : ((b) < (c) ? (b) : (c)))
+
+// Factorial for small numbers (tested <= 65)
+// Will return SIZE_MAX if overflows
+size_t factorial (size_t n);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

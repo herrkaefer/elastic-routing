@@ -1,5 +1,5 @@
 /*  =========================================================================
-    evol - evolution framework
+    evol - implementation
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 
@@ -12,6 +12,7 @@
 /*
 @todo
 
+- add a probability parameter to control the local search process in chiren growth
 - update_by_forgotten() 补充新neighbor可以优化 (add a helper flag in indiv?)
 - score computation: best fit and div may change, should update?
 - add diversification
@@ -33,9 +34,9 @@
 
 #include "classes.h"
 
-#define EVOL_DEFAULT_MAX_LIVINGS   100
-#define EVOL_DEFAULT_MAX_ANCESTORS 20
-#define EVOL_DEFAULT_MAX_CHILDREN  30
+#define EVOL_DEFAULT_MAX_LIVINGS 30
+#define EVOL_DEFAULT_MAX_ANCESTORS 10
+#define EVOL_DEFAULT_MAX_CHILDREN 5
 #define EVOL_DEFAULT_STEP_MAX_ITERS 10
 #define EVOL_DEFAULT_STEP_MAX_TIME 0.1 // seconds
 #define EVOL_DEFAULT_NUM_DICINGS_FOR_PARENT1 1
@@ -44,9 +45,9 @@
 #define EVOL_DEFAULT_MAX_NEIGHBORS 5
 #define EVOL_DEFAULT_WEIGHT_FITNESS 0.8
 
-#define EVOL_DEFAULT_UNIMPROVED_ITERS 2000
-#define EVOL_DEFAULT_UNIMPROVED_PERIOD 4.0 // seconds
-#define EVOL_DEFAULT_MIN_IMPROVED_FITNESS 0.01 // percent
+#define EVOL_DEFAULT_UNIMPROVED_ITERS 10000
+#define EVOL_DEFAULT_UNIMPROVED_PERIOD 10.0 // seconds
+#define EVOL_DEFAULT_MIN_IMPROVED_FITNESS 0.005 // percentage
 
 
 // Individual structure
@@ -58,7 +59,7 @@ typedef struct {
     printer_t genome_printer;
 
     // Evaluations
-    bool   feasible;
+    bool feasible;
     double fitness;
     double diversity;
     double score;
@@ -978,7 +979,7 @@ static void evol_update_population_by_newcomer (evol_t *self,
 
 
 // Update attributes of livings and ancestors taking acount of a forgotten one.
-// Remove all neighbor relation from other individuals to forgotten. Then Try
+// Remove all neighbor relations from other individuals to forgotten. Then Try
 // to add new neighbors for forgotten's as_neighbors.
 static void evol_update_population_by_forgotten (evol_t *self,
                                                  s_indiv_t *forgotten) {
@@ -1313,7 +1314,8 @@ static void evol_fill_livings_with_heuristics (evol_t *self) {
 // Deterministic tournament selection.
 // See: https://en.wikipedia.org/wiki/Tournament_selection
 // Dicing num_dicing times in range [min_value, max_value) and select the
-// minimal or maximal one.
+// minimal or maximal one. If num_dicing is 2, it is also called binary
+// tournament selection.
 static size_t tournament_selection (size_t min_value,
                                     size_t max_value,
                                     size_t num_dicings,
@@ -1335,6 +1337,7 @@ static size_t tournament_selection (size_t min_value,
     }
     return result;
 }
+
 
 // Pick two parents from livings group for crossover.
 // Return in params p1 and p2 (guaranteed different).
@@ -1471,6 +1474,7 @@ static void evol_mutate (evol_t *self) {
 
 
 // Perform local improvers on every child
+// @todo add a probability to control the local search process
 static void evol_children_growup (evol_t *self) {
     // print_info ("children growup.\n");
     // if (listx_size (self->local_improvers) == 0)

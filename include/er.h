@@ -29,7 +29,7 @@
     ER_VERSION_PATCH)
 
 // Public API classes
-#include "typedefs.h"
+#include "types.h"
 #include "rng.h"
 #include "timer.h"
 #include "hash.h"

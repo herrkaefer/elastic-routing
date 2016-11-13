@@ -34,20 +34,25 @@
 
 #include "classes.h"
 
-#define EVOL_DEFAULT_MAX_LIVINGS 30
+#define EVOL_DEFAULT_MAX_LIVINGS 50
 #define EVOL_DEFAULT_MAX_ANCESTORS 10
 #define EVOL_DEFAULT_MAX_CHILDREN 5
-#define EVOL_DEFAULT_STEP_MAX_ITERS 10
+#define EVOL_DEFAULT_NUM_ELITES 2
+#define EVOL_DEFAULT_MAX_NEIGHBORS 5
+
+#define EVOL_DEFAULT_STEP_MAX_ITERS 50
 #define EVOL_DEFAULT_STEP_MAX_TIME 0.1 // seconds
+
+#define EVOL_DEFAULT_UNIMPROVED_ITERS 2000
+#define EVOL_DEFAULT_UNIMPROVED_PERIOD 4.0 // seconds
+#define EVOL_DEFAULT_MIN_IMPROVED_FITNESS 0.005 // percentage
+
 #define EVOL_DEFAULT_NUM_DICINGS_FOR_PARENT1 1
 #define EVOL_DEFAULT_NUM_DICINGS_FOR_PARENT2 3
 #define EVOL_DEFAULT_NUM_DICINGS_FOR_MUTATION 1
-#define EVOL_DEFAULT_MAX_NEIGHBORS 5
-#define EVOL_DEFAULT_WEIGHT_FITNESS 0.8
 
-#define EVOL_DEFAULT_UNIMPROVED_ITERS 10000
-#define EVOL_DEFAULT_UNIMPROVED_PERIOD 10.0 // seconds
-#define EVOL_DEFAULT_MIN_IMPROVED_FITNESS 0.005 // percentage
+#define EVOL_DEFAULT_WEIGHT_FITNESS 0.8
+#define EVOL_DEFAULT_GROWTH_PROBABILITY 0.2
 
 
 // Individual structure
@@ -122,10 +127,13 @@ struct _evol_t {
     // Individual context
     void *context;
 
-    // Group maximal size
+    // Group size
     size_t max_livings;
     size_t max_ancestors;
     size_t max_children;
+
+    // Number of protected livings with highest fitness values
+    size_t num_elites;
 
     // Computational limitaitons for every run
     size_t max_iters;
@@ -171,6 +179,9 @@ struct _evol_t {
     // Weight of fitness for score computation.
     // Weight of diversity then is (1 - weight_fit)
     double weight_fit;
+
+    // Probability of perfoming local improver on a child
+    double growth_probability;
 
     // ------------------ Recorders ------------------- //
 
@@ -801,7 +812,7 @@ static void evol_assess_diversity_locally (evol_t *self, s_indiv_t *indiv) {
 
 // Compute individual's score
 static void evol_assess_score (evol_t *self, s_indiv_t *indiv) {
-    // Ensure that fitness, and diversity are already assessed
+    // Ensure that fitness and diversity are already assessed
     assert (!double_is_none (indiv->fitness));
     assert (!double_is_none (indiv->diversity));
 
@@ -1105,7 +1116,7 @@ static void evol_add_child (evol_t *self, s_indiv_t *child) {
 
 
 // Add a new dead individual to ancestors group.
-// Return the individual who is removed from ancestors group (forgotten);
+// Return the individual who is removed from ancestors group (the forgotten);
 // NULL if no one is removed.
 static void evol_add_ancestor (evol_t *self, s_indiv_t *dead) {
     assert (s_indiv_is_out_of_groups (dead));
@@ -1122,6 +1133,65 @@ static void evol_add_ancestor (evol_t *self, s_indiv_t *dead) {
         evol_update_population_by_forgotten (self, oldest);
         s_indiv_free (&oldest);
     }
+}
+
+
+static bool evol_living_is_elite (evol_t *self, s_indiv_t *indiv) {
+    assert (s_indiv_is_living (indiv));
+
+    size_t steps = 0;
+
+    // Iteration backward from indiv in fitness list, and count the steps. If
+    // more than num_elites steps are counted, the individual is not possible
+    // to be an elite.
+    listx_iterator_t iter =
+        listx_iter_init_from (self->livings_rank_fit,
+                              indiv->handle_livings_fit,
+                              false);
+    while ((s_indiv_t *) listx_iter (self->livings_rank_fit, &iter) != NULL) {
+        steps ++;
+        if (steps >= self->num_elites)
+          return false;
+    }
+
+    return true;
+}
+
+
+// Kill a living who is the lowest scored non-elite
+static s_indiv_t *evol_kill_a_living (evol_t *self) {
+    s_indiv_t *dead = NULL;
+
+    s_indiv_t *best = (s_indiv_t *) listx_first (self->livings_rank_fit);
+
+    listx_iterator_t iter =
+        listx_iter_init (self->livings_rank_score, false);
+
+    while ((dead =
+                (s_indiv_t *) listx_iter (self->livings_rank_score, &iter))
+           != NULL) {
+        if (!evol_living_is_elite (self, dead))
+            break;
+    }
+
+    // while ((dead =
+    //             (s_indiv_t *) listx_iter (self->livings_rank_score, &iter))
+    //        != NULL) {
+    //     if (dead != best)
+    //         break;
+    // }
+    assert (dead);
+    assert (dead != best);
+
+    // Remove the dead from livings group
+    listx_pop (self->livings_rank_fit, dead->handle_livings_fit);
+    dead->handle_livings_fit = NULL;
+    listx_pop (self->livings_rank_div, dead->handle_livings_div);
+    dead->handle_livings_div = NULL;
+    listx_pop (self->livings_rank_score, dead->handle_livings_score);
+    dead->handle_livings_score = NULL;
+
+    return dead;
 }
 
 
@@ -1185,26 +1255,7 @@ static void evol_add_living (evol_t *self, s_indiv_t *newcomer) {
     // If livings group overflows, kill the one with the lowest score (while
     // keep the best alive), and move it to ancestors group.
     if (evol_num_livings (self) > self->max_livings) {
-        s_indiv_t *dead = NULL; // indiv removed from livings group
-        s_indiv_t *best = (s_indiv_t *) listx_first (self->livings_rank_fit);
-        listx_iterator_t iter =
-            listx_iter_init (self->livings_rank_score, false);
-        while ((dead =
-                    (s_indiv_t *) listx_iter (self->livings_rank_score, &iter))
-               != NULL) {
-            if (dead != best)
-                break;
-        }
-        assert (dead);
-        assert (dead != best);
-
-        // Remove the dead from livings group
-        listx_pop (self->livings_rank_fit, dead->handle_livings_fit);
-        dead->handle_livings_fit = NULL;
-        listx_pop (self->livings_rank_div, dead->handle_livings_div);
-        dead->handle_livings_div = NULL;
-        listx_pop (self->livings_rank_score, dead->handle_livings_score);
-        dead->handle_livings_score = NULL;
+        s_indiv_t *dead = evol_kill_a_living (self);
 
         // Add the dead to ancestors group
         evol_add_ancestor (self, dead);
@@ -1442,7 +1493,7 @@ static s_indiv_t *evol_pick_parent_for_mutation (evol_t *self,
 
 
 // Mutation
-// User registered mutation functions to generate children
+// Use registered mutation functions to generate children
 static void evol_mutate (evol_t *self) {
     if (listx_size (self->mutators) == 0) {
         // print_warning ("No mutator registered.\n");
@@ -1473,8 +1524,7 @@ static void evol_mutate (evol_t *self) {
 }
 
 
-// Perform local improvers on every child
-// @todo add a probability to control the local search process
+// Perform local improvers on all children
 static void evol_children_growup (evol_t *self) {
     // print_info ("children growup.\n");
     // if (listx_size (self->local_improvers) == 0)
@@ -1483,14 +1533,19 @@ static void evol_children_growup (evol_t *self) {
     s_indiv_t *child;
     evol_local_improver_t local_improver;
 
-    // For every child
+    // For every child, perform all registered local improvers with probability
     listx_iterator_t iter_c = listx_iter_init (self->children, true);
     while ((child = listx_iter (self->children, &iter_c)) != NULL) {
+        // local improver performs in a probability
+        if (rng_random (self->rng) > self->growth_probability)
+            continue;
+
         // implement every local improvers on child (in place)
         listx_iterator_t iter_li = listx_iter_init (self->local_improvers, true);
         while ((local_improver = listx_iter (self->local_improvers, &iter_li))
                 != NULL)
             local_improver (self->context, child->genome);
+
         // Assess child's feasibility and fitness
         evol_assess_feasibility_and_fitness (self, child);
     }
@@ -1536,8 +1591,10 @@ static void evol_renew_population (evol_t *self) {
         // If individual is dropped, destroy it
         else if (result < 0)
             s_indiv_free (&living);
-        else
+        else {
+            print_error ("Unrecognized renewer result\n");
             assert (false);
+        }
     }
 
     // Destroy old livings group
@@ -1654,15 +1711,17 @@ static void evol_stop_recorders (evol_t *self) {
 static void evol_update_recorders (evol_t *self) {
     // iterations
     self->iters_cnt += self->step_iters_cnt;
+    // print_info ("self->step_iters_cnt: %zu\n", self->step_iters_cnt);
 
     // evolving time
     double evol_time = timer_total (self->timer, 0);
 
     // update improved_fit_percent conditionally
     if ((self->iters_cnt - self->improved_fit_iters_begin) >=
-                                                    self->unimproved_iters ||
+                                    self->unimproved_iters ||
         (evol_time - self->improved_fit_time_begin) >=
-                                                    self->unimproved_period) {
+                           self->unimproved_period) {
+
         double current_best_fit = evol_best_fitness (self);
         self->improved_fit_percent =
           double_equal (self->last_best_fit, 0.0) ?
@@ -1734,6 +1793,9 @@ evol_t *evol_new (void) {
     self->max_ancestors = EVOL_DEFAULT_MAX_ANCESTORS;
     self->max_children  = EVOL_DEFAULT_MAX_CHILDREN;
 
+    // Number of protected livings with highest fitness values
+    self->num_elites = EVOL_DEFAULT_NUM_ELITES;
+
     // Computational and performance limitations
     self->max_iters         = SIZE_MAX;
     self->max_time          = DOUBLE_MAX;
@@ -1767,6 +1829,7 @@ evol_t *evol_new (void) {
     self->num_dicings_mutation = EVOL_DEFAULT_NUM_DICINGS_FOR_MUTATION;
     self->max_neighbors        = EVOL_DEFAULT_MAX_NEIGHBORS;
     self->weight_fit           = EVOL_DEFAULT_WEIGHT_FITNESS;
+    self->growth_probability   = EVOL_DEFAULT_GROWTH_PROBABILITY;
 
     // ------------------ Recorders ------------------- //
 
@@ -1943,7 +2006,7 @@ void evol_run (evol_t *self) {
     if (!evol_population_is_regularized (self))
         evol_regularize_population (self);
 
-    print_info ("population initialized. #livings: %zu (%s)\n",
+    print_info ("population initialized. #livings: %zu (%s). Evolution starts.\n",
                 evol_num_livings (self),
                 evol_num_livings (self) == self->max_livings ? "full" : "not full");
 
@@ -2020,14 +2083,14 @@ static double string_distance (void *context, char *str1, char *str2) {
 
 
 static listx_t *string_crossover (str_evol_context_t *context,
-                                   char *str1,
-                                   char *str2) {
+                                  char *str1,
+                                  char *str2) {
     return string_cut_and_splice (str1, str2, context->rng);
 }
 
 
 static listx_t *string_heuristic (str_evol_context_t *context,
-                                   size_t max_expected) {
+                                  size_t max_expected) {
     listx_t *list = listx_new ();
     for (size_t cnt = 0; cnt < max_expected; cnt++)
         listx_append (list, string_random_alphanum (2, 10, context->rng));
@@ -2036,16 +2099,36 @@ static listx_t *string_heuristic (str_evol_context_t *context,
 
 
 static bool string_should_renew (str_evol_context_t *context) {
-    return rng_random (context->rng) < 0.01;
+    return rng_random (context->rng) < 0.015;
 }
 
 
 static int string_renewer (str_evol_context_t *context, char *str) {
     if (strlen (str) > 100)
-        return -1;
-    else if (rng_random (context->rng) < 0.03)
-        str[0] = 'x';
+        return -1; // drop
+    // else if (rng_random (context->rng) < 0.03)
+    //     str[0] = 'x';
     return 0;
+}
+
+
+static void string_improver (str_evol_context_t *context, char *str) {
+    char alphanum[] =
+        "0123456789"
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "abcdefghijklmnopqrstuvwxyz";
+    double fit = string_fitness2 (context, str);
+    char *newstr = string_duplicate (str);
+
+    for (size_t i = 0; i < 100; i++) {
+        size_t idx = (size_t) rng_random_int (context->rng, 0, strlen (str));
+        newstr[idx] = alphanum[rng_random_int (context->rng, 0, strlen (alphanum))];
+        if (string_fitness2 (context, newstr) > fit) {
+            strcpy (str, newstr);
+            break;
+        }
+    }
+    string_free (&newstr);
 }
 
 
@@ -2072,6 +2155,7 @@ void evol_test (bool verbose) {
                              true,
                              SIZE_MAX);
     evol_register_crossover (evol, (evol_crossover_t) string_crossover);
+    evol_register_local_improver (evol, (evol_local_improver_t) string_improver);
     evol_set_renewer (evol,
                       (evol_should_renew_t) string_should_renew,
                       (evol_renewer_t) string_renewer);

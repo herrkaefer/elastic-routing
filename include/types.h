@@ -1,5 +1,5 @@
 /*  =========================================================================
-    types - global definations
+    types - global types definations
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
 

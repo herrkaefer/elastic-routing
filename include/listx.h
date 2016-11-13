@@ -16,10 +16,11 @@ listx is a generic list container.
     - by handle: item handle is a pointer which is always bound with the item
       after it is attached to the list, and stays unchanged during sort,
       reorder, reverse, shuffle, etc, unless the item is explicitly altered.
-      So actually, the handle could be served as item's ID in the list.
+      So actually, the handle could be served as item's ID in the list. Note
+      that getting handle from item is not possible.
 
-    - by index: item can be get and set like in ordinary array. Note that using
-      index is a litte slower than using item handle.
+    - by index: item can be get and set like in ordinary array via index. Note
+      that using index is a litte slower than using handle.
 
     - by iterator (see below)
 
@@ -28,10 +29,11 @@ listx is a generic list container.
     - Use listx_iter_init () or listx_iter_init_from () to initialize an
       iterator, and use listx_iter () to get item. e.g.
 
+    ```c
     TYPE *item;
     // Start iteration from the beginning (forward) or end (backward)
     listx_iterator_t iter = listx_iter_init (list, true);
-    // or start iteration from specified item (start from the NEXT one)
+    // or start iteration from specified item handle (start from the NEXT one)
     // listx_iterator_t iter = listx_iter_init_from (list, handle, true);
     while ((item = (TYPE *) listx_iter (list, &iter)) != NULL) {
         // Do stuff with item
@@ -44,6 +46,7 @@ listx is a generic list container.
         // or pop current item from list without destroying it by
         // listx_iter_pop (list);
     }
+    ```
 */
 
 
@@ -71,7 +74,7 @@ typedef void *(*reducer_t) (const void *accumulator, const void *obj);
 // filter function: filter (obj) -> true / false
 typedef bool (*filter_t) (const void *obj);
 
-// Create a new list
+// Create a new empty list
 listx_t *listx_new (void);
 
 // Destroy a list
@@ -108,7 +111,7 @@ bool listx_is_sorted_descending (listx_t *self);
 void *listx_item (listx_t *self, void *handle);
 
 // Get item at index.
-// For list traversing, using list_iterato_t is much faster.
+// Note that for list traversing, using list_iterator_t is faster.
 void *listx_item_at (listx_t *self, size_t index);
 
 // Return the first item of the list
@@ -120,9 +123,13 @@ void *listx_first (listx_t *self);
 void *listx_last (listx_t *self);
 
 // Set item by handle
+// Note that handle-item binding will be updated. Use this carefully if you use
+// handle as ID.
 void listx_set_item (listx_t *self, void *handle, void *item);
 
 // Set item at index
+// Note that handle-item binding will be updated. Use this carefully if you use
+// handle as ID.
 void listx_set_item_at (listx_t *self, size_t index, void *item);
 
 // Add item to the start.
@@ -226,6 +233,14 @@ bool listx_includes_identical (listx_t *self, void *item);
 
 // Count numbers of item in list
 size_t listx_count (listx_t *self, void *item);
+
+// // Get previous item's handle.
+// // Return NULL if the end is reached.
+// void *listx_prev_handle (listx_t *self, void *handle);
+
+// // Get next item's handle.
+// // Return NULL if the end is reached.
+// void *listx_next_handle (listx_t *self, void *handle);
 
 // Create a list iterator before iteration.
 // Set forward to true for iterating forward, or false for backward.

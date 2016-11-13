@@ -723,9 +723,8 @@ void listx_remove_at (listx_t *self, size_t index) {
 
 void listx_remove_slice (listx_t *self, size_t from_index, size_t to_index) {
     assert (self);
-    size_t size = listx_size (self);
     assert (from_index <= to_index);
-    assert (to_index < size);
+    assert (to_index < listx_size (self));
     s_node_t *node_preceding = listx_node (self, from_index)->prev;
     for (size_t cnt = 0; cnt < to_index - from_index + 1; cnt++)
         listx_remove (self, node_preceding->next);
@@ -989,6 +988,26 @@ size_t listx_count (listx_t *self, void *item) {
 // }
 
 
+// void *listx_prev_handle (listx_t *self, void *handle) {
+//     assert (self);
+//     assert (handle);
+//     assert (((s_node_t *) handle)->attached);
+//     return ((s_node_t *) handle)->prev == self->head ?
+//            NULL :
+//            ((s_node_t *) handle)->prev;
+// }
+
+
+// void *listx_next_handle (listx_t *self, void *handle) {
+//     assert (self);
+//     assert (handle);
+//     assert (((s_node_t *) handle)->attached);
+//     return ((s_node_t *) handle)->next == self->head ?
+//            NULL :
+//            ((s_node_t *) handle)->next;
+// }
+
+
 listx_iterator_t listx_iter_init (listx_t *self, bool forward) {
     assert (self);
     return (listx_iterator_t) {self->head, forward};
@@ -996,8 +1015,8 @@ listx_iterator_t listx_iter_init (listx_t *self, bool forward) {
 
 
 listx_iterator_t listx_iter_init_from (listx_t *self,
-                                         void *handle,
-                                         bool forward) {
+                                       void *handle,
+                                       bool forward) {
     assert (self);
     assert (handle);
     s_node_t *node = (s_node_t *) handle;

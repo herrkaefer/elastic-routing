@@ -25,11 +25,11 @@ all_tests [] = {
     // { "hash", hash_test },
     // { "arrayset", arrayset_test },
     // { "vrp", vrp_test },
-    { "listu", listu_test },
+    // { "listu", listu_test },
     // { "listx", listx_test },
     // { "rng", rng_test },
     // { "timer", timer_test },
-    // { "evol", evol_test },
+    { "evol", evol_test },
     // { "tspi", tspi_test },
     // { "tsp", tsp_test },
 // #endif // WITH_DRAFTS

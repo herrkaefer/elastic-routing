@@ -2,11 +2,6 @@
     liber - project public header
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
-
-    This file is part of the Elastic Routing Project.
-    This Source Code Form is subject to the terms of the Mozilla Public
-    License, v. 2.0. If a copy of the MPL was not distributed with this
-    file, You can obtain one at http://mozilla.org/MPL/2.0/.
     =========================================================================
 */
 
@@ -36,6 +31,7 @@
 #include "queue.h"
 #include "arrayset.h"
 #include "matrixd.h"
+#include "matrixu.h"
 #include "listu.h"
 #include "listx.h"
 #include "evol.h"

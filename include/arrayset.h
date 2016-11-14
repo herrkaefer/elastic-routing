@@ -2,13 +2,9 @@
     arrayset - set with a built-in hash table
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
-
-    This file is part of the Elastic Routing Project.
-    This Source Code Form is subject to the terms of the Mozilla Public
-    License, v. 2.0. If a copy of the MPL was not distributed with this
-    file, You can obtain one at http://mozilla.org/MPL/2.0/.
     =========================================================================
 */
+
 /* @todo
 
 考虑：
@@ -68,15 +64,15 @@ size_t arrayset_size (arrayset_t *self);
 size_t arrayset_max_id (arrayset_t *self);
 
 // Add data to arrayset, and fail if data exists.
-// If foreign_key is not set, data is always added.
 // Return data id if added, ID_NONE if failed.
+// If foreign_key is not set, data is always added.
 size_t arrayset_add (arrayset_t *self, void *data, void *foreign_key);
 
 // Add data to arrayset, and update data if it exists.
 // Return data id.
 size_t arrayset_update (arrayset_t *self, void *data, void *foreign_key);
 
-// Remove a data from arrayset
+// Remove data from arrayset by id
 void arrayset_remove (arrayset_t *self, size_t id);
 
 // Query data by foreign key

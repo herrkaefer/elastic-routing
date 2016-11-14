@@ -2,11 +2,6 @@
     vrp - generic VRP model
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
-
-    This file is part of the Elastic Routing Project.
-    This Source Code Form is subject to the terms of the Mozilla Public
-    License, v. 2.0. If a copy of the MPL was not distributed with this
-    file, You can obtain one at http://mozilla.org/MPL/2.0/.
     =========================================================================
 */
 
@@ -16,6 +11,13 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+
+typedef enum {
+    NR_NONE,
+    NR_DEPOT,
+    NR_CUSTOMER
+} node_role_t;
 
 typedef struct _vrp_t vrp_t;
 
@@ -33,7 +35,7 @@ vrp_t *vrp_new_from_file (const char *filename);
 void vrp_free (vrp_t **self_p);
 
 // ---------------------------------------------------------------------------
-// Roadgraph
+// Roadgraph: nodes and arcs
 // ---------------------------------------------------------------------------
 
 // Set coordinate system
@@ -43,13 +45,7 @@ void vrp_set_coord_sys (vrp_t *self, coord2d_sys_t coord_sys);
 coord2d_sys_t vrp_coord_sys (vrp_t *self);
 
 // Add a new node
-size_t vrp_add_node (vrp_t *self, const char *ext_id);
-
-// Set node as depot (set once for one node)
-void vrp_set_node_as_depot (vrp_t *self, size_t node_id);
-
-// Set node as customer (set once for one node)
-void vrp_set_node_as_customer (vrp_t *self, size_t node_id);
+size_t vrp_add_node (vrp_t *self, const char *ext_id, node_role_t role);
 
 // Check if node is depot
 bool vrp_node_is_depot (vrp_t *self, size_t node_id);
@@ -81,9 +77,6 @@ size_t vrp_num_customers (vrp_t *self);
 
 // Get array of node ids
 size_t *vrp_node_ids (vrp_t *self);
-
-// Get list of node ids
-// listu_t *vrp_node_ids_list (vrp_t *self);
 
 // Get id array of depots
 size_t *vrp_depot_ids (vrp_t *self);
@@ -177,42 +170,70 @@ void vrp_attach_route_to_vehicle (vrp_t *self, size_t vehicle_id, size_t route_i
 // Detach route from vehicle
 void vrp_detach_route_from_vehicle (vrp_t *self, size_t vehicle_id);
 
-// ---------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 // Requests
-// ---------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 
-// Add a new request.
+// Add a new request by setting a task.
 // Return request ID.
-size_t vrp_add_request (vrp_t *self, const char *request_ext_id);
+// For node-visiting task with some quantity (could be 0), set either
+// pickup_node_id or delivery_node_id, and the other one to ID_NONE.
+size_t vrp_add_request (vrp_t *self,
+                        const char *request_ext_id,
+                        size_t pickup_node_id,
+                        size_t delivery_node_id,
+                        double quantity);
 
-// Set request task.
-// For task of visiting a node with some quantity (could be zero), set either
-// one of pickup_node_id and delivery_node_id (the other one to ID_NONE), and
-// quantity to 0.
-void vrp_set_request_task (vrp_t *self,
-                           size_t request_id,
-                           size_t pickup_node_id,
-                           size_t delivery_node_id,
-                           double quantity);
+// Add time window for request.
+// Multiple time windows can be added by calling this one by one.
+// time is represented by an non-negative int number which means number of time
+// units since a reference point.
+void vrp_add_time_window_for_request (vrp_t *self,
+                                      size_t requset_id,
+                                      bool is_pickup,
+                                      size_t earliest,
+                                      size_t latest);
 
-// Set pickup time window and service duration
-void vrp_set_request_pickup_time (vrp_t *self,
-                                  size_t request_id,
-                                  time_t pickup_earliest,
-                                  time_t pickup_latest,
-                                  size_t pickup_duration);
+// Set service duration for request.
+void vrp_set_service_duration_for_request (vrp_t *self,
+                                           size_t request_id,
+                                           bool is_pickup,
+                                           size_t service_duration);
 
-// Set delivery time window and service duration
-void vrp_set_request_delivery_time (vrp_t *self,
-                                    size_t request_id,
-                                    time_t delivery_earliest,
-                                    time_t delivery_latest,
-                                    size_t delivery_duration);
+// Get number of pickup TWs
+size_t vrp_num_pickup_time_windows_of_request (vrp_t *self, size_t request_id);
+
+// Get earliest from pickup TW
+size_t vrp_earliest_pickup_time_of_request (vrp_t *self,
+                                            size_t request_id,
+                                            size_t tw_idx);
+// Get latest from pickup TW
+size_t vrp_latest_pickup_time_of_request (vrp_t *self,
+                                          size_t request_id,
+                                          size_t tw_idx);
+
+// Get number of delivery TWs
+size_t vrp_num_delivery_time_windows_of_request (vrp_t *self, size_t request_id);
+
+// Get earliest from delivery TW
+size_t vrp_earliest_delivery_time_of_request (vrp_t *self,
+                                              size_t request_id,
+                                              size_t tw_idx);
+
+// Get latest from delivery TW
+size_t vrp_latest_delivery_time_of_request (vrp_t *self,
+                                            size_t request_id,
+                                            size_t tw_idx);
+
+// Get pickup service duration
+size_t vrp_pickup_duration_of_request (vrp_t *self, size_t request_id);
+
+// Get delivery service duration
+size_t vrp_delivery_duration_of_request (vrp_t *self, size_t request_id);
 
 // Query a request by external ID.
 // Return request ID if request exists, ID_NONE if not.
 size_t vrp_query_request (vrp_t *self, const char *request_ext_id);
-
 
 // Get number of requests
 size_t vrp_num_requests (vrp_t* self);
@@ -231,10 +252,9 @@ bool vrp_is_cvrp (vrp_t *self);
 bool vrp_is_tsp (vrp_t *self);
 
 
-
-
 // Self test
 void vrp_test (bool verbose);
+
 
 #ifdef __cplusplus
 }

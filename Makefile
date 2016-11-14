@@ -50,6 +50,7 @@ _MODULES = numeric_ext \
 	       rng \
 	       timer \
 	       matrixd \
+	       matrixu \
 	       queue \
 	       hash \
 	       arrayset \

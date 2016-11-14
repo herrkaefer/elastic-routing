@@ -1,12 +1,7 @@
 /*  =========================================================================
-    tspi - TSP model (independent, i.e. not related with generic model)
+    tspi - TSP model (independent of generic model)
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
-
-    This file is part of the Elastic Routing Project.
-    This Source Code Form is subject to the terms of the Mozilla Public
-    License, v. 2.0. If a copy of the MPL was not distributed with this
-    file, You can obtain one at http://mozilla.org/MPL/2.0/.
     =========================================================================
 */
 
@@ -33,13 +28,13 @@ void tspi_free (tspi_t **self_p);
 // tspi_generate_beeline_distances_as_costs() if nodes' coordinates are set.
 void tspi_set_cost (tspi_t *self, size_t node_id1, size_t node_id2, double cost);
 
-// Set coordinate system (must set if coordinates of nodes are set)
+// Set coordinate system (required if coordinates of nodes are set)
 void tspi_set_coord_system (tspi_t *self, coord2d_sys_t coord_sys);
 
 // Set node's 2D coordinates (optional)
 void tspi_set_node_coord (tspi_t *self, size_t node_id, coord2d_t coord);
 
-// Generate arc costs by straight distances (nodes' coordinates should be set)
+// Generate straight distances for arcs (nodes' coordinates should be set)
 void tspi_generate_beeline_distances_as_costs (tspi_t *self);
 
 // Set start node (optional)
@@ -49,9 +44,10 @@ void tspi_set_start_node (tspi_t *self, size_t start_node_id);
 void tspi_set_end_node (tspi_t *self, size_t end_node_id);
 
 // Set round trip or one-way trip.
-// If start and end nodes are set, for round trip, they should be the same node;
-// For one-way trip, they should be different.
-// However, for round or one-way trip, each of start and end node is optional.
+// Note that setting of start and end node are both optional, for either round
+// trip or one-way trip. You can specify none, one, or both of them.
+// But, if start and end nodes are both set, for round trip, they must be same;
+// For one-way trip, they must be different.
 void tspi_set_round_trip (tspi_t *self, bool is_round_trip);
 
 // Solve.

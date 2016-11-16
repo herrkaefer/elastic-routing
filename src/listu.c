@@ -9,14 +9,14 @@
 #include "classes.h"
 
 
-// header defination
+// Header defination
 #define LIST4U_HEADER_SIZE   3
 #define LIST4U_INDEX_ALLOCED 0
 #define LIST4U_INDEX_SIZE    1
 #define LIST4U_INDEX_SORTED  2
 #define real_index(index)   (index+LIST4U_HEADER_SIZE)
 
-// sorting state
+// Sorting state defination
 #define LIST4U_NOT_SORTED        1
 #define LIST4U_ASCENDING_SORTED  2
 #define LIST4U_DESCENDING_SORTED 4
@@ -53,8 +53,6 @@ static void listu_set_sorting_state (listu_t *self, size_t sorted_state) {
 
 // Enlarge alloced size
 static void listu_enlarge (listu_t *self, size_t min_increment) {
-    assert (self);
-
     // one third of size as redundant
     size_t new_alloced =
         listu_alloced (self) + min_increment + listu_size (self) / 3;
@@ -112,8 +110,6 @@ static size_t s_binary_search (const size_t *array,
                                size_t length,
                                size_t value,
                                bool ascending) {
-    assert (array);
-
     size_t head = 0, tail = length, mid;
 
     if (ascending) {
@@ -145,8 +141,6 @@ static size_t s_binary_search (const size_t *array,
 
 // If item at index is properyly sorted with its previous item
 static bool listu_item_is_sorted_with_prev (listu_t *self, size_t index) {
-    assert (self);
-
     // first item
     if (index == 0)
         return listu_is_sorted (self);
@@ -163,7 +157,6 @@ static bool listu_item_is_sorted_with_prev (listu_t *self, size_t index) {
 
 // If item at index is properyly sorted with its next item
 static bool listu_item_is_sorted_with_next (listu_t *self, size_t index) {
-    assert (self);
     size_t size = listu_size (self);
 
     // last item
@@ -267,7 +260,7 @@ void listu_set (listu_t *self, size_t index, size_t value) {
 
     self->data[real_index (index)] = value;
 
-    // Adjust sorting state.
+    // Check the sorting state.
     // If the new item does not conforms to current sorting order,
     // reset the sorting state
     if (!listu_item_is_sorted_with_prev (self, index) ||
@@ -487,9 +480,8 @@ int listu_remove (listu_t *self, size_t value) {
 
 void listu_swap (listu_t *self, size_t index1, size_t index2) {
     assert (self);
-    size_t size = listu_size (self);
-    assert (index1 < size);
-    assert (index2 < size);
+    assert (index1 < listu_size (self));
+    assert (index2 < listu_size (self));
 
     if (index1 == index2)
         return;

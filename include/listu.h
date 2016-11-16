@@ -1,5 +1,5 @@
 /*  =========================================================================
-    listu - array list container of usigned integers
+    listu - list container for unsigned integers
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
     =========================================================================
@@ -54,7 +54,7 @@ void listu_extend (listu_t *self, listu_t *list);
 // Extend list by appending values from an array
 void listu_extend_array (listu_t *self, size_t *array, size_t length);
 
-// Insert value before index
+// Insert value at index (in front of the one at index before)
 void listu_insert_at (listu_t *self, size_t index, size_t value);
 
 // Insert value to a sorted list.
@@ -65,10 +65,10 @@ size_t listu_insert_sorted (listu_t *self, size_t value);
 // Remove item at index
 void listu_remove_at (listu_t *self, size_t index);
 
-// Remove first item
+// Remove the first item
 void listu_remove_first (listu_t *self);
 
-// Remove last item
+// Remove the last item
 void listu_remove_last (listu_t *self);
 
 // Remove list slice [index_begin, index_end]

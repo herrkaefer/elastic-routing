@@ -96,17 +96,17 @@ int vrp_generate_beeline_distances (vrp_t *self);
 // Get distance between two nodes
 double vrp_distance (vrp_t *self, size_t from_node_id, size_t to_node_id);
 
-// Set arc duration
+// Set arc duration (number of time units)
 void vrp_set_duration (vrp_t *self,
                        size_t from_node_id,
                        size_t to_node_id,
-                       double duration);
+                       size_t duration);
 
 // Automatically generate arc durations by distance and speed
 int vrp_generate_durations (vrp_t *self, double speed);
 
 // Get duration between two nodes
-double vrp_duration (vrp_t *self, size_t from_node_id, size_t to_node_id);
+size_t vrp_duration (vrp_t *self, size_t from_node_id, size_t to_node_id);
 
 // ---------------------------------------------------------------------------
 // Fleet

@@ -59,6 +59,7 @@ _MODULES = numeric_ext \
 	       listx \
 	       route \
 	       vrp \
+	       solution \
 	       evol \
 	       tspi \
 	       tsp \

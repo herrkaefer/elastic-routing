@@ -225,56 +225,56 @@ static void s_request_free (s_request_t **self_p) {
 
 
 // ---------------------------------------------------------------------------
-typedef struct {
-    size_t id;
+// typedef struct {
+//     size_t id;
 
-    listu_t *node_ids;
-    listu_t *node_request_ids;
+//     listu_t *node_ids;
+//     listu_t *node_request_ids;
 
-    // vehicle attached to. One route is attached to one vehicle.
-    size_t vehicle_id;
+//     // vehicle attached to. One route is attached to one vehicle.
+//     size_t vehicle_id;
 
-    // requests attached
-    // listu_t request_ids;
-} s_route_t;
-
-
-// Create a route object
-static s_route_t *s_route_new (const char *ext_id) {
-    assert (ext_id && strlen (ext_id) <= UUID_STR_LEN);
-
-    s_route_t *self = (s_route_t *) malloc (sizeof (s_route_t));
-    assert (self);
-
-    self->id = ID_NONE;
-
-    self->node_ids = listu_new (0);
-    self->node_request_ids = listu_new (0);
-
-    self->vehicle_id = ID_NONE;
-    // self->request_ids = listu_new ();
-
-    print_info ("route created.\n");
-    return self;
-}
+//     // requests attached
+//     // listu_t request_ids;
+// } s_route_t;
 
 
-// Destroy request object
-static void s_route_free (s_route_t **self_p) {
-    assert (self_p);
-    if (*self_p) {
-        s_route_t *self = *self_p;
+// // Create a route object
+// static s_route_t *s_route_new (const char *ext_id) {
+//     assert (ext_id && strlen (ext_id) <= UUID_STR_LEN);
 
-        listu_free (&self->node_ids);
-        listu_free (&self->node_request_ids);
+//     s_route_t *self = (s_route_t *) malloc (sizeof (s_route_t));
+//     assert (self);
 
-        // listu_free (&self->request_ids);
+//     self->id = ID_NONE;
 
-        free (self);
-        *self_p = NULL;
-    }
-    print_info ("route freed.\n");
-}
+//     self->node_ids = listu_new (0);
+//     self->node_request_ids = listu_new (0);
+
+//     self->vehicle_id = ID_NONE;
+//     // self->request_ids = listu_new ();
+
+//     print_info ("route created.\n");
+//     return self;
+// }
+
+
+// // Destroy request object
+// static void s_route_free (s_route_t **self_p) {
+//     assert (self_p);
+//     if (*self_p) {
+//         s_route_t *self = *self_p;
+
+//         listu_free (&self->node_ids);
+//         listu_free (&self->node_request_ids);
+
+//         // listu_free (&self->request_ids);
+
+//         free (self);
+//         *self_p = NULL;
+//     }
+//     print_info ("route freed.\n");
+// }
 
 
 // ---------------------------------------------------------------------------
@@ -292,7 +292,8 @@ struct _vrp_t {
     arrayset_t *requests;
 
     // Solution
-    arrayset_t *plan;
+    // arrayset_t *plan;
+    // solution_t *plan;
 
     // Constraints on plan
     double max_route_distance;
@@ -325,7 +326,7 @@ vrp_t *vrp_new (void) {
                              NULL);
 
     self->distances = matrixd_new (0, 0);
-    self->durations = matrixd_new (0, 0);
+    self->durations = matrixu_new (0, 0);
     self->coord_sys = CS_NONE;
 
     // Fleet
@@ -345,13 +346,15 @@ vrp_t *vrp_new (void) {
                              NULL);
 
     // Plan
-    self->plan = arrayset_new (0);
-    arrayset_set_data_free_func (self->plan, (destructor_t) route_free);
+    // self->plan = arrayset_new (0);
+    // arrayset_set_data_free_func (self->plan, (destructor_t) route_free);
     // @todo do plans need hash?
     // arrayset_set_hash_funcs (self->plans,
     //                          (hashfunc_t) string_hash,
     //                          (matcher_t) string_equal,
     //                          (destructor_t) string_free);
+
+    // self->plan = solution_new ();
 
     // Constraints
     self->max_route_distance = DOUBLE_NONE;
@@ -374,10 +377,10 @@ void vrp_free (vrp_t **self_p) {
 
         arrayset_free (&self->nodes);
         matrixd_free (&self->distances);
-        matrixd_free (&self->durations);
+        matrixu_free (&self->durations);
         arrayset_free (&self->vehicles);
         arrayset_free (&self->requests);
-        arrayset_free (&self->plan);
+        // arrayset_free (&self->plan);
 
         // auxiliaries
         listu_free (&self->depot_ids);
@@ -628,8 +631,8 @@ vrp_t *vrp_new_from_file (const char *filename) {
                 vrp_set_node_coord (self, node_id, coords[cnt]);
 
             if (cnt > 0) { // add request: depot->customer
-                size_t r_id = vrp_add_request (self, ext_id,
-                                               depot_id, node_id, q[cnt]);
+                vrp_add_request (self, ext_id,
+                                 depot_id, node_id, q[cnt]);
                 // vrp_set_request_task (self, r_id, depot_id, node_id, q[cnt]);
             }
 
@@ -817,10 +820,10 @@ double vrp_distance (vrp_t *self, size_t from_node_id, size_t to_node_id) {
 void vrp_set_duration (vrp_t *self,
                        size_t from_node_id,
                        size_t to_node_id,
-                       double duration) {
+                       size_t duration) {
     assert (self);
     assert (duration >= 0);
-    matrixd_set (self->durations, from_node_id, to_node_id, duration);
+    matrixu_set (self->durations, from_node_id, to_node_id, duration);
 }
 
 
@@ -838,7 +841,7 @@ int vrp_generate_durations (vrp_t *self, double speed) {
         for (cnt2 = 0; cnt2 < num_nodes; cnt2++) {
             dist = matrixd_get (self->distances, ids[cnt1], ids[cnt2]);
             assert (!double_is_none (dist));
-            matrixd_set (self->durations, ids[cnt1], ids[cnt2], dist / speed);
+            matrixu_set (self->durations, ids[cnt1], ids[cnt2], (int)(dist / speed));
         }
     }
 
@@ -848,9 +851,9 @@ int vrp_generate_durations (vrp_t *self, double speed) {
 
 
 
-double vrp_duration (vrp_t *self, size_t from_node_id, size_t to_node_id) {
+size_t vrp_duration (vrp_t *self, size_t from_node_id, size_t to_node_id) {
     assert (self);
-    return matrixd_get (self->durations, from_node_id, to_node_id);
+    return matrixu_get (self->durations, from_node_id, to_node_id);
 }
 
 

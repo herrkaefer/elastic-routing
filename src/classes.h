@@ -38,6 +38,7 @@
 #include "util.h"
 #include "route.h"
 #include "vrp.h"
+#include "solution.h"
 #include "tspi.h"
 #include "tsp.h"
 

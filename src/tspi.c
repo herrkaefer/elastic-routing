@@ -10,12 +10,12 @@
 
 struct _tspi_t {
     size_t num_nodes;
-    listu_t *template; // route template
+    listu_t *template; // a basic route template other operations are refered to
     matrixd_t *costs; // cost matrix
-    coord2d_t *coords; // nodes coordinates
-    coord2d_sys_t coord_sys; // coordinate system
-    size_t start_node; // optional
-    size_t end_node; // optional
+    coord2d_t *coords; // nodes coordinates.
+    coord2d_sys_t coord_sys; // coordinate system.
+    size_t start_node;
+    size_t end_node;
     bool is_round_trip; // true: start_node == end_node != SIZE_NONE;
                         // false: other cases
     rng_t *rng;
@@ -128,7 +128,7 @@ static void tspi_route_ox (tspi_t *self,
     size_t n = end - start + 1;
     size_t len_fix;
     size_t *P1 = route1 + start,
-        *P2 = route2 + start;
+           *P2 = route2 + start;
     size_t pos_c1, pos_c2;
 
     i = rng_random_int (self->rng, 0, n);
@@ -156,11 +156,13 @@ static void tspi_route_ox (tspi_t *self,
         tmp = P1[k];
         if (pos_c1 != i && !arrayu_includes (P1+i, len_fix, P2[k])) {
             P1[pos_c1++] = P2[k];
-            if (pos_c1 == n) pos_c1 = 0;
+            if (pos_c1 == n)
+                pos_c1 = 0;
         }
         if (pos_c2 != i && !arrayu_includes (P2+i, len_fix, tmp)) {
             P2[pos_c2++] = tmp;
-            if (pos_c2 == n) pos_c2 = 0;
+            if (pos_c2 == n)
+                pos_c2 = 0;
         }
     }
 
@@ -171,7 +173,7 @@ static void tspi_route_ox (tspi_t *self,
 }
 
 
-// Crossover callback: OX
+// Crossover: OX
 static listx_t *tspi_ox (tspi_t *self, listu_t *route1, listu_t *route2) {
     listx_t *list = listx_new ();
 
@@ -271,12 +273,12 @@ static bool tspi_regularize_template (tspi_t *self) {
         }
     }
 
-    // Adjust route template with start node at head and end node at tail.
-    // Move start node to the first
+    // Adjust route template to shift start node to head and end node to tail.
+    // Move the start node to head if defined
     if (self->start_node != SIZE_NONE && self->start_node != 0)
         listu_swap (self->template, 0, self->start_node);
 
-    // Move end node to the last
+    // Move the end node to tail if defined
     if (self->end_node != SIZE_NONE) {
         if (self->start_node != self->end_node) {
             size_t idx = listu_find (self->template, self->end_node);
@@ -313,7 +315,7 @@ tspi_t *tspi_new (size_t num_nodes) {
 
     self->start_node = SIZE_NONE;
     self->end_node = SIZE_NONE;
-    self->is_round_trip = false;
+    self->is_round_trip = false; // default: one-way
     self->rng = rng_new ();
 
     print_info ("tspi created.\n");
@@ -406,7 +408,7 @@ void tspi_set_round_trip (tspi_t *self, bool is_round_trip) {
 }
 
 
-listu_t *tspi_solve (tspi_t *self) {
+solution_t *tspi_solve (tspi_t *self) {
     assert (self);
 
     // Input validation
@@ -446,8 +448,8 @@ listu_t *tspi_solve (tspi_t *self) {
     evol_run (evol);
 
     // Get results
-    listu_t *result = listu_dup ((listu_t *) evol_best_genome (evol));
-    assert (result);
+    listu_t *route = listu_dup ((listu_t *) evol_best_genome (evol));
+    assert (route);
 
     // Destroy evolution object
     evol_free (&evol);
@@ -455,8 +457,10 @@ listu_t *tspi_solve (tspi_t *self) {
     // Post optimization
     // 2-opt, 3-opt, etc.
 
+    solution_t *sol = solution_new (NULL);
+    solution_add_route_from_list (sol, route);
 
-    return result;
+    return sol;
 }
 
 
@@ -520,10 +524,15 @@ void tspi_test (bool verbose) {
     tspi_generate_beeline_distances_as_costs (tsp);
 
     // Solve problem by evolution
-    tspi_solve (tsp);
+    solution_t *sol = tspi_solve (tsp);
+    if (sol != NULL)
+        solution_print (sol);
 
     tspi_free (&tsp);
     assert (tsp == NULL);
+
+    solution_free (&sol);
+    assert (sol == NULL);
 
     // 2. random coordinates
 
@@ -557,13 +566,14 @@ void tspi_test (bool verbose) {
     tspi_generate_beeline_distances_as_costs (tsp);
 
     // Solve problem by evolution
-    listu_t *result = tspi_solve (tsp);
+    sol = tspi_solve (tsp);
     print_info ("solution:\n");
-    if (result)
-        listu_print (result);
+    if (sol != NULL)
+        solution_print (sol);
 
     rng_free (&rng);
     tspi_free (&tsp);
+    solution_free (&sol);
 
     print_info ("OK\n");
 }

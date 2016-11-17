@@ -16,7 +16,7 @@ typedef int (*comparator_t) (const void *obj1, const void *obj2);
 
 typedef bool (*matcher_t) (const void *obj1, const void *obj2);
 
-typedef void *(*duplicator_t) (void *obj);
+typedef void *(*duplicator_t) (const void *obj);
 
 typedef void (*copier_t) (void *dest, const void *src);
 

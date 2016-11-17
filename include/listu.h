@@ -84,7 +84,7 @@ void listu_swap (listu_t *self, size_t index1, size_t index2);
 // Clear list
 void listu_purge (listu_t *self);
 
-// Dump data array (read only)
+// Get data array (read only)
 const size_t *listu_array (listu_t *self);
 
 // Check if list is sorted
@@ -109,13 +109,14 @@ void listu_shuffle (listu_t *self, rng_t *rng);
 // Shuffle list slice [index_begin, index_end] in place.
 // Set rng to use your random number generator, or NULL to use the inner one.
 void listu_shuffle_slice (listu_t *self,
-                           size_t index_begin,
-                           size_t index_end,
-                           rng_t *rng);
+                          size_t index_begin,
+                          size_t index_end,
+                          rng_t *rng);
 
 // Find the index of value.
 // Return the index if found, SIZE_NONE if not found.
-// The index could be arbitrary if multiple items with value exist.
+// For sorted list, the index returned could be arbitrary if multiple items with
+// value exist. For unsorted list, the first index of value is returned.
 size_t listu_find (listu_t *self, size_t value);
 
 // Check if value is in list
@@ -124,11 +125,12 @@ bool listu_includes (listu_t *self, size_t value);
 // Count numbers of value in list
 size_t listu_count (listu_t *self, size_t value);
 
-// Export list to array
+// Export list to array.
+// The caller is responsible for freeing the output after use.
 size_t *listu_dump_array (listu_t *self);
 
 // Duplicator
-listu_t *listu_dup (listu_t *self);
+listu_t *listu_dup (const listu_t *self);
 
 // Printer
 void listu_print (const listu_t *self);

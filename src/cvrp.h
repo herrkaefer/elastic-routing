@@ -1,5 +1,5 @@
 /*  =========================================================================
-    cvrp - Elastic Routing: CVRP
+    cvrp - CVRP model derived from generic model
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
     =========================================================================

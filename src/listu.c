@@ -26,6 +26,7 @@ struct _listu_t {
     size_t *data;
 };
 
+// typedef size_t *_listu_t;
 
 // Get alloced size
 static size_t listu_alloced (listu_t *self) {
@@ -64,78 +65,6 @@ static void listu_enlarge (listu_t *self, size_t min_increment) {
     self->data = new_data;
     listu_set_alloced (self, new_alloced);
     print_info ("new alloced size: %zu\n", listu_alloced (self));
-}
-
-
-// Quick sort of array
-static void s_quick_sort (size_t *array, size_t length, bool ascending) {
-    if (length <= 1)
-        return;
-
-    size_t t = array[0];
-    size_t i = 0, j = length - 1;
-
-    while (1) {
-        if (ascending)
-            while ((j > i) && (array[j] >= t)) j--;
-        else
-            while ((j > i) && (array[j] <= t)) j--;
-
-        if (j == i) break;
-
-        array[i] = array[j];
-        i++;
-
-        if (ascending)
-            while ((i < j) && (array[i] <= t)) i++;
-        else
-            while ((i < j) && (array[i] >= t)) i++;
-
-        if (i == j) break;
-
-        array[j] = array[i];
-        j--;
-    }
-
-    array[i] = t;
-
-    s_quick_sort (array, i, ascending);
-    s_quick_sort (&array[i+1], length-i-1, ascending);
-}
-
-
-// Binary search of value in sorted array.
-// Return SIZE_NONE if not found.
-static size_t s_binary_search (const size_t *array,
-                               size_t length,
-                               size_t value,
-                               bool ascending) {
-    size_t head = 0, tail = length, mid;
-
-    if (ascending) {
-        while (head < tail) {
-            mid = (head + tail) / 2;
-            if (array[mid] == value)
-                return mid;
-            else if (array[mid] > value)
-                tail = mid;
-            else
-                head = mid + 1;
-        }
-    }
-    else {
-        while (head < tail) {
-            mid = (head + tail) / 2;
-            if (array[mid] == value)
-                return mid;
-            else if (array[mid] < value)
-                tail = mid;
-            else
-                head = mid + 1;
-        }
-    }
-
-    return SIZE_NONE;
 }
 
 
@@ -527,7 +456,7 @@ void listu_sort (listu_t *self, bool ascending) {
         (!ascending && listu_is_sorted_descending (self)))
         return;
 
-    s_quick_sort (self->data + real_index (0), listu_size (self), ascending);
+    arrayu_quick_sort (self->data + real_index (0), listu_size (self), ascending);
 
     if (ascending)
         listu_set_sorting_state (self, LIST4U_ASCENDING_SORTED);
@@ -634,8 +563,8 @@ size_t listu_find (listu_t *self, size_t value) {
     // For sorted list, do binary search
     if (listu_is_sorted (self)) {
         bool ascending = listu_is_sorted_ascending (self);
-        result = s_binary_search (self->data + real_index (0),
-                                size, value, ascending);
+        result = arrayu_binary_search (self->data + real_index (0),
+                                       size, value, ascending);
     }
     // For not-sorted list, search from head to tail
     else {
@@ -706,17 +635,18 @@ size_t *listu_dump_array (listu_t *self) {
 }
 
 
-listu_t *listu_dup (listu_t *self) {
+listu_t *listu_dup (const listu_t *self) {
     if (!self)
         return NULL;
 
-    listu_t *copy = listu_new (listu_alloced (self));
+    listu_t *copy = listu_new (self->data[LIST4U_INDEX_ALLOCED]);
     assert (copy);
 
     // Only size bytes are necessary to be copied
     memcpy (copy->data,
             self->data,
-            sizeof (size_t) * (LIST4U_HEADER_SIZE + listu_size (self)));
+            sizeof (size_t) *
+                (LIST4U_HEADER_SIZE + self->data[LIST4U_INDEX_SIZE]));
     return copy;
 }
 

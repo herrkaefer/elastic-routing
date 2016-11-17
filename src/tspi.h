@@ -50,13 +50,12 @@ void tspi_set_end_node (tspi_t *self, size_t end_node_id);
 // For one-way trip, they must be different.
 void tspi_set_round_trip (tspi_t *self, bool is_round_trip);
 
-// Solve.
-// Return the optimized route (sequence of node ID)
+// Solve the model.
+// Return the best solution.
 solution_t *tspi_solve (tspi_t *self);
 
 // Self test
 void tspi_test (bool verbose);
-
 
 #ifdef __cplusplus
 }

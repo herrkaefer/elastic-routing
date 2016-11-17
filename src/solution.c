@@ -9,8 +9,8 @@
 
 
 struct _solution_t {
-    vrp_t *vrp; // problem context. solution does not own it.
-    listx_t *routes;
+    vrp_t *vrp; // Problem reference. Solution does not own it.
+    listx_t *routes; // list of route_t objects
     listu_t *vehicle_ids;
 };
 
@@ -54,16 +54,14 @@ void solution_add_route_from_array (solution_t *self,
                                     size_t num_nodes) {
     assert (self);
     assert (node_ids);
-    listu_t *route = listu_new_from_array (node_ids, num_nodes);
-    assert (route);
-    listx_append (self->routes, route);
+    listx_append (self->routes, route_new_from_array (node_ids, num_nodes));
 }
 
 
 void solution_add_route_from_list (solution_t *self, listu_t *node_ids) {
     assert (self);
     assert (node_ids);
-    listx_append (self->routes, node_ids);
+    listx_append (self->routes, route_new_from_list (node_ids));
 }
 
 
@@ -83,23 +81,22 @@ route_t *solution_route (solution_t *self, size_t route_idx) {
 size_t solution_route_length (solution_t *self, size_t route_idx) {
     assert (self);
     assert (route_idx < solution_num_routes (self));
-    return listu_size (listx_item_at (self->routes, route_idx));
+    return route_size (listx_item_at (self->routes, route_idx));
 }
 
 
 void solution_print (solution_t *self) {
     assert (self);
     printf ("solution: #routes: %zu\n", listx_size (self->routes));
+    printf ("--------------------------------------------------\n");
     for (size_t idx_r = 0; idx_r < listx_size (self->routes); idx_r++) {
         route_t *route = solution_route (self, idx_r);
-        size_t route_length = listu_size (route);
-        printf ("route #%zu (#nodes: %zu):",
-                idx_r, route_length);
-        for (size_t idx_n = 0; idx_n < route_length; idx_n++)
-            printf (" %zu", listu_get (route, idx_n));
+        size_t route_len = route_size (route);
+        printf ("route #%zu (#nodes: %zu):", idx_r, route_len);
+        for (size_t idx_n = 0; idx_n < route_len; idx_n++)
+            printf (" %zu", route_at (route, idx_n));
         printf ("\n");
     }
-
 }
 
 

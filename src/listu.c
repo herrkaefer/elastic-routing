@@ -67,34 +67,34 @@ static void listu_enlarge (listu_t *self, size_t min_increment) {
 }
 
 
-// If item at index is properyly sorted with its previous item
-static bool listu_item_is_sorted_with_prev (listu_t *self, size_t index) {
+// Check if item at index is properyly sorted with its previous item
+static bool listu_item_is_sorted_with_prev (listu_t *self, size_t idx) {
     // first item
-    if (index == 0)
+    if (idx == 0)
         return listu_is_sorted (self);
 
     if ((listu_is_sorted_ascending (self) &&
-         listu_get (self, index) >= listu_get (self, index-1)) ||
+         listu_get (self, idx) >= listu_get (self, idx-1)) ||
         (listu_is_sorted_descending (self) &&
-         listu_get (self, index) <= listu_get (self, index-1)))
+         listu_get (self, idx) <= listu_get (self, idx-1)))
         return true;
     else
         return false;
 }
 
 
-// If item at index is properyly sorted with its next item
-static bool listu_item_is_sorted_with_next (listu_t *self, size_t index) {
+// Check if item at index is properyly sorted with its next item
+static bool listu_item_is_sorted_with_next (listu_t *self, size_t idx) {
     size_t size = listu_size (self);
 
     // last item
-    if (index == size - 1)
+    if (idx == size - 1)
         return listu_is_sorted (self);
 
     if ((listu_is_sorted_ascending (self) &&
-         listu_get (self, index) <= listu_get (self, index + 1)) ||
+         listu_get (self, idx) <= listu_get (self, idx + 1)) ||
         (listu_is_sorted_descending (self) &&
-         listu_get (self, index) >= listu_get (self, index + 1)))
+         listu_get (self, idx) >= listu_get (self, idx + 1)))
         return true;
     else
         return false;
@@ -538,6 +538,18 @@ void listu_shuffle_slice (listu_t *self,
                     rng);
 
     // Set unsorted anyway
+    listu_set_sorting_state (self, LIST4U_UNSORTED);
+}
+
+
+void listu_swap_slices (listu_t *self, size_t i, size_t j, size_t u, size_t v) {
+    assert (self);
+    assert (i <= j);
+    assert (j < u);
+    assert (u <= v);
+    assert (v < listu_size (self));
+
+    arrayu_swap_slices (self->data + real_index (0), i, j, u, v);
     listu_set_sorting_state (self, LIST4U_UNSORTED);
 }
 

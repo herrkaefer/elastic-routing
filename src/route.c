@@ -76,16 +76,28 @@ size_t route_find (route_t *self, size_t node_id) {
 }
 
 
-void route_shuffle_slice (route_t *self,
-                          size_t idx_begin, size_t idx_end, rng_t *rng) {
+void route_swap_nodes (route_t *self, size_t idx1, size_t idx2) {
+    assert (self);
+    listu_swap (self, idx1, idx2);
+}
+
+
+void route_shuffle (route_t *self,
+                    size_t idx_begin, size_t idx_end, rng_t *rng) {
     assert (self);
     listu_shuffle_slice (self, idx_begin, idx_end, rng);
 }
 
 
-void route_swap (route_t *self, size_t index1, size_t index2) {
+void route_flip (route_t *self, size_t i, size_t j) {
     assert (self);
-    listu_swap (self, index1, index2);
+    listu_reverse_slice (self, i, j);
+}
+
+
+void route_swap (route_t *self, size_t i, size_t j, size_t u, size_t v) {
+    assert (self);
+    listu_swap_slices (self, i, j, u, v);
 }
 
 

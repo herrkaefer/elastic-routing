@@ -116,6 +116,12 @@ void listu_shuffle_slice (listu_t *self,
                           size_t idx_end,
                           rng_t *rng);
 
+// Swap two nonoverlapping slices, i.e.
+// (..., i --> j, ..., u --> v, ...) =>
+// (..., u --> v, ..., i --> j, ...)
+// Require: i <= j < u <=v
+void listu_swap_slices (listu_t *self, size_t i, size_t j, size_t u, size_t v);
+
 // Find the index of value.
 // Return the index if found, SIZE_NONE if not found.
 // For sorted list, the index returned could be arbitrary if multiple items with

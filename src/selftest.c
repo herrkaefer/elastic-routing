@@ -26,9 +26,9 @@ all_tests [] = {
     // { "rng", rng_test },
     // { "timer", timer_test },
     // { "evol", evol_test },
-    // { "tspi", tspi_test },
+    // { "route", route_test },
+    { "tspi", tspi_test },
     // { "tsp", tsp_test },
-    { "route", route_test },
 // #endif // WITH_DRAFTS
     {0, 0}          //  Sentinel
 };

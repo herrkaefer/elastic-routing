@@ -49,19 +49,19 @@ void solution_free (solution_t **self_p) {
 }
 
 
+void solution_add_route (solution_t *self, route_t *route) {
+    assert (self);
+    assert (route);
+    listx_append (self->routes, route);
+}
+
+
 void solution_add_route_from_array (solution_t *self,
                                     const size_t *node_ids,
                                     size_t num_nodes) {
     assert (self);
     assert (node_ids);
     listx_append (self->routes, route_new_from_array (node_ids, num_nodes));
-}
-
-
-void solution_add_route_from_list (solution_t *self, listu_t *node_ids) {
-    assert (self);
-    assert (node_ids);
-    listx_append (self->routes, route_new_from_list (node_ids));
 }
 
 

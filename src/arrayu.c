@@ -53,42 +53,6 @@ size_t *arrayu_new_shuffle_range (size_t a, size_t b, rng_t *rng) {
 }
 
 
-size_t arrayu_find (const size_t *self, size_t len, size_t value) {
-    assert (self);
-    size_t idx = 0;
-    while ((idx < len) && (self[idx] != value))
-        idx++;
-    return (idx < len) ? idx : SIZE_NONE;
-}
-
-
-size_t arrayu_count (const size_t *self, size_t len, size_t value) {
-    assert (self);
-    size_t cnt = 0;
-    for (size_t idx = 0; idx < len; idx++) {
-        if (self[idx] == value)
-            cnt++;
-    }
-    return cnt;
-}
-
-
-bool arrayu_includes (const size_t *self, size_t len, size_t value) {
-    assert (self);
-    return arrayu_find (self, len, value) != SIZE_NONE;
-}
-
-
-void arrayu_print (const size_t *self, size_t len) {
-    assert (self);
-    printf ("\narrayu: size: %zu\n", len);
-    printf ("--------------------------------------------------\n");
-    for (size_t idx = 0; idx < len; idx++)
-        printf ("%zu ", self[idx]);
-    printf ("\n");
-}
-
-
 void arrayu_quick_sort (size_t *self, size_t len, bool ascending) {
     assert (self);
     if (len <= 1)
@@ -160,17 +124,6 @@ size_t arrayu_binary_search (const size_t *self,
 }
 
 
-void arrayu_reverse (size_t *self, size_t len) {
-    assert (self);
-    size_t tmp;
-    for (size_t idx = 0; idx < len / 2; idx++) {
-        tmp = *(self + idx);
-        *(self + idx) = *(self + len - idx - 1);
-        *(self + len - idx - 1) = tmp;
-    }
-}
-
-
 void arrayu_shuffle (size_t *self, size_t len, rng_t *rng) {
     assert (self);
 
@@ -195,11 +148,32 @@ void arrayu_shuffle (size_t *self, size_t len, rng_t *rng) {
 }
 
 
-void arrayu_swap (size_t *self, size_t idx1, size_t idx2) {
+void arrayu_swap_slices (size_t *self,
+                         size_t i, size_t j, size_t u, size_t v) {
     assert (self);
-    size_t tmp = *(self + idx1);
-    *(self + idx1) = *(self + idx2);
-    *(self + idx2) = tmp;
+    assert (i <= j);
+    assert (j < u);
+    assert (u <= v);
+
+    size_t *tmp = NULL;
+
+    if (u - i <= v - j) {
+        tmp = (size_t *) malloc (sizeof (size_t) * (u-i));
+        assert (tmp);
+        memcpy (tmp, self + i, (u - i) * sizeof (size_t));
+        memmove (self + i, self + u, (v - u + 1) * sizeof (size_t));
+        memcpy (self + i + v - u + 1, tmp + j - i + 1, (u - j - 1) * sizeof (size_t));
+        memcpy (self + i + v - j, tmp, (j - i + 1) * sizeof (size_t));
+    }
+    else {
+        tmp = (size_t *) malloc (sizeof (size_t) * (v-j));
+        assert (tmp);
+        memcpy (tmp, self + j + 1, (v - j) * sizeof (size_t));
+        memmove (self + i + v - j, self + i, (j - i + 1) * sizeof (size_t));
+        memcpy (self + i, tmp + u - j - 1, (v - u + 1) * sizeof (size_t));
+        memcpy (self + i + v - u + 1, tmp, (u - j - 1) * sizeof (size_t));
+    }
+    free (tmp);
 }
 
 

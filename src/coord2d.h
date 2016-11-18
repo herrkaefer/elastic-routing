@@ -58,6 +58,13 @@ bool coord2d_is_none (const coord2d_t *point);
 int coord2d_compare_polar_angle (const coord2d_t *p1,
                                  const coord2d_t *p2);
 
+// Generate an array of random 2D cartesian coordinates within a square.
+// Caller is responsible for freeing it after use.
+coord2d_t *coord2d_random_cartesian_range (double xmin, double xmax,
+                                           double ymin, double ymax,
+                                           size_t num,
+                                           rng_t *rng);
+
 #ifdef __cplusplus
 }
 #endif

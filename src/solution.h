@@ -19,13 +19,13 @@ solution_t *solution_new (vrp_t *vrp);
 
 void solution_free (solution_t **self_p);
 
+// Add a route to solution. The route is then taken over ownership by solution.
+void solution_add_route (solution_t *self, route_t *route);
+
 // Add a route from node ids array
 void solution_add_route_from_array (solution_t *self,
                                     const size_t *node_ids,
                                     size_t num_nodes);
-
-// Add a route from a list. node_ids is then taken over by the solution.
-void solution_add_route_from_list (solution_t *self, listu_t *node_ids);
 
 size_t solution_num_routes (solution_t *self);
 

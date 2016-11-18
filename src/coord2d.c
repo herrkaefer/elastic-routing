@@ -151,3 +151,30 @@ int coord2d_compare_polar_angle (const coord2d_t *p1,
            -1 :
            ((p1->v2 > p2->v2) ? 1 : 0);
 }
+
+
+coord2d_t *coord2d_random_cartesian_range (double xmin, double xmax,
+                                           double ymin, double ymax,
+                                           size_t num,
+                                           rng_t *rng) {
+    coord2d_t *coords = (coord2d_t *) malloc (sizeof (coord2d_t) * num);
+    assert (coords);
+
+    bool own_rng = false;
+    if (rng == NULL) {
+        rng = rng_new ();
+        own_rng = true;
+    }
+
+    for (size_t idx = 0; idx < num; idx++) {
+        double x = rng_random_double (rng, xmin, xmax);
+        double y = rng_random_double (rng, ymin, ymax);
+        // printf ("(%.2f, %.2f)\n", x, y);
+        coords[idx] = (coord2d_t) {x, y};
+    }
+
+    if (own_rng)
+        rng_free (&rng);
+    return coords;
+}
+

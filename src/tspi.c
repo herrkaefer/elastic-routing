@@ -22,7 +22,78 @@ struct _tspi_t {
 };
 
 
-// #define tspi_cost(i,j) (matrixd_get (self->costs, (i), (j)))
+// Arc cost
+static double tspi_cost (tspi_t *self, size_t node_id1, size_t node_id2) {
+    return matrixd_get (self->costs, node_id1, node_id2);
+}
+
+
+// Route total cost
+static double tspi_route_cost (tspi_t *self, route_t *route) {
+    size_t len = route_size (route);
+    double total_cost = 0;
+    for (size_t idx = 0; idx < len - 1; idx++)
+        total_cost += matrixd_get (self->costs,
+                                   route_at (route, idx),
+                                   route_at (route, idx + 1));
+    return total_cost;
+}
+
+
+// Cost increment for route_flip operation.
+// Flip of route slice [i, j]
+// (0, ..., i-1, i, i+1, ..., j-1, j, j+1, ..., route_length-1) =>
+// (0, ..., i-1, j, j-1, ..., i+1, i, j+1, ..., route_length-1)
+static double tspi_route_flip_delta_cost (tspi_t *self,
+                                          route_t *route, int i, int j) {
+    double dcost =
+        tspi_cost (self, route_at (route, i - 1), route_at (route, j)) +
+        tspi_cost (self, route_at (route, i), route_at (route, j + 1)) -
+        tspi_cost (self, route_at (route, i - 1), route_at (route, i)) -
+        tspi_cost (self, route_at (route, j), route_at (route, j + 1));
+
+    for (size_t k = i; k < j; k++) {
+        dcost = dcost +
+                tspi_cost (self, route_at (route, k + 1), route_at (route, k)) -
+                tspi_cost (self, route_at (route, k), route_at (route, k + 1));
+    }
+
+    return dcost;
+}
+
+
+// 2-opt local search.
+// Brute force search: stop when no improvement is possible in neighborhood.
+// Return cost increment (negative).
+static double tspi_2_opt (tspi_t *self, route_t *route) {
+    print_info ("2-opt start.\n");
+    size_t route_len = route_size (route);
+    size_t idx_begin = (self->start_node != SIZE_NONE) ? 1 : 0;
+    size_t idx_end =
+        (self->end_node != SIZE_NONE) ? (route_len-2) : (route_len-1);
+    print_info ("idx_begin: %zu, idx_end: %zu\n", idx_begin, idx_end);
+
+    double total_delta_cost = 0, delta_cost;
+    bool improved = true;
+    int i, j;
+
+    while (improved) {
+        improved = false;
+        for (i = idx_begin; i < idx_end; i++) {
+            for (j = i + 1; j <= idx_end; j++) {
+                delta_cost = tspi_route_flip_delta_cost (self, route, i, j);
+                if (delta_cost < -DOUBLE_THRESHOLD) {
+                    // print_info ("dcost: %.2f\n", delta_cost);
+                    route_flip (route, i, j);
+                    total_delta_cost += delta_cost;
+                    improved = true;
+                }
+            }
+        }
+    }
+
+    return total_delta_cost;
+}
 
 
 // Fitness callback: inverse of average cost over arcs
@@ -111,7 +182,7 @@ static listx_t *tspi_random_routes (tspi_t *self, size_t max_expected) {
         // Duplicate and shuffle
         route_t *route = route_dup (self->template);
         assert (route);
-        route_shuffle_slice (route, shuffle_begin, shuffle_end, self->rng);
+        route_shuffle (route, shuffle_begin, shuffle_end, self->rng);
         listx_append (list, route);
     }
 
@@ -228,7 +299,7 @@ static bool tspi_regularize_template (tspi_t *self) {
     // Adjust route template to shift start node to head and end node to tail.
     // Move the start node to head if defined
     if (self->start_node != SIZE_NONE)
-        route_swap (self->template, 0, self->start_node);
+        route_swap_nodes (self->template, 0, self->start_node);
 
     // Move or add the end node to tail if defined
     if (self->end_node != SIZE_NONE) {
@@ -240,7 +311,7 @@ static bool tspi_regularize_template (tspi_t *self) {
                 idx = self->start_node; // end node has been swapped with start node
             assert (idx != SIZE_NONE);
             assert (route_at (self->template, idx) == self->end_node);
-            route_swap (self->template, idx, self->num_nodes-1);
+            route_swap_nodes (self->template, idx, self->num_nodes-1);
         }
         // If start_node == end_node, append another duplicate node at tail
         else
@@ -394,60 +465,46 @@ solution_t *tspi_solve (tspi_t *self) {
     evol_set_genome_printer (evol, (printer_t) route_print);
     evol_set_fitness_assessor (evol, (evol_fitness_assessor_t) tspi_fitness);
     evol_set_distance_assessor (evol, (evol_distance_assessor_t) tspi_distance);
-    evol_register_heuristic (evol,
-                             (evol_heuristic_t) tspi_sweep,
-                             false,
-                             1);
-    // size_t max_random_routes = factorial (listu_size (self->template)-2);
-    // print_debug("");
-    // print_info ("num_nodes: %zu, max random routes: %zu\n",
-    //     listu_size (self->template)-2, max_random_routes);
+
+    if (self->coords)
+        evol_register_heuristic (evol,
+                                 (evol_heuristic_t) tspi_sweep,
+                                 false,
+                                 1);
+
     evol_register_heuristic (evol,
                              (evol_heuristic_t) tspi_random_routes,
                              true,
                              factorial (route_size (self->template)-2));
+
     evol_register_crossover (evol, (evol_crossover_t) tspi_ox);
 
     // Run evolution
     evol_run (evol);
 
-    // Get results
+    // Get best route
     listu_t *route = listu_dup ((listu_t *) evol_best_genome (evol));
     assert (route);
 
     // Destroy evolution object
     evol_free (&evol);
 
+    double route_cost = tspi_route_cost (self, route);
+    print_info ("route cost after evol: %.2f\n", route_cost);
+
     // Post optimization
-    // 2-opt, 3-opt, etc.
+    double delta_cost = tspi_2_opt (self, route);
+    double improvement = -delta_cost / route_cost;
+    route_cost = tspi_route_cost (self, route);
+    print_info ("route cost after post-optimization: %.2f\n", route_cost);
+    print_info ("post-optimization improved: %.2f%%\n", improvement * 100);
 
     // Return route as generic solution representation.
     // Set model reference as NULL because this model is not a generic one.
     solution_t *sol = solution_new (NULL);
-    solution_add_route_from_list (sol, route);
+    solution_add_route (sol, route);
 
     return sol;
-}
-
-
-static coord2d_t *generate_random_cartesian_coords (double xmin, double xmax,
-                                                    double ymin, double ymax,
-                                                    size_t num) {
-    coord2d_t *coords = (coord2d_t *) malloc (sizeof (coord2d_t) * num);
-    assert (coords);
-
-    rng_t *rng = rng_new ();
-    assert (rng);
-
-    for (size_t idx = 0; idx < num; idx++) {
-        double x = rng_random_double (rng, xmin, xmax);
-        double y = rng_random_double (rng, ymin, ymax);
-        printf ("(%.2f, %.2f)\n", x, y);
-        coords[idx] = (coord2d_t) {x, y};
-    }
-
-    rng_free (&rng);
-    return coords;
 }
 
 
@@ -484,7 +541,7 @@ void tspi_test (bool verbose) {
     tspi_set_end_node (tsp, end_node_id);
 
     // Set round trip or one-way trip
-    tspi_set_round_trip (tsp, false);
+    // tspi_set_round_trip (tsp, false);
 
     // Use straight distances as costs
     tspi_generate_beeline_distances_as_costs (tsp);
@@ -507,7 +564,7 @@ void tspi_test (bool verbose) {
 
     num_nodes = 100;
     coord2d_t *coords =
-        generate_random_cartesian_coords (-100, 100, -100, 100, num_nodes);
+        coord2d_random_cartesian_range (-100, 100, -100, 100, num_nodes, rng);
     start_node_id = rng_random_int (rng, 0, num_nodes);
     end_node_id = rng_random_int (rng, 0, num_nodes);
 
@@ -537,6 +594,7 @@ void tspi_test (bool verbose) {
     if (sol != NULL)
         solution_print (sol);
 
+    free (coords);
     rng_free (&rng);
     tspi_free (&tsp);
     solution_free (&sol);

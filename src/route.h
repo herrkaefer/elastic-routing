@@ -12,7 +12,8 @@
 extern "C" {
 #endif
 
-typedef struct _route_t route_t;
+// typedef struct _route_t route_t;
+typedef listu_t route_t;
 
 // Create new route object with size
 route_t *route_new (size_t size);
@@ -69,7 +70,7 @@ void route_ox (route_t *r1, route_t *r2,
 // double route_2_opt ();
 
 
-// void route_test (bool verbose);
+void route_test (bool verbose);
 
 #ifdef __cplusplus
 }

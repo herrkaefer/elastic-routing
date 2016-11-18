@@ -15,11 +15,11 @@ size_t *arrayu_new_range (size_t a, size_t b) {
         b = tmp;
     }
     size_t len = b - a;
-    size_t *array = (size_t *) malloc (sizeof (size_t) * len);
-    assert (array);
+    size_t *self = (size_t *) malloc (sizeof (size_t) * len);
+    assert (self);
     for (size_t i = 0; i < len; i++)
-        array[i] = a + i;
-    return array;
+        self[i] = a + i;
+    return self;
 }
 
 
@@ -31,8 +31,8 @@ size_t *arrayu_new_shuffle_range (size_t a, size_t b, rng_t *rng) {
     }
 
     size_t len = b - a;
-    size_t *array = (size_t *) malloc (sizeof (size_t) * len);
-    assert (array);
+    size_t *self = (size_t *) malloc (sizeof (size_t) * len);
+    assert (self);
 
     bool own_rng = false;
     if (rng == NULL) {
@@ -43,81 +43,102 @@ size_t *arrayu_new_shuffle_range (size_t a, size_t b, rng_t *rng) {
     size_t i, j;
     for (i = 0; i < b - a; i++) {
         j = (size_t) rng_random_int (rng, 0, i+1); // [0, i]
-        if (j != i) array[i] = array[j];
-        array[j] = a + i;
+        if (j != i) self[i] = self[j];
+        self[j] = a + i;
     }
 
     if (own_rng)
         rng_free (&rng);
-    return array;
+    return self;
 }
 
 
-bool arrayu_includes (const size_t *array, size_t len, size_t value) {
-    size_t i = 0;
-    while ((i < len) && (array[i] != value)) i++;
-    return (i < len);
+size_t arrayu_find (const size_t *self, size_t len, size_t value) {
+    assert (self);
+    size_t idx = 0;
+    while ((idx < len) && (self[idx] != value))
+        idx++;
+    return (idx < len) ? idx : SIZE_NONE;
 }
 
 
-void arrayu_print (const size_t *array, size_t len) {
+size_t arrayu_count (const size_t *self, size_t len, size_t value) {
+    assert (self);
+    size_t cnt = 0;
+    for (size_t idx = 0; idx < len; idx++) {
+        if (self[idx] == value)
+            cnt++;
+    }
+    return cnt;
+}
+
+
+bool arrayu_includes (const size_t *self, size_t len, size_t value) {
+    assert (self);
+    return arrayu_find (self, len, value) != SIZE_NONE;
+}
+
+
+void arrayu_print (const size_t *self, size_t len) {
+    assert (self);
     printf ("\narrayu: size: %zu\n", len);
     printf ("--------------------------------------------------\n");
     for (size_t idx = 0; idx < len; idx++)
-        printf ("%zu ", array[idx]);
+        printf ("%zu ", self[idx]);
     printf ("\n");
 }
 
 
-// Quick sort of array
-void arrayu_quick_sort (size_t *array, size_t len, bool ascending) {
+void arrayu_quick_sort (size_t *self, size_t len, bool ascending) {
+    assert (self);
     if (len <= 1)
         return;
 
-    size_t t = array[0];
+    size_t t = self[0];
     size_t i = 0, j = len - 1;
 
     while (1) {
         if (ascending)
-            while ((j > i) && (array[j] >= t)) j--;
+            while ((j > i) && (self[j] >= t)) j--;
         else
-            while ((j > i) && (array[j] <= t)) j--;
+            while ((j > i) && (self[j] <= t)) j--;
 
         if (j == i) break;
 
-        array[i] = array[j];
+        self[i] = self[j];
         i++;
 
         if (ascending)
-            while ((i < j) && (array[i] <= t)) i++;
+            while ((i < j) && (self[i] <= t)) i++;
         else
-            while ((i < j) && (array[i] >= t)) i++;
+            while ((i < j) && (self[i] >= t)) i++;
 
         if (i == j) break;
 
-        array[j] = array[i];
+        self[j] = self[i];
         j--;
     }
 
-    array[i] = t;
+    self[i] = t;
 
-    arrayu_quick_sort (array, i, ascending);
-    arrayu_quick_sort (&array[i+1], len-i-1, ascending);
+    arrayu_quick_sort (self, i, ascending);
+    arrayu_quick_sort (&self[i+1], len-i-1, ascending);
 }
 
 
-size_t arrayu_binary_search (const size_t *array,
+size_t arrayu_binary_search (const size_t *self,
                              size_t length,
                              size_t value,
                              bool ascending) {
+    assert (self);
     size_t head = 0, tail = length, mid;
 
     if (ascending) {
         while (head < tail) {
             mid = (head + tail) / 2;
-            if (array[mid] == value)
+            if (self[mid] == value)
                 return mid;
-            else if (array[mid] > value)
+            else if (self[mid] > value)
                 tail = mid;
             else
                 head = mid + 1;
@@ -126,9 +147,9 @@ size_t arrayu_binary_search (const size_t *array,
     else {
         while (head < tail) {
             mid = (head + tail) / 2;
-            if (array[mid] == value)
+            if (self[mid] == value)
                 return mid;
-            else if (array[mid] < value)
+            else if (self[mid] < value)
                 tail = mid;
             else
                 head = mid + 1;
@@ -136,6 +157,49 @@ size_t arrayu_binary_search (const size_t *array,
     }
 
     return SIZE_NONE;
+}
+
+
+void arrayu_reverse (size_t *self, size_t len) {
+    assert (self);
+    size_t tmp;
+    for (size_t idx = 0; idx < len / 2; idx++) {
+        tmp = *(self + idx);
+        *(self + idx) = *(self + len - idx - 1);
+        *(self + len - idx - 1) = tmp;
+    }
+}
+
+
+void arrayu_shuffle (size_t *self, size_t len, rng_t *rng) {
+    assert (self);
+
+    bool own_rng = false;
+    if (rng == NULL) {
+        rng = rng_new ();
+        own_rng = true;
+    }
+
+    size_t i, j;
+    size_t tmp;
+    for (i = 0; i < len - 1; i++) {
+        j = (size_t) rng_random_int (rng, i, len); // j in [i, len-1]
+        // Swap values at i and j
+        tmp = *(self + j);
+        *(self + j) = *(self + i);
+        *(self + i) = tmp;
+    }
+
+    if (own_rng)
+        rng_free (&rng);
+}
+
+
+void arrayu_swap (size_t *self, size_t idx1, size_t idx2) {
+    assert (self);
+    size_t tmp = *(self + idx1);
+    *(self + idx1) = *(self + idx2);
+    *(self + idx2) = tmp;
 }
 
 

@@ -79,7 +79,7 @@ void listu_remove_slice (listu_t *self, size_t index_begin, size_t index_end);
 int listu_remove (listu_t *self, size_t value);
 
 // Swap items at two indices
-void listu_swap (listu_t *self, size_t index1, size_t index2);
+void listu_swap (listu_t *self, size_t idx1, size_t idx2);
 
 // Clear list
 void listu_purge (listu_t *self);
@@ -102,6 +102,9 @@ void listu_sort (listu_t *self, bool ascending);
 // Reverse list in place
 void listu_reverse (listu_t *self);
 
+// Reverse list slice in place
+void listu_reverse_slice (listu_t *self, size_t idx_begin, size_t idx_end);
+
 // Shuffle list in place
 // Set rng to use your random number generator, or NULL to use the inner one.
 void listu_shuffle (listu_t *self, rng_t *rng);
@@ -109,8 +112,8 @@ void listu_shuffle (listu_t *self, rng_t *rng);
 // Shuffle list slice [index_begin, index_end] in place.
 // Set rng to use your random number generator, or NULL to use the inner one.
 void listu_shuffle_slice (listu_t *self,
-                          size_t index_begin,
-                          size_t index_end,
+                          size_t idx_begin,
+                          size_t idx_end,
                           rng_t *rng);
 
 // Find the index of value.
@@ -122,7 +125,7 @@ size_t listu_find (listu_t *self, size_t value);
 // Check if value is in list
 bool listu_includes (listu_t *self, size_t value);
 
-// Count numbers of value in list
+// Count values in list
 size_t listu_count (listu_t *self, size_t value);
 
 // Export list to array.

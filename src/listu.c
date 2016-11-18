@@ -17,7 +17,7 @@
 #define real_index(index)   (index+LIST4U_HEADER_SIZE)
 
 // Sorting state defination
-#define LIST4U_NOT_SORTED        1
+#define LIST4U_UNSORTED          1
 #define LIST4U_ASCENDING_SORTED  2
 #define LIST4U_DESCENDING_SORTED 4
 
@@ -26,7 +26,6 @@ struct _listu_t {
     size_t *data;
 };
 
-// typedef size_t *_listu_t;
 
 // Get alloced size
 static size_t listu_alloced (listu_t *self) {
@@ -113,7 +112,7 @@ listu_t *listu_new (size_t alloc_size) {
 
     listu_set_alloced (self, alloc_size);
     listu_set_size (self, 0);
-    listu_set_sorting_state (self, LIST4U_NOT_SORTED);
+    listu_set_sorting_state (self, LIST4U_UNSORTED);
 
     // print_info ("listu created.\n");
     return self;
@@ -189,12 +188,15 @@ void listu_set (listu_t *self, size_t index, size_t value) {
 
     self->data[real_index (index)] = value;
 
+    if (self->data[LIST4U_INDEX_SORTED] == LIST4U_UNSORTED)
+        return;
+
     // Check the sorting state.
-    // If the new item does not conforms to current sorting order,
+    // If the new item does not conform to current sorting order,
     // reset the sorting state
     if (!listu_item_is_sorted_with_prev (self, index) ||
         !listu_item_is_sorted_with_next (self, index))
-        listu_set_sorting_state (self, LIST4U_NOT_SORTED);
+        listu_set_sorting_state (self, LIST4U_UNSORTED);
 }
 
 
@@ -216,7 +218,7 @@ void listu_append (listu_t *self, size_t value) {
 
     // Adjust sorting state
     if (!listu_item_is_sorted_with_prev (self, size))
-        listu_set_sorting_state (self, LIST4U_NOT_SORTED);
+        listu_set_sorting_state (self, LIST4U_UNSORTED);
 }
 
 
@@ -407,17 +409,22 @@ int listu_remove (listu_t *self, size_t value) {
 }
 
 
-void listu_swap (listu_t *self, size_t index1, size_t index2) {
+void listu_swap (listu_t *self, size_t idx1, size_t idx2) {
     assert (self);
-    assert (index1 < listu_size (self));
-    assert (index2 < listu_size (self));
+    assert (idx1 < listu_size (self));
+    assert (idx2 < listu_size (self));
 
-    if (index1 == index2)
+    if (idx1 == idx2)
         return;
 
-    size_t tmp = listu_get (self, index1);
-    listu_set (self, index1, listu_get (self, index2));
-    listu_set (self, index2, tmp);
+    arrayu_swap (self->data + real_index (0), idx1, idx2);
+
+    // Set unsorted anyway
+    listu_set_sorting_state (self, LIST4U_UNSORTED);
+
+    // size_t tmp = listu_get (self, idx1);
+    // listu_set (self, idx1, listu_get (self, idx2));
+    // listu_set (self, idx2, tmp);
 }
 
 
@@ -434,16 +441,19 @@ const size_t *listu_array (listu_t *self) {
 
 
 bool listu_is_sorted (listu_t *self) {
-    return (self->data[LIST4U_INDEX_SORTED] != LIST4U_NOT_SORTED);
+    assert (self);
+    return (self->data[LIST4U_INDEX_SORTED] != LIST4U_UNSORTED);
 }
 
 
 bool listu_is_sorted_ascending (listu_t *self) {
+    assert (self);
     return (self->data[LIST4U_INDEX_SORTED] == LIST4U_ASCENDING_SORTED);
 }
 
 
 bool listu_is_sorted_descending (listu_t *self) {
+    assert (self);
     return (self->data[LIST4U_INDEX_SORTED] == LIST4U_DESCENDING_SORTED);
 }
 
@@ -467,24 +477,34 @@ void listu_sort (listu_t *self, bool ascending) {
 
 void listu_reverse (listu_t *self) {
     assert (self);
-    size_t size = listu_size (self);
     bool is_sorted_before = listu_is_sorted (self);
     size_t ascending_before = listu_is_sorted_ascending (self);
-    size_t tmp;
 
-    for (size_t index = 0; index < size / 2; index++) {
-        tmp = listu_get (self, index);
-        listu_set (self, index, listu_get (self, size - index - 1));
-        listu_set (self, size - index - 1, tmp);
-    }
+    arrayu_reverse (self->data + real_index (0), listu_size (self));
 
-    // Reverse sorting state if list is sorted before
+    // Change sorting state if the list was sorted before
     if (is_sorted_before) {
         if (ascending_before)
             listu_set_sorting_state (self, LIST4U_DESCENDING_SORTED);
         else
             listu_set_sorting_state (self, LIST4U_ASCENDING_SORTED);
     }
+}
+
+
+void listu_reverse_slice (listu_t *self, size_t idx_begin, size_t idx_end) {
+    assert (self);
+    assert (idx_begin <= idx_end);
+    assert (idx_end < listu_size (self));
+
+    if (idx_begin == idx_end)
+        return;
+
+    arrayu_reverse (self->data + real_index (idx_begin),
+                    idx_end - idx_begin + 1);
+
+    // Set unsorted anyway
+    listu_set_sorting_state (self, LIST4U_UNSORTED);
 }
 
 
@@ -495,88 +515,46 @@ void listu_shuffle (listu_t *self, rng_t *rng) {
     if (size <= 1)
         return;
 
-    bool own_rng = false;
-    if (rng == NULL) {
-        rng = rng_new ();
-        own_rng = true;
-    }
+    arrayu_shuffle (self->data + real_index (0), size, rng);
 
-    size_t i, j;
-    size_t tmp;
-    for (i = 0; i < size - 1; i++) {
-        j = (size_t) rng_random_int (rng, i, size); // j in [i, size-1]
-        // Swap values at i and j
-        tmp = listu_get (self, j);
-        listu_set (self, j, listu_get (self, i));
-        listu_set (self, i, tmp);
-    }
-
-    if (own_rng)
-        rng_free (&rng);
-
-    // set not sorted anyway
-    listu_set_sorting_state (self, LIST4U_NOT_SORTED);
+    // Set unsorted anyway
+    listu_set_sorting_state (self, LIST4U_UNSORTED);
 }
 
 
 void listu_shuffle_slice (listu_t *self,
-                           size_t index_begin,
-                           size_t index_end,
-                           rng_t *rng) {
+                          size_t idx_begin,
+                          size_t idx_end,
+                          rng_t *rng) {
     assert (self);
-    assert (index_begin <= index_end);
-    assert (index_end < listu_size (self));
+    assert (idx_begin <= idx_end);
+    assert (idx_end < listu_size (self));
 
-    if (index_begin == index_end)
+    if (idx_begin == idx_end)
         return;
 
-    bool own_rng = false;
-    if (rng == NULL) {
-        rng = rng_new ();
-        own_rng = true;
-    }
+    arrayu_shuffle (self->data + real_index (idx_begin),
+                    idx_end - idx_begin + 1,
+                    rng);
 
-    size_t i, j;
-    size_t tmp;
-    for (i = index_begin; i < index_end; i++) {
-        j = (size_t) rng_random_int (rng, i, index_end+1); // j in [i, index_end]
-        // Swap values at i and j
-        tmp = listu_get (self, j);
-        listu_set (self, j, listu_get (self, i));
-        listu_set (self, i, tmp);
-    }
-
-    if (own_rng)
-        rng_free (&rng);
-
-    // set not sorted anyway
-    listu_set_sorting_state (self, LIST4U_NOT_SORTED);
+    // Set unsorted anyway
+    listu_set_sorting_state (self, LIST4U_UNSORTED);
 }
 
 
 size_t listu_find (listu_t *self, size_t value) {
     assert (self);
-
-    size_t result = SIZE_NONE;
     size_t size = listu_size (self);
 
     // For sorted list, do binary search
-    if (listu_is_sorted (self)) {
-        bool ascending = listu_is_sorted_ascending (self);
-        result = arrayu_binary_search (self->data + real_index (0),
-                                       size, value, ascending);
-    }
-    // For not-sorted list, search from head to tail
-    else {
-        for (size_t index = 0; index < size; index++) {
-            if (listu_get (self, index) == value) {
-                result = index;
-                break;
-            }
-        }
-    }
-
-    return result;
+    if (listu_is_sorted (self))
+        return arrayu_binary_search (self->data + real_index (0),
+                                     size,
+                                     value,
+                                     listu_is_sorted_ascending (self));
+    // else search from head to tail
+    else
+        return arrayu_find (self->data + real_index (0), size, value);
 }
 
 
@@ -598,7 +576,7 @@ size_t listu_count (listu_t *self, size_t value) {
             return 0;
         cnt = 1;
         // count to tail
-        for (size_t ind = index+1; ind < size; ind++) {
+        for (size_t ind = index + 1; ind < size; ind++) {
             if (listu_get (self, ind) == value)
                 cnt++;
             else
@@ -613,13 +591,8 @@ size_t listu_count (listu_t *self, size_t value) {
         }
     }
     // list is not sorted, count from head to tail
-    else {
-        cnt = 0;
-        for (size_t ind = 0; ind < size; ind++) {
-            if (listu_get (self, ind) == value)
-                cnt++;
-        }
-    }
+    else
+        cnt = arrayu_count (self->data + real_index (0), size, value);
 
     return cnt;
 }
@@ -756,12 +729,36 @@ void listu_test (bool verbose) {
     listu_print (list);
     listu_shuffle (list, rng);
     listu_print (list);
+
+    print_debug ("sort again\n");
+    listu_sort (list, true);
+    listu_print (list);
+
     print_debug ("shuffle slice\n");
     listu_shuffle_slice (list, 1, listu_size (list)-2, rng);
     listu_print (list);
     listu_shuffle_slice (list, 2, listu_size (list)-3, rng);
     listu_print (list);
 
+    print_debug ("sort again\n");
+    listu_sort (list, true);
+    listu_print (list);
+
+    assert (listu_find (list, 3) == 0);
+    assert (listu_find (list, 35) == 4);
+    assert (listu_find (list, 100) == SIZE_NONE);
+
+    assert (listu_includes (list, 131));
+    assert (listu_includes (list, 130) == false);
+
+    listu_swap (list, 0, 1);
+    listu_print (list);
+
+    listu_swap (list, 0, listu_size (list) - 1);
+    listu_print (list);
+
+    listu_swap (list, 2, 2);
+    listu_print (list);
 
     rng_free (&rng);
     listu_free (&list);

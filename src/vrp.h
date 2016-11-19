@@ -34,6 +34,9 @@ vrp_t *vrp_new_from_file (const char *filename);
 // Destroy vrp object
 void vrp_free (vrp_t **self_p);
 
+// Self test
+void vrp_test (bool verbose);
+
 // ---------------------------------------------------------------------------
 // Roadgraph: nodes and arcs
 // ---------------------------------------------------------------------------
@@ -41,11 +44,30 @@ void vrp_free (vrp_t **self_p);
 // Set coordinate system
 void vrp_set_coord_sys (vrp_t *self, coord2d_sys_t coord_sys);
 
-// Get coordinate system
-coord2d_sys_t vrp_coord_sys (vrp_t *self);
-
 // Add a new node
 size_t vrp_add_node (vrp_t *self, const char *ext_id, node_role_t role);
+
+// Set node coordinate
+void vrp_set_node_coord (vrp_t *self, size_t node_id, coord2d_t coord);
+
+// Set distances between nodes
+void vrp_set_distance (vrp_t *self,
+                       size_t from_node_id, size_t to_node_id,
+                       double distance);
+
+// Set arc duration (number of time units)
+void vrp_set_duration (vrp_t *self,
+                       size_t from_node_id, size_t to_node_id,
+                       size_t duration);
+
+// Automatically generate straight arc distances accroding to coordinates
+void vrp_generate_beeline_distances (vrp_t *self);
+
+// Automatically generate arc durations by distance and speed
+void vrp_generate_durations (vrp_t *self, double speed);
+
+// Get coordinate system
+coord2d_sys_t vrp_coord_sys (vrp_t *self);
 
 // Check if node is depot
 bool vrp_node_is_depot (vrp_t *self, size_t node_id);
@@ -60,9 +82,6 @@ size_t vrp_query_node (vrp_t *self, const char *node_ext_id);
 // Check if node exists by id
 bool vrp_node_exists (vrp_t *self, size_t node_id);
 
-// Set node coordinate
-void vrp_set_node_coord (vrp_t *self, size_t node_id, coord2d_t coord);
-
 // Get node coordinate
 coord2d_t vrp_node_coord (vrp_t *self, size_t node_id);
 
@@ -76,34 +95,16 @@ size_t vrp_num_depots (vrp_t *self);
 size_t vrp_num_customers (vrp_t *self);
 
 // Get array of node ids
-size_t *vrp_node_ids (vrp_t *self);
+const listu_t *vrp_node_ids (vrp_t *self);
 
 // Get id array of depots
-size_t *vrp_depot_ids (vrp_t *self);
+const listu_t *vrp_depot_ids (vrp_t *self);
 
 // Get id array of customers
-size_t *vrp_customer_ids (vrp_t *self);
-
-// Set distances between nodes
-void vrp_set_distance (vrp_t *self,
-                       size_t from_node_id,
-                       size_t to_node_id,
-                       double distance);
-
-// Automatically generate straight arc distances accroding to coordinates
-int vrp_generate_beeline_distances (vrp_t *self);
+const listu_t *vrp_customer_ids (vrp_t *self);
 
 // Get distance between two nodes
 double vrp_distance (vrp_t *self, size_t from_node_id, size_t to_node_id);
-
-// Set arc duration (number of time units)
-void vrp_set_duration (vrp_t *self,
-                       size_t from_node_id,
-                       size_t to_node_id,
-                       size_t duration);
-
-// Automatically generate arc durations by distance and speed
-int vrp_generate_durations (vrp_t *self, double speed);
 
 // Get duration between two nodes
 size_t vrp_duration (vrp_t *self, size_t from_node_id, size_t to_node_id);
@@ -112,36 +113,13 @@ size_t vrp_duration (vrp_t *self, size_t from_node_id, size_t to_node_id);
 // Fleet
 // ---------------------------------------------------------------------------
 
-// Add a vehicle to fleet
-// Return vehicle ID
-size_t vrp_add_vehicle (vrp_t *self, const char *vehicle_ext_id);
-
-// Get number of vehicles in fleet
-size_t vrp_num_vehicles (vrp_t *self);
-
-// Get vehicle ID array
-size_t *vrp_vehicle_ids (vrp_t *self);
-
-// Get vehicle's external ID
-const char *vrp_vehicle_ext_id (vrp_t *self, size_t vehicle_id);
-
-// Get vehicle's maximal capacity
-double vrp_vehicle_max_capacity (vrp_t *self, size_t vehicle_id);
-
-// Set vehicle's maximal capacity
-void vrp_set_vehicle_max_capacity (vrp_t *self, size_t vehicle_id, double max_capacity);
-
-// Get vehicle's current capacity
-double vrp_vehicle_capacity (vrp_t *self, size_t vehicle_id);
-
-// Reset vehicle's capacity to maximum
-void vrp_reset_vehicle_capacity (vrp_t *self, size_t vehicle_id);
-
-// Reset all vehicles' capacities
-void vrp_reset_all_vehicles_capacities (vrp_t *self);
-
-// Get vehicle's current load
-double vrp_vehicle_load (vrp_t *self, size_t vehicle_id);
+// Add a vehicle to fleet.
+// Return vehicle ID.
+size_t vrp_add_vehicle (vrp_t *self,
+                        const char *vehicle_ext_id,
+                        double max_capacity,
+                        size_t start_node_id,
+                        size_t end_node_id);
 
 // Vehicle pickups some goods
 void vrp_vehicle_do_pickup (vrp_t *self, size_t vehicle_id, double quantity);
@@ -149,26 +127,45 @@ void vrp_vehicle_do_pickup (vrp_t *self, size_t vehicle_id, double quantity);
 // Vehicle deliverys some goods
 void vrp_vehicle_do_delivery (vrp_t *self, size_t vehicle_id, double quantity);
 
-// Get vehicle's start node ID
-size_t vrp_vehicle_start_node_id (vrp_t *self, size_t vehicle_id);
-
-// Set vehicle's start node ID
-void vrp_set_vehicle_start_node_id (vrp_t *self, size_t vehilce_id, size_t node_id);
-
-// Get vehicle's end node ID
-size_t vrp_vehicle_end_node_id (vrp_t *self, size_t vehicle_id);
-
-// Set vehicle's end node ID
-void vrp_set_vehicle_end_node_id (vrp_t *self, size_t vehicle_id, size_t node_id);
-
-// Get vehicle's route ID
-size_t vrp_vehicle_route_id (vrp_t *self, size_t vehicle_id);
-
 // Attach a route to vehicle
 void vrp_attach_route_to_vehicle (vrp_t *self, size_t vehicle_id, size_t route_id);
 
 // Detach route from vehicle
 void vrp_detach_route_from_vehicle (vrp_t *self, size_t vehicle_id);
+
+// Reset vehicle's capacity to maximum
+void vrp_reset_vehicle_capacity (vrp_t *self, size_t vehicle_id);
+
+// Reset all vehicles' capacities
+void vrp_reset_all_vehicles_capacities (vrp_t *self);
+
+// Get number of vehicles in fleet
+size_t vrp_num_vehicles (vrp_t *self);
+
+// Get vehicle ID array
+const listu_t *vrp_vehicle_ids (vrp_t *self);
+
+// Get vehicle's external ID
+const char *vrp_vehicle_ext_id (vrp_t *self, size_t vehicle_id);
+
+// Get vehicle's maximal capacity
+double vrp_vehicle_max_capacity (vrp_t *self, size_t vehicle_id);
+
+// Get vehicle's current capacity
+double vrp_vehicle_capacity (vrp_t *self, size_t vehicle_id);
+
+// Get vehicle's current load
+double vrp_vehicle_load (vrp_t *self, size_t vehicle_id);
+
+// Get vehicle's start node ID
+size_t vrp_vehicle_start_node_id (vrp_t *self, size_t vehicle_id);
+
+// Get vehicle's end node ID
+size_t vrp_vehicle_end_node_id (vrp_t *self, size_t vehicle_id);
+
+// Get vehicle's route ID
+size_t vrp_vehicle_route_id (vrp_t *self, size_t vehicle_id);
+
 
 // ----------------------------------------------------------------------------
 // Requests
@@ -238,6 +235,7 @@ size_t vrp_query_request (vrp_t *self, const char *request_ext_id);
 // Get number of requests
 size_t vrp_num_requests (vrp_t* self);
 
+
 // ---------------------------------------------------------------------------
 // Sub-model verifications
 // ---------------------------------------------------------------------------
@@ -250,10 +248,6 @@ bool vrp_is_cvrp (vrp_t *self);
 
 // TSP verification
 bool vrp_is_tsp (vrp_t *self);
-
-
-// Self test
-void vrp_test (bool verbose);
 
 
 #ifdef __cplusplus

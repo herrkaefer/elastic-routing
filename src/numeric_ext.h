@@ -15,13 +15,13 @@ extern "C" {
 
 #define PI 3.1415926
 
-#ifdef SIZE_MAX
-#define ID_NONE   SIZE_MAX
-#define SIZE_NONE SIZE_MAX
-#else
-#define ID_NONE   ((size_t)-1)
-#define SIZE_NONE ((size_t)-1)
+#ifndef SIZE_MAX
+#define SIZE_MAX ((size_t)-1)
 #endif
+
+#define SIZE_NONE SIZE_MAX
+
+#define ID_NONE   SIZE_NONE
 
 #define DOUBLE_MAX       DBL_MAX
 #define DOUBLE_MIN       DBL_MIN

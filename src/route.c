@@ -11,8 +11,8 @@
 // typedef listu_t _route_t;
 
 
-route_t *route_new (size_t size) {
-    return listu_new (size);
+route_t *route_new (size_t alloc_size) {
+    return listu_new (alloc_size);
 }
 
 
@@ -82,10 +82,52 @@ void route_swap_nodes (route_t *self, size_t idx1, size_t idx2) {
 }
 
 
+double route_total_distance (route_t *self, vrp_t *vrp) {
+    assert (self);
+    assert (vrp);
+    size_t len = route_size (self);
+    double total_dist = 0;
+    for (size_t idx = 0; idx < len - 1; idx++)
+        total_dist += vrp_arc_distance (vrp,
+                                        route_at (self, idx),
+                                        route_at (self, idx + 1));
+    return total_dist;
+}
+
+
 void route_shuffle (route_t *self,
                     size_t idx_begin, size_t idx_end, rng_t *rng) {
     assert (self);
     listu_shuffle_slice (self, idx_begin, idx_end, rng);
+}
+
+
+// Cost increment for route_flip operation.
+// Flip of route slice [i, j]
+// (0, ..., i-1, i, i+1, ..., j-1, j, j+1, ..., route_length-1) =>
+// (0, ..., i-1, j, j-1, ..., i+1, i, j+1, ..., route_length-1)
+double route_flip_delta_distance (route_t *self,
+                                  vrp_t *vrp, int i, int j) {
+    assert (self);
+    assert (vrp);
+    assert (i <= j);
+    assert (j < route_size (self));
+
+    if (i == j)
+        return 0;
+
+    double dcost =
+        vrp_arc_distance (vrp, route_at (self, i - 1), route_at (self, j)) +
+        vrp_arc_distance (vrp, route_at (self, i), route_at (self, j + 1)) -
+        vrp_arc_distance (vrp, route_at (self, i - 1), route_at (self, i)) -
+        vrp_arc_distance (vrp, route_at (self, j), route_at (self, j + 1));
+
+    for (size_t k = i; k < j; k++) {
+        dcost = dcost +
+          vrp_arc_distance (vrp, route_at (self, k + 1), route_at (self, k)) -
+          vrp_arc_distance (vrp, route_at (self, k), route_at (self, k + 1));
+    }
+    return dcost;
 }
 
 
@@ -170,6 +212,43 @@ void route_ox (route_t *route1, route_t *route2,
         rng_free (&rng);
 }
 
+
+double route_2_opt (route_t *self,
+                    vrp_t *vrp, size_t idx_begin, size_t idx_end) {
+    assert (self);
+    assert (vrp);
+    assert (idx_begin <= idx_end);
+    assert (idx_end < route_size (self));
+
+    print_info ("2-opt local search start.\n");
+    if (idx_begin == idx_end)
+        return 0;
+
+    // size_t route_len = route_size (route);
+    // size_t idx_begin = (self->start_node != SIZE_NONE) ? 1 : 0;
+    // size_t idx_end =
+    //     (self->end_node != SIZE_NONE) ? (route_len-2) : (route_len-1);
+    // print_info ("idx_begin: %zu, idx_end: %zu\n", idx_begin, idx_end);
+
+    double total_delta_cost = 0, delta_cost;
+    bool improved = true;
+
+    while (improved) {
+        improved = false;
+        for (size_t i = idx_begin; i < idx_end; i++) {
+            for (size_t j = i + 1; j <= idx_end; j++) {
+                delta_cost = route_flip_delta_distance (self, vrp, i, j);
+                if (delta_cost < -DOUBLE_THRESHOLD) {
+                    route_flip (self, i, j);
+                    total_delta_cost += delta_cost;
+                    improved = true;
+                }
+            }
+        }
+    }
+
+    return total_delta_cost;
+}
 
 
 void route_print (route_t *self) {

@@ -31,10 +31,10 @@ listu_t *listu_new_from_array (const size_t *array, size_t len);
 void listu_free (listu_t **self_p);
 
 // Get number of values in list
-size_t listu_size (listu_t *self);
+size_t listu_size (const listu_t *self);
 
 // Get value at index
-size_t listu_get (listu_t *self, size_t index);
+size_t listu_get (const listu_t *self, size_t index);
 
 // Set value at index
 void listu_set (listu_t *self, size_t index, size_t value);
@@ -49,10 +49,10 @@ void listu_append (listu_t *self, size_t value);
 size_t listu_pop_last (listu_t *self);
 
 // Extend list by appending values from another list
-void listu_extend (listu_t *self, listu_t *list);
+void listu_extend (listu_t *self, const listu_t *list);
 
 // Extend list by appending values from an array
-void listu_extend_array (listu_t *self, size_t *array, size_t length);
+void listu_extend_array (listu_t *self, const size_t *array, size_t length);
 
 // Insert value at index (in front of the one at index before)
 void listu_insert_at (listu_t *self, size_t index, size_t value);
@@ -85,16 +85,16 @@ void listu_swap (listu_t *self, size_t idx1, size_t idx2);
 void listu_purge (listu_t *self);
 
 // Get data array (read only)
-const size_t *listu_array (listu_t *self);
+const size_t *listu_array (const listu_t *self);
 
 // Check if list is sorted
-bool listu_is_sorted (listu_t *self);
+bool listu_is_sorted (const listu_t *self);
 
 // Check if list is sorted ascendingly
-bool listu_is_sorted_ascending (listu_t *self);
+bool listu_is_sorted_ascending (const listu_t *self);
 
 // Check if list is sorted descendingly
-bool listu_is_sorted_descending (listu_t *self);
+bool listu_is_sorted_descending (const listu_t *self);
 
 // Sort list in specified order
 void listu_sort (listu_t *self, bool ascending);
@@ -126,17 +126,17 @@ void listu_swap_slices (listu_t *self, size_t i, size_t j, size_t u, size_t v);
 // Return the index if found, SIZE_NONE if not found.
 // For sorted list, the index returned could be arbitrary if multiple items with
 // value exist. For unsorted list, the first index of value is returned.
-size_t listu_find (listu_t *self, size_t value);
+size_t listu_find (const listu_t *self, size_t value);
 
 // Check if value is in list
-bool listu_includes (listu_t *self, size_t value);
+bool listu_includes (const listu_t *self, size_t value);
 
 // Count values in list
-size_t listu_count (listu_t *self, size_t value);
+size_t listu_count (const listu_t *self, size_t value);
 
 // Export list to array.
 // The caller is responsible for freeing the output after use.
-size_t *listu_dump_array (listu_t *self);
+size_t *listu_dump_array (const listu_t *self);
 
 // Duplicator
 listu_t *listu_dup (const listu_t *self);

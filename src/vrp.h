@@ -83,7 +83,7 @@ size_t vrp_query_node (vrp_t *self, const char *node_ext_id);
 bool vrp_node_exists (vrp_t *self, size_t node_id);
 
 // Get node coordinate
-coord2d_t vrp_node_coord (vrp_t *self, size_t node_id);
+const coord2d_t *vrp_node_coord (vrp_t *self, size_t node_id);
 
 // Get number of nodes
 size_t vrp_num_nodes (vrp_t *self);
@@ -104,10 +104,13 @@ const listu_t *vrp_depot_ids (vrp_t *self);
 const listu_t *vrp_customer_ids (vrp_t *self);
 
 // Get distance between two nodes
-double vrp_distance (vrp_t *self, size_t from_node_id, size_t to_node_id);
+double vrp_arc_distance (vrp_t *self, size_t from_node_id, size_t to_node_id);
 
 // Get duration between two nodes
-size_t vrp_duration (vrp_t *self, size_t from_node_id, size_t to_node_id);
+size_t vrp_arc_duration (vrp_t *self, size_t from_node_id, size_t to_node_id);
+
+// Validate that roadgraph are well defined
+bool vrp_validate_roadgraph (vrp_t *self);
 
 // ---------------------------------------------------------------------------
 // Fleet
@@ -166,6 +169,8 @@ size_t vrp_vehicle_end_node_id (vrp_t *self, size_t vehicle_id);
 // Get vehicle's route ID
 size_t vrp_vehicle_route_id (vrp_t *self, size_t vehicle_id);
 
+// Validate that fleet are well defined
+bool vrp_validate_fleet (vrp_t *self);
 
 // ----------------------------------------------------------------------------
 // Requests
@@ -246,7 +251,7 @@ bool vrp_fleet_is_homogeneous (vrp_t *self);
 // CVRP verification
 bool vrp_is_cvrp (vrp_t *self);
 
-// TSP verification
+// TSP verification: classic TSP with no additional constraints
 bool vrp_is_tsp (vrp_t *self);
 
 

@@ -101,12 +101,12 @@ static double tspi_fitness (tspi_t *self, route_t *route) {
     double cost = 0.0;
     size_t len = route_size (route);
     if (len == 1)
-        return cost;
+        return 0;
 
-    for (size_t i = 0; i < len-1; i++)
+    for (size_t i = 0; i < len - 1; i++)
         cost += matrixd_get (self->costs,
                              route_at (route, i),
-                             route_at (route, i+1));
+                             route_at (route, i + 1));
     assert (cost > 0);
     return (len - 1) / cost;
 }
@@ -142,22 +142,21 @@ static listx_t *tspi_sweep (tspi_t *self, size_t max_expected) {
         polars[id].v1 = (double) id; // save ID in radius
     }
 
-    // sort nodes in ascending order of angle
+    // Sort nodes in ascending order of angle
     qsort (polars, self->num_nodes, sizeof (coord2d_t),
            (comparator_t) coord2d_compare_polar_angle);
 
+    // Make route
     route_t *route = route_new (self->num_nodes + 1);
     assert (route);
     if (self->start_node != SIZE_NONE)
         route_append_node (route, self->start_node);
-
     for (size_t i = 0; i < self->num_nodes; i++) {
         size_t id = (size_t) polars[i].v1;
         if (id == self->start_node || id == self->end_node)
             continue;
         route_append_node (route, id);
     }
-
     if (self->end_node != SIZE_NONE)
         route_append_node (route, self->end_node);
 
@@ -169,17 +168,17 @@ static listx_t *tspi_sweep (tspi_t *self, size_t max_expected) {
 }
 
 
-// Heuristic: random generation
-static listx_t *tspi_random_routes (tspi_t *self, size_t max_expected) {
+// Heuristic: random permutation
+static listx_t *tspi_random_permutation (tspi_t *self, size_t max_expected) {
     listx_t *list = listx_new ();
 
     size_t route_len = route_size (self->template);
     size_t shuffle_begin = (self->start_node != SIZE_NONE) ? 1 : 0;
     size_t shuffle_end =
-        (self->end_node != SIZE_NONE) ? (route_len-2) : (route_len-1);
+        (self->end_node != SIZE_NONE) ? (route_len - 2) : (route_len - 1);
 
+    // Duplicate template and shuffle
     for (size_t cnt = 0; cnt < max_expected; cnt++) {
-        // Duplicate and shuffle
         route_t *route = route_dup (self->template);
         assert (route);
         route_shuffle (route, shuffle_begin, shuffle_end, self->rng);
@@ -192,40 +191,19 @@ static listx_t *tspi_random_routes (tspi_t *self, size_t max_expected) {
 
 // Crossover: OX
 static listx_t *tspi_ox (tspi_t *self, route_t *route1, route_t *route2) {
-    listx_t *list = listx_new ();
-
-    // size_t *r1 = route_dump_array (route1);
-    // assert (r1);
-    // size_t *r2 = route_dump_array (route2);
-    // assert (r2);
-
     route_t *r1 = route_dup (route1);
-    assert (r1);
     route_t *r2 = route_dup (route2);
-    assert (r2);
 
-    size_t len1 = route_size (route1);
-    assert (len1 == route_size (route2));
+    size_t len = route_size (route1);
+    assert (len == route_size (route2));
 
-    size_t start_idx = self->start_node != SIZE_NONE ? 1 : 0;
-    size_t end_idx = self->end_node != SIZE_NONE ? (len1-2) : (len1-1);
-    // print_info ("start: %zu, end: %zu\n", start_idx, end_idx);
+    size_t idx_begin = self->start_node != SIZE_NONE ? 1 : 0;
+    size_t idx_end = self->end_node != SIZE_NONE ? (len - 2) : (len - 1);
+    route_ox (r1, r2, idx_begin, idx_end, self->rng);
 
-    route_ox (r1, r2, start_idx, end_idx, self->rng);
-
-    // arrayu_print (r1, len1);
-    // arrayu_print (r2, len1);
-
-    // listu_t *child1 = listu_new_from_array (r1, len1);
-    // listu_t *child2 = listu_new_from_array (r2, len1);
-    // listu_print (child1);
-    // listu_print (child2);
-
+    listx_t *list = listx_new ();
     listx_append (list, r1);
     listx_append (list, r2);
-
-    // free (r1);
-    // free (r2);
     return list;
 }
 
@@ -473,9 +451,9 @@ solution_t *tspi_solve (tspi_t *self) {
                                  1);
 
     evol_register_heuristic (evol,
-                             (evol_heuristic_t) tspi_random_routes,
+                             (evol_heuristic_t) tspi_random_permutation,
                              true,
-                             factorial (route_size (self->template)-2));
+                             factorial (route_size (self->template) - 2));
 
     evol_register_crossover (evol, (evol_crossover_t) tspi_ox);
 
@@ -483,7 +461,7 @@ solution_t *tspi_solve (tspi_t *self) {
     evol_run (evol);
 
     // Get best route
-    listu_t *route = listu_dup ((listu_t *) evol_best_genome (evol));
+    route_t *route = route_dup ((route_t *) evol_best_genome (evol));
     assert (route);
 
     // Destroy evolution object

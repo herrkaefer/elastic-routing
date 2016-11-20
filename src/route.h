@@ -16,7 +16,7 @@ extern "C" {
 typedef listu_t route_t;
 
 // Create new route object with size
-route_t *route_new (size_t size);
+route_t *route_new (size_t alloc_size);
 
 // Create route object from node id array
 route_t *route_new_from_array (const size_t *node_ids, size_t num_nodes);
@@ -57,10 +57,21 @@ size_t route_find (route_t *self, size_t node_id);
 // Swap two nodes in route
 void route_swap_nodes (route_t *self, size_t idx1, size_t idx2);
 
+// Route total distance
+double route_total_distance (route_t *self, vrp_t *vrp);
+
 // Shuffle route slice [idx_begin, idx_end] in place.
 // Set rng to use your random number generator, or NULL to use an inner one.
 void route_shuffle (route_t *self,
                     size_t idx_begin, size_t idx_end, rng_t *rng);
+
+// Distance increment of route flip operation.
+// Note the the operation is not performed.
+// Flip of route slice [i, j]:
+// (0, ..., i-1, i, i+1, ..., j-1, j, j+1, ..., route_length-1) =>
+// (0, ..., i-1, j, j-1, ..., i+1, i, j+1, ..., route_length-1)
+double route_flip_delta_distance (route_t *self,
+                                  vrp_t *vrp, int idx_begin, int idx_end);
 
 // Reverse (flip) route slice.
 // (..., i, i+1, -->, j, ...) =>
@@ -79,6 +90,12 @@ void route_swap (route_t *self, size_t i, size_t j, size_t u, size_t v);
 void route_ox (route_t *r1, route_t *r2,
                size_t idx_begin, size_t idx_end,
                rng_t *rng);
+
+// 2-opt local search.
+// Brute force search: stop when no improvement is possible in neighborhood.
+// Return cost increment (negative).
+double route_2_opt (route_t *self,
+                    vrp_t *vrp, size_t idx_begin, size_t idx_end);
 
 
 #ifdef __cplusplus

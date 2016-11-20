@@ -63,7 +63,7 @@ static void listu_enlarge (listu_t *self, size_t min_increment) {
 
     self->data = new_data;
     listu_set_alloced (self, new_alloced);
-    print_info ("new alloced size: %zu\n", listu_alloced (self));
+    // print_info ("new alloced size: %zu\n", listu_alloced (self));
 }
 
 
@@ -169,13 +169,13 @@ void listu_free (listu_t **self_p) {
 }
 
 
-size_t listu_size (listu_t *self) {
+size_t listu_size (const listu_t *self) {
     assert (self);
     return self->data[LIST4U_INDEX_SIZE];
 }
 
 
-size_t listu_get (listu_t *self, size_t index) {
+size_t listu_get (const listu_t *self, size_t index) {
     assert (self);
     assert (index < listu_size (self));
     return self->data[real_index (index)];
@@ -231,7 +231,7 @@ size_t listu_pop_last (listu_t *self) {
 }
 
 
-void listu_extend (listu_t *self, listu_t *list) {
+void listu_extend (listu_t *self, const listu_t *list) {
     assert (self);
     size_t size = listu_size (self);
     size_t list_size = listu_size (list);
@@ -244,7 +244,7 @@ void listu_extend (listu_t *self, listu_t *list) {
 }
 
 
-void listu_extend_array (listu_t *self, size_t *array, size_t length) {
+void listu_extend_array (listu_t *self, const size_t *array, size_t length) {
     assert (self);
     size_t size = listu_size (self);
 
@@ -434,25 +434,25 @@ void listu_purge (listu_t *self) {
 }
 
 
-const size_t *listu_array (listu_t *self) {
+const size_t *listu_array (const listu_t *self) {
     assert (self);
     return self->data + real_index (0);
 }
 
 
-bool listu_is_sorted (listu_t *self) {
+bool listu_is_sorted (const listu_t *self) {
     assert (self);
     return (self->data[LIST4U_INDEX_SORTED] != LIST4U_UNSORTED);
 }
 
 
-bool listu_is_sorted_ascending (listu_t *self) {
+bool listu_is_sorted_ascending (const listu_t *self) {
     assert (self);
     return (self->data[LIST4U_INDEX_SORTED] == LIST4U_ASCENDING_SORTED);
 }
 
 
-bool listu_is_sorted_descending (listu_t *self) {
+bool listu_is_sorted_descending (const listu_t *self) {
     assert (self);
     return (self->data[LIST4U_INDEX_SORTED] == LIST4U_DESCENDING_SORTED);
 }
@@ -554,7 +554,7 @@ void listu_swap_slices (listu_t *self, size_t i, size_t j, size_t u, size_t v) {
 }
 
 
-size_t listu_find (listu_t *self, size_t value) {
+size_t listu_find (const listu_t *self, size_t value) {
     assert (self);
     size_t size = listu_size (self);
 
@@ -570,12 +570,12 @@ size_t listu_find (listu_t *self, size_t value) {
 }
 
 
-bool listu_includes (listu_t *self, size_t value) {
+bool listu_includes (const listu_t *self, size_t value) {
     return listu_find (self, value) != SIZE_NONE;
 }
 
 
-size_t listu_count (listu_t *self, size_t value) {
+size_t listu_count (const listu_t *self, size_t value) {
     assert (self);
 
     size_t size = listu_size (self);
@@ -610,7 +610,7 @@ size_t listu_count (listu_t *self, size_t value) {
 }
 
 
-size_t *listu_dump_array (listu_t *self) {
+size_t *listu_dump_array (const listu_t *self) {
     assert (self);
     size_t size = listu_size (self);
     size_t *array = (size_t *) malloc (sizeof (size_t) * size);

@@ -62,8 +62,8 @@ _MODULES = numeric_ext \
 	       solution \
 	       evol \
 	       tspi \
-	       tsp \
-	       solver
+	       tsp
+
 
 _OBJ = $(_MODULES:=.o)
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))

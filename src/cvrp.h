@@ -12,8 +12,6 @@
 extern "C" {
 #endif
 
-typedef struct _cvrp_t cvrp_t;
-
 // Create a new cvrp object
 cvrp_t *cvrp_new (void);
 

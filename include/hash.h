@@ -12,8 +12,6 @@
 extern "C" {
 #endif
 
-typedef struct _hash_t hash_t;
-
 // Create a new hash table
 hash_t *hash_new (hashfunc_t hashfunc, matcher_t key_matcher);
 

@@ -34,4 +34,4 @@
 bin/
 py/*.c
 src/obsolete/
-testdata/
+benchmark/

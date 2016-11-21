@@ -78,19 +78,12 @@ route_t *solution_route (solution_t *self, size_t route_idx) {
 }
 
 
-size_t solution_route_length (solution_t *self, size_t route_idx) {
-    assert (self);
-    assert (route_idx < solution_num_routes (self));
-    return route_size (listx_item_at (self->routes, route_idx));
-}
-
-
-void solution_print (solution_t *self) {
+void solution_print (const solution_t *self) {
     assert (self);
     printf ("solution: #routes: %zu\n", listx_size (self->routes));
     printf ("--------------------------------------------------\n");
     for (size_t idx_r = 0; idx_r < listx_size (self->routes); idx_r++) {
-        route_t *route = solution_route (self, idx_r);
+        route_t *route = listx_item_at (self->routes, idx_r);
         size_t route_len = route_size (route);
         printf ("route #%zu (#nodes: %zu):", idx_r, route_len);
         for (size_t idx_n = 0; idx_n < route_len; idx_n++)

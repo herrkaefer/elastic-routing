@@ -52,8 +52,6 @@ listx is a generic list container.
 extern "C" {
 #endif
 
-typedef struct _listx_t listx_t;
-
 typedef struct {
     void *handle; // handle of current item
     bool forward; // iteration direction. true: forward, false: backward
@@ -91,7 +89,7 @@ void listx_set_comparator (listx_t *self, comparator_t comparator);
 void listx_set_printer (listx_t *self, printer_t printer);
 
 // Get number of items in list
-size_t listx_size (listx_t *self);
+size_t listx_size (const listx_t *self);
 
 // Check if list is sorted
 bool listx_is_sorted (listx_t *self);

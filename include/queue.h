@@ -12,8 +12,6 @@
 extern "C" {
 #endif
 
-typedef struct _queue_t queue_t;
-
 // Create a queue
 queue_t *queue_new (void);
 

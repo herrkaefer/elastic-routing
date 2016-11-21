@@ -32,8 +32,6 @@ hash table中。
 extern "C" {
 #endif
 
-typedef struct _arrayset_t arrayset_t;
-
 // Create a new arrayset.
 // alloc_size is the initial size, or 0 to use a default value.
 arrayset_t *arrayset_new (size_t alloc_size);

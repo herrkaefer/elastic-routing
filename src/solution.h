@@ -12,11 +12,10 @@
 extern "C" {
 #endif
 
-
-typedef struct _solution_t solution_t;
-
+// Create solution object
 solution_t *solution_new (vrp_t *vrp);
 
+// Destroy solution object
 void solution_free (solution_t **self_p);
 
 // Add a route to solution. The route is then taken over ownership by solution.
@@ -27,16 +26,17 @@ void solution_add_route_from_array (solution_t *self,
                                     const size_t *node_ids,
                                     size_t num_nodes);
 
+// Get number of routes in solution
 size_t solution_num_routes (solution_t *self);
 
+// Get route in solution
 route_t *solution_route (solution_t *self, size_t route_idx);
 
-size_t solution_route_length (solution_t *self, size_t route_idx);
+// Printer
+void solution_print (const solution_t *self);
 
-void solution_print (solution_t *self);
-
+// Self test
 void solution_test (bool verbose);
-
 
 #ifdef __cplusplus
 }

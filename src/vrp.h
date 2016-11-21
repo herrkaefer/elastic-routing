@@ -12,15 +12,6 @@
 extern "C" {
 #endif
 
-
-typedef enum {
-    NR_NONE,
-    NR_DEPOT,
-    NR_CUSTOMER
-} node_role_t;
-
-typedef struct _vrp_t vrp_t;
-
 // ---------------------------------------------------------------------------
 // Constructor and destructor
 // ---------------------------------------------------------------------------
@@ -44,30 +35,35 @@ void vrp_test (bool verbose);
 // Set coordinate system
 void vrp_set_coord_sys (vrp_t *self, coord2d_sys_t coord_sys);
 
-// Add a new node
+// Add a new node.
+// Return node ID (ID_NONE if node already exists).
 size_t vrp_add_node (vrp_t *self, const char *ext_id, node_role_t role);
 
 // Set node coordinate
 void vrp_set_node_coord (vrp_t *self, size_t node_id, coord2d_t coord);
 
-// Set distances between nodes
-void vrp_set_distance (vrp_t *self,
-                       size_t from_node_id, size_t to_node_id,
-                       double distance);
+// Set arc distance
+void vrp_set_arc_distance (vrp_t *self,
+                           size_t from_node_id, size_t to_node_id,
+                           double distance);
 
 // Set arc duration (number of time units)
-void vrp_set_duration (vrp_t *self,
-                       size_t from_node_id, size_t to_node_id,
-                       size_t duration);
+void vrp_set_arc_duration (vrp_t *self,
+                           size_t from_node_id, size_t to_node_id,
+                           size_t duration);
 
-// Automatically generate straight arc distances accroding to coordinates
+// Generate straight arc distances accroding to coordinates
 void vrp_generate_beeline_distances (vrp_t *self);
 
-// Automatically generate arc durations by distance and speed
+// Generate arc durations from distance and speed.
+// Note that arc distances should already be set or generated.
 void vrp_generate_durations (vrp_t *self, double speed);
 
 // Get coordinate system
 coord2d_sys_t vrp_coord_sys (vrp_t *self);
+
+// Get external ID of node
+const char *vrp_node_ext_id (vrp_t *self, size_t node_id);
 
 // Check if node is depot
 bool vrp_node_is_depot (vrp_t *self, size_t node_id);
@@ -76,7 +72,7 @@ bool vrp_node_is_depot (vrp_t *self, size_t node_id);
 bool vrp_node_is_customer (vrp_t *self, size_t node_id);
 
 // Query node by external id.
-// Return node id if node exists, ID_NONE if not.
+// Return node ID if node exists, ID_NONE if not.
 size_t vrp_query_node (vrp_t *self, const char *node_ext_id);
 
 // Check if node exists by id
@@ -94,14 +90,14 @@ size_t vrp_num_depots (vrp_t *self);
 // Get number of customers
 size_t vrp_num_customers (vrp_t *self);
 
-// Get array of node ids
-const listu_t *vrp_node_ids (vrp_t *self);
+// Get list of node IDs
+const listu_t *vrp_nodes (vrp_t *self);
 
-// Get id array of depots
-const listu_t *vrp_depot_ids (vrp_t *self);
+// Get ID list of depots
+const listu_t *vrp_depots (vrp_t *self);
 
-// Get id array of customers
-const listu_t *vrp_customer_ids (vrp_t *self);
+// Get ID list of customers
+const listu_t *vrp_customers (vrp_t *self);
 
 // Get distance between two nodes
 double vrp_arc_distance (vrp_t *self, size_t from_node_id, size_t to_node_id);
@@ -109,32 +105,30 @@ double vrp_arc_distance (vrp_t *self, size_t from_node_id, size_t to_node_id);
 // Get duration between two nodes
 size_t vrp_arc_duration (vrp_t *self, size_t from_node_id, size_t to_node_id);
 
-// Validate that roadgraph are well defined
-bool vrp_validate_roadgraph (vrp_t *self);
-
 // ---------------------------------------------------------------------------
 // Fleet
 // ---------------------------------------------------------------------------
 
 // Add a vehicle to fleet.
-// Return vehicle ID.
+// Return vehicle ID (ID_NONE if vehicle already exists).
+// start_node_id or end_node_id could be ID_NONE.
 size_t vrp_add_vehicle (vrp_t *self,
                         const char *vehicle_ext_id,
                         double max_capacity,
                         size_t start_node_id,
                         size_t end_node_id);
 
-// Vehicle pickups some goods
-void vrp_vehicle_do_pickup (vrp_t *self, size_t vehicle_id, double quantity);
-
-// Vehicle deliverys some goods
-void vrp_vehicle_do_delivery (vrp_t *self, size_t vehicle_id, double quantity);
-
 // Attach a route to vehicle
 void vrp_attach_route_to_vehicle (vrp_t *self, size_t vehicle_id, size_t route_id);
 
 // Detach route from vehicle
 void vrp_detach_route_from_vehicle (vrp_t *self, size_t vehicle_id);
+
+// Vehicle pickups some goods
+void vrp_vehicle_do_pickup (vrp_t *self, size_t vehicle_id, double quantity);
+
+// Vehicle deliverys some goods
+void vrp_vehicle_do_delivery (vrp_t *self, size_t vehicle_id, double quantity);
 
 // Reset vehicle's capacity to maximum
 void vrp_reset_vehicle_capacity (vrp_t *self, size_t vehicle_id);
@@ -145,8 +139,8 @@ void vrp_reset_all_vehicles_capacities (vrp_t *self);
 // Get number of vehicles in fleet
 size_t vrp_num_vehicles (vrp_t *self);
 
-// Get vehicle ID array
-const listu_t *vrp_vehicle_ids (vrp_t *self);
+// Get vehicle ID list
+const listu_t *vrp_vehicles (vrp_t *self);
 
 // Get vehicle's external ID
 const char *vrp_vehicle_ext_id (vrp_t *self, size_t vehicle_id);
@@ -169,9 +163,6 @@ size_t vrp_vehicle_end_node_id (vrp_t *self, size_t vehicle_id);
 // Get vehicle's route ID
 size_t vrp_vehicle_route_id (vrp_t *self, size_t vehicle_id);
 
-// Validate that fleet are well defined
-bool vrp_validate_fleet (vrp_t *self);
-
 // ----------------------------------------------------------------------------
 // Requests
 // ----------------------------------------------------------------------------
@@ -182,8 +173,8 @@ bool vrp_validate_fleet (vrp_t *self);
 // pickup_node_id or delivery_node_id, and the other one to ID_NONE.
 size_t vrp_add_request (vrp_t *self,
                         const char *request_ext_id,
-                        size_t pickup_node_id,
-                        size_t delivery_node_id,
+                        size_t pickup_node,
+                        size_t delivery_node,
                         double quantity);
 
 // Add time window for request.
@@ -240,19 +231,24 @@ size_t vrp_query_request (vrp_t *self, const char *request_ext_id);
 // Get number of requests
 size_t vrp_num_requests (vrp_t* self);
 
+// Get pending requsts' IDs
+const listu_t *vrp_pending_request_ids (vrp_t *self);
+
+// Get pickup node of request
+size_t vrp_request_pickup_node (vrp_t *self, size_t request_id);
+
+// Get delivery node of request
+size_t vrp_request_delivery_node (vrp_t *self, size_t request_id);
+
+// Get quantity of request
+double vrp_request_quantity (vrp_t *self, size_t request_id);
 
 // ---------------------------------------------------------------------------
-// Sub-model verifications
+// Solve
 // ---------------------------------------------------------------------------
 
-// Current state of fleet is homogeneous
-bool vrp_fleet_is_homogeneous (vrp_t *self);
-
-// CVRP verification
-bool vrp_is_cvrp (vrp_t *self);
-
-// TSP verification: classic TSP with no additional constraints
-bool vrp_is_tsp (vrp_t *self);
+// Solve
+solution_t *vrp_solve (vrp_t *self);
 
 
 #ifdef __cplusplus

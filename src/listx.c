@@ -408,7 +408,7 @@ void listx_set_printer (listx_t *self, printer_t printer) {
 }
 
 
-size_t listx_size (listx_t *self) {
+size_t listx_size (const listx_t *self) {
     assert (self);
     return self->size;
 }

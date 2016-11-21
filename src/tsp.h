@@ -12,9 +12,9 @@
 extern "C" {
 #endif
 
-typedef struct _tsp_t tsp_t;
-
-// Create a new tsp object
+// Create TSP model from generic VRP model.
+// Note that the VRP model is already validated as an intrinsic TSP model, so
+// here we do not validate the attributes again.
 tsp_t *tsp_new_from (vrp_t *vrp);
 
 // Destroy tsp object
@@ -25,7 +25,6 @@ solution_t *tsp_solve (tsp_t *self);
 
 // Self test
 void tsp_test (bool verbose);
-
 
 #ifdef __cplusplus
 }

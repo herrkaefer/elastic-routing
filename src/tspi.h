@@ -12,7 +12,7 @@
 extern "C" {
 #endif
 
-typedef struct _tspi_t tspi_t;
+// typedef struct _tspi_t tspi_t;
 
 // typedef double (*tspi_cost_t)(size_t node1, size_t node2);
 

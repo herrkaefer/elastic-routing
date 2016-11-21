@@ -40,7 +40,6 @@ static s_node_t *s_node_new (const char *ext_id) {
     self->role = NR_NONE;
     coord2d_set_none (&self->coord);
 
-    // print_info ("node created.\n");
     return self;
 }
 
@@ -55,7 +54,6 @@ static void s_node_free (s_node_t **self_p) {
         free (self);
         *self_p = NULL;
     }
-    // print_info ("node freed.\n");
 }
 
 
@@ -111,7 +109,6 @@ static void s_vehicle_free (s_vehicle_t **self_p) {
         free (self);
         *self_p = NULL;
     }
-    print_info ("vehicle freed.\n");
 }
 
 
@@ -169,12 +166,6 @@ typedef struct {
     listu_t *pickup_time_windows;
     listu_t *delivery_time_windows;
 
-    // time_t pickup_earliest;
-    // time_t pickup_latest;
-
-    // time_t delivery_earliest;
-    // time_t delivery_latest;
-
     // service duration
     size_t pickup_duration; // service time for pickup. e.g. min
     size_t delivery_duration; // service time for delivery. e.g. min
@@ -210,8 +201,6 @@ static s_request_t *s_request_new (const char *ext_id) {
     self->delivery_duration = 0;
 
     self->vehicle_id = ID_NONE;
-
-    print_info ("request created.\n");
     return self;
 }
 
@@ -229,7 +218,6 @@ static void s_request_free (s_request_t **self_p) {
         free (self);
         *self_p = NULL;
     }
-    print_info ("request freed.\n");
 }
 
 
@@ -260,7 +248,7 @@ struct _vrp_t {
     listu_t *depot_ids;
     listu_t *customer_ids;
     listu_t *vehicle_ids;
-    listu_t *pending_requests;
+    listu_t *pending_request_ids;
     // bool vehicles_are_homogeneous; // @todo what is the meaning related to state?
 };
 
@@ -282,12 +270,12 @@ vrp_t *vrp_new (void) {
                              (matcher_t) string_equal,
                              NULL);
 
-    self->distances = matrixd_new (0, 0);
-    self->durations = matrixu_new (0, 0);
+    self->distances = NULL; // lazy creation
+    self->durations = NULL;
     self->coord_sys = CS_NONE;
 
     // Fleet
-    self->vehicles = arrayset_new (0);
+    self->vehicles = arrayset_new (1);
     arrayset_set_data_free_func (self->vehicles, (destructor_t) s_vehicle_free);
     arrayset_set_hash_funcs (self->vehicles,
                              (hashfunc_t) string_hash,
@@ -295,34 +283,23 @@ vrp_t *vrp_new (void) {
                              NULL);
 
     // Requests
-    self->requests = arrayset_new (0);
+    self->requests = arrayset_new (1);
     arrayset_set_data_free_func (self->requests, (destructor_t) s_request_free);
     arrayset_set_hash_funcs (self->requests,
                              (hashfunc_t) string_hash,
                              (matcher_t) string_equal,
                              NULL);
 
-    // Plan
-    // self->plan = arrayset_new (0);
-    // arrayset_set_data_free_func (self->plan, (destructor_t) route_free);
-    // @todo do plans need hash?
-    // arrayset_set_hash_funcs (self->plans,
-    //                          (hashfunc_t) string_hash,
-    //                          (matcher_t) string_equal,
-    //                          (destructor_t) string_free);
-
-    // self->plan = solution_new ();
-
     // Constraints
-    self->max_route_distance = DOUBLE_NONE; // or DOUBLE_MAX?
-    self->max_route_duration = SIZE_NONE; // or SIZE_MAX?
+    self->max_route_distance = DOUBLE_MAX;
+    self->max_route_duration = SIZE_MAX;
 
     // Auxiliaries
     self->node_ids = listu_new (0);
     self->depot_ids = listu_new (0);
     self->customer_ids = listu_new (0);
     self->vehicle_ids = listu_new (0);
-    self->pending_requests = listu_new (0);
+    self->pending_request_ids = listu_new (0);
 
     print_info ("vrp created.\n");
     return self;
@@ -345,7 +322,7 @@ void vrp_free (vrp_t **self_p) {
         listu_free (&self->depot_ids);
         listu_free (&self->customer_ids);
         listu_free (&self->vehicle_ids);
-        listu_free (&self->pending_requests);
+        listu_free (&self->pending_request_ids);
 
         free (self);
         *self_p = NULL;
@@ -377,12 +354,12 @@ vrp_t *vrp_new_from_file (const char *filename) {
     } edge_weight_format = EDGE_WEIGHT_FORMAT_NONE;
 
     vrp_t *self = NULL;
-    int K; // num_vehicles
-    int N; // num_nodes
-    double Q; // capacity
-    double *q = NULL; // demands
-    matrixd_t *c = NULL;
-    coord2d_t *coords = NULL; // corrds
+    size_t num_vehicles = 1;
+    size_t num_nodes;
+    double capacity = DOUBLE_MAX;
+    double *demands = NULL;
+    matrixd_t *costs = NULL;
+    coord2d_t *coords = NULL;
 
     const int LINE_LEN = 128;
     char line[LINE_LEN];
@@ -396,37 +373,40 @@ vrp_t *vrp_new_from_file (const char *filename) {
     FILE *vrpfile;
     int error_flag = 0;
 
-    // open file
+    // Open file
     vrpfile = fopen (filename, "r");
     if (vrpfile == NULL) {
         print_error ("Open VRP file %s failed.\n", filename);
         return NULL;
     }
 
-    // recognize file format and determine K
+    // Recognize file format and try to read vehicle number K from filename
     p = strrchr (filename, '.');
-    if (p != NULL && (strcmp (p+1, "vrp") == 0 || strcmp (p+1, "VRP") == 0)) {
+    // VRP
+    if (p != NULL && (strcmp (p + 1, "vrp") == 0 || strcmp (p + 1, "VRP") == 0)) {
         // try to get K from filename
-        p = strchr (filename, 'k');
+        p = strrchr (filename, 'k');
         if (p == NULL)
-            p = strchr (filename, 'K');
+            p = strrchr (filename, 'K');
         if (p != NULL)
-            K = (int) strtol (p+1, NULL, 10); // note: long int to int!
-        else {
-            print_warning ("No vehicle number specified in the file.\n");
-            K = 1;
-        }
+            num_vehicles = (size_t) strtol (p + 1, NULL, 10);
+        else
+            print_warning ("No vehicle number specified in filename.\n");
     }
-    else if (p != NULL && (strcmp (p+1, "txt") == 0 || strcmp (p+1, "TXT") == 0)) {
-        print_error ("File format .txt is not supported yet.\n");
-        return NULL;
+    // TSP
+    else if (p != NULL &&
+             (strcmp (p + 1, "tsp") == 0 ||
+              strcmp (p + 1, "TSP") == 0 ||
+              strcmp (p + 1, "atsp") == 0 ||
+              strcmp (p + 1, "ATSP") == 0)) {
+        num_vehicles = 1;
     }
     else {
-        print_error ("Unrecognized input file.\n");
+        print_error ("Unsupported input file.\n");
         return NULL;
     }
 
-    // read file content
+    // Read file content
     while (error_flag == 0 && fgets (line, LINE_LEN, vrpfile) != NULL) {
 
         p = strchr (line, ':');
@@ -436,66 +416,71 @@ vrp_t *vrp_new_from_file (const char *filename) {
             data_section = DATA_SECTION_NONE;
 
             if (strncmp (line, "DIMENSION", strlen ("DIMENSION")) == 0) {
-                N = strtol (p+1, NULL, 10) - 1;
-                q = (double *) malloc ((N+1) * sizeof (double));
-                assert (q);
-                // c = (double *) malloc ((N+1) * (N+1) * sizeof (double));
-                c = matrixd_new (N+1, N+1);
-                assert (c);
+                num_nodes = strtol (p + 1, NULL, 10); // number of all nodes
+                costs = matrixd_new (num_nodes, num_nodes);
+                assert (costs);
             }
 
             else if (strncmp (line, "CAPACITY", strlen ("CAPACITY")) == 0)
-                Q = strtod (p+1, NULL);
+                capacity = strtod (p + 1, NULL);
 
-            else if (strncmp (line, "EDGE_WEIGHT_TYPE", strlen ("EDGE_WEIGHT_TYPE")) == 0) {
-                if (strstr (p+1, "EUC_2D") != NULL)
+            else if (strncmp (line, "EDGE_WEIGHT_TYPE",
+                              strlen ("EDGE_WEIGHT_TYPE")) == 0) {
+                if (strstr (p + 1, "EUC_2D") != NULL)
                     edge_weight_type = EUC_2D;
-                else if (strstr(p+1, "EXPLICIT") != NULL)
+                else if (strstr (p + 1, "EXPLICIT") != NULL)
                     edge_weight_type = EXPLICIT;
                 else {
-                    puts ("ERROR: cvrp_new_from_file: unsupported EDGE_WEIGHT_TYPE.");
+                    print_error ("unsupported EDGE_WEIGHT_TYPE: %s.\n", p + 1);
                     error_flag = 1;
                 }
             }
 
-            else if (strncmp (line, "EDGE_WEIGHT_FORMAT", strlen ("EDGE_WEIGHT_FORMAT")) == 0) {
-                if (strstr (p+1, "LOWROW") != NULL)
+            else if (strncmp (line, "EDGE_WEIGHT_FORMAT",
+                              strlen ("EDGE_WEIGHT_FORMAT")) == 0) {
+                if (strstr (p + 1, "LOWROW") != NULL)
                     edge_weight_format = LOWROW;
                 else {
-                    puts ("ERROR: cvrp_new_from_file: unsupported EDGE_WEIGHT_FORMAT.");
+                    print_error ("unsupported EDGE_WEIGHT_FORMAT: %s.\n", p + 1);
                     error_flag = 1;
                 }
             }
         }
 
-        else if (strstr (line, "SECTION") != NULL) { // start of data part
-            if (strncmp (line, "NODE_COORD_SECTION", strlen ("NODE_COORD_SECTION")) == 0) {
+        // Start of data part
+        else if (strstr (line, "SECTION") != NULL) {
+            if (strncmp (line, "NODE_COORD_SECTION",
+                         strlen ("NODE_COORD_SECTION")) == 0) {
                 data_section = NODE_COORD_SECTION;
-
-                // malloc memory of coordinates
-                coords = (coord2d_t *) malloc ((N+1) * sizeof (coord2d_t));
+                coords = (coord2d_t *) malloc (num_nodes * sizeof (coord2d_t));
                 assert (coords);
             }
-            else if (strncmp (line, "DEMAND_SECTION", strlen ("DEMAND_SECTION")) == 0)
+            else if (strncmp (line, "DEMAND_SECTION",
+                              strlen ("DEMAND_SECTION")) == 0) {
                 data_section = DEMAND_SECTION;
-            else if (strncmp (line, "EDGE_WEIGHT_SECTION", strlen ("EDGE_WEIGHT_SECTION")) == 0)
+                demands = (double *) malloc (num_nodes * sizeof (double));
+                assert (demands);
+            }
+            else if (strncmp (line, "EDGE_WEIGHT_SECTION",
+                              strlen ("EDGE_WEIGHT_SECTION")) == 0) {
                 data_section = EDGE_WEIGHT_SECTION;
+            }
             else
                 data_section = DATA_SECTION_NONE;
         }
 
-        else { // data
+        // Data
+        else {
             switch (data_section) {
                 case NODE_COORD_SECTION:
                     sscanf (line, "%d %d %d", &ind1, &value1, &value2);
-                    coords[ind1-1].v1 = (double)value1;
-                    coords[ind1-1].v2 = (double)value2;
+                    coords[ind1-1].v1 = (double) value1;
+                    coords[ind1-1].v2 = (double) value2;
                     break;
 
                 case DEMAND_SECTION:
                     sscanf (line, "%d %d", &ind1, &value1);
-                    q[ind1-1] = (double)value1;
-                    // PRINT("index: %d value1: %d\n", ind1, value1);
+                    demands[ind1-1] = (double) value1;
                     break;
 
                 case EDGE_WEIGHT_SECTION:
@@ -505,23 +490,23 @@ vrp_t *vrp_new_from_file (const char *filename) {
 
                                 if (ind1 == 0 && ind2 == 0) {
                                     // c[0] = 0;
-                                    matrixd_set (c, 0, 0, 0);
+                                    matrixd_set (costs, 0, 0, 0);
                                     ind1 = 1; // start at position (1, 0)
                                 }
 
                                 // PRINT("Splitting string \"%s\" into tokens:\n", line);
-                                p = strtok(line," ");
+                                p = strtok (line, " ");
                                 while (p != NULL) {
                                     // c[(N+1)*ind1+ind2] = strtod (p, NULL);
                                     // c[(N+1)*ind2+ind1] = c [(N+1)*ind1+ind2];
                                     value_d = strtod (p, NULL);
-                                    matrixd_set (c, ind1, ind2, value_d);
-                                    matrixd_set (c, ind2, ind1, value_d);
+                                    matrixd_set (costs, ind1, ind2, value_d);
+                                    matrixd_set (costs, ind2, ind1, value_d);
 
                                     ind2 += 1;
                                     if (ind2 == ind1) {
                                         // c[(N+1)*ind1+ind2] = 0; // asign 0 to diagonal
-                                        matrixd_set (c, ind1, ind2, 0);
+                                        matrixd_set (costs, ind1, ind2, 0);
                                         ind1 += 1; // new line
                                         ind2 = 0;
                                     }
@@ -547,13 +532,13 @@ vrp_t *vrp_new_from_file (const char *filename) {
 
     fclose (vrpfile);
 
-    // no error while reading file
+    // No error while reading file
     if (error_flag == 0) {
         // compute cost as Euclidian distance
         if (edge_weight_type == EUC_2D) {
-            for (ind1 = 0; ind1 <= N; ind1++) {
-                matrixd_set (c, ind1, ind1, 0);
-                for (ind2 = ind1+1; ind2 <= N; ind2++) {
+            for (ind1 = 0; ind1 < num_nodes; ind1++) {
+                matrixd_set (costs, ind1, ind1, 0);
+                for (ind2 = ind1 + 1; ind2 < num_nodes; ind2++) {
                     // @note: rounding the distance by
                     // nint(sqrt(xd*xd+yd*yd)). see TSPLIB spec.
                     // for nint see
@@ -562,8 +547,8 @@ vrp_t *vrp_new_from_file (const char *filename) {
                       coord2d_distance (&coords[ind1], &coords[ind2],
                                         CS_CARTESIAN2D)
                       + 0.5);
-                    matrixd_set (c, ind1, ind2, (double) value_i);
-                    matrixd_set (c, ind2, ind1, (double) value_i);
+                    matrixd_set (costs, ind1, ind2, (double) value_i);
+                    matrixd_set (costs, ind2, ind1, (double) value_i);
                 }
             }
         }
@@ -571,49 +556,58 @@ vrp_t *vrp_new_from_file (const char *filename) {
         // create model
         self = vrp_new ();
         char ext_id[UUID_STR_LEN];
-        // s_node_t *depot = NULL;
-        size_t depot_id;
+        size_t depot_id, node_id;
 
-        // add nodes, arc distances, and requests
-        for (size_t cnt = 0; cnt <= N; cnt++) {
-            sprintf (ext_id, "%zu", cnt);
-            // s_node_t *node = vrp_add_node (self, ext_id);
-            size_t node_id;
-            if (cnt == 0)
-                node_id = vrp_add_node (self, ext_id, NR_DEPOT);
-            else
+        // Add nodes, arc distances, and requests
+        for (size_t cnt = 0; cnt < num_nodes; cnt++) {
+            sprintf (ext_id, "node-%04zu", cnt + 1);
+            if (demands != NULL) // CVRP
+                node_id = vrp_add_node (self, ext_id,
+                                        (cnt == 0) ? NR_DEPOT : NR_CUSTOMER);
+            else // TSP
                 node_id = vrp_add_node (self, ext_id, NR_CUSTOMER);
-
-            if (cnt == 0)
-                depot_id = node_id;
 
             if (coords != NULL)
                 vrp_set_node_coord (self, node_id, coords[cnt]);
 
-            if (cnt > 0) { // add request: depot->customer
-                vrp_add_request (self, ext_id,
-                                 depot_id, node_id, q[cnt]);
-                // vrp_set_request_task (self, r_id, depot_id, node_id, q[cnt]);
+            if (demands != NULL) { // CVRP
+                if (cnt == 0) // depot
+                    depot_id = node_id;
+                else // add request: depot->customer
+                    vrp_add_request (self, ext_id, depot_id, node_id, demands[cnt]);
             }
+            else // TSP
+                vrp_add_request (self, ext_id, ID_NONE, node_id, 0);
 
             for (size_t cnt1 = 0; cnt1 <= cnt; cnt1++) {
-                vrp_set_distance (self, cnt1, cnt, matrixd_get (c, cnt1, cnt));
-                vrp_set_distance (self, cnt, cnt1, matrixd_get (c, cnt, cnt1));
+                vrp_set_arc_distance (self, cnt1, cnt,
+                                      matrixd_get (costs, cnt1, cnt));
+                vrp_set_arc_distance (self, cnt, cnt1,
+                                      matrixd_get (costs, cnt, cnt1));
             }
         }
 
-        // add vehicles
-        for (size_t cnt = 0; cnt < K; cnt++) {
-            sprintf (ext_id, "%zu", cnt);
-            vrp_add_vehicle (self, ext_id, Q, depot_id, depot_id);
+        // Add vehicles
+        if (demands != NULL) { // CVRP
+            for (size_t cnt = 0; cnt < num_vehicles; cnt++) {
+                sprintf (ext_id, "vehicle-%04zu", cnt + 1);
+                vrp_add_vehicle (self, ext_id, capacity, depot_id, depot_id);
+            }
+        }
+        else {
+            sprintf (ext_id, "vehicle-%04d", 1);
+            vrp_add_vehicle (self, ext_id, DOUBLE_MAX, ID_NONE, ID_NONE);
         }
     }
 
-    // free memory
-    free(q);
-    matrixd_free (&c);
-    free(coords);
+    if (demands != NULL)
+        free (demands);
+    if (costs != NULL)
+        matrixd_free (&costs);
+    if (coords != NULL)
+        free (coords);
 
+    print_info ("vrp created from file.\n");
     return self;
 }
 
@@ -644,7 +638,7 @@ size_t vrp_add_node (vrp_t *self, const char *ext_id, node_role_t role) {
     size_t id = arrayset_add (self->nodes, node, node->ext_id);
 
     if (id == ID_NONE) {
-        print_error ("node with external ID: %s already exists\n", ext_id);
+        print_error ("Node with external ID %s already exists.\n", ext_id);
         s_node_free (&node);
         return ID_NONE;
     }
@@ -669,22 +663,26 @@ void vrp_set_node_coord (vrp_t *self, size_t node_id, coord2d_t coord) {
 }
 
 
-void vrp_set_distance (vrp_t *self,
-                       size_t from_node_id,
-                       size_t to_node_id,
-                       double distance) {
+void vrp_set_arc_distance (vrp_t *self,
+                           size_t from_node_id,
+                           size_t to_node_id,
+                           double distance) {
     assert (self);
     assert (distance >= 0);
+    if (self->distances == NULL)
+        self->distances = matrixd_new (2, 2);
     matrixd_set (self->distances, from_node_id, to_node_id, distance);
 }
 
 
-void vrp_set_duration (vrp_t *self,
-                       size_t from_node_id,
-                       size_t to_node_id,
-                       size_t duration) {
+void vrp_set_arc_duration (vrp_t *self,
+                           size_t from_node_id,
+                           size_t to_node_id,
+                           size_t duration) {
     assert (self);
     assert (duration >= 0);
+    if (self->durations == NULL)
+        self->durations = matrixu_new (2, 2);
     matrixu_set (self->durations, from_node_id, to_node_id, duration);
 }
 
@@ -708,7 +706,7 @@ void vrp_generate_beeline_distances (vrp_t *self) {
                                          self->coord_sys);
             else
                 dist = 0;
-            vrp_set_distance (self, id1, id2, dist);
+            vrp_set_arc_distance (self, id1, id2, dist);
         }
     }
 }
@@ -716,7 +714,7 @@ void vrp_generate_beeline_distances (vrp_t *self) {
 
 void vrp_generate_durations (vrp_t *self, double speed) {
     assert (self);
-    assert (speed >= 0);
+    assert (speed > 0);
 
     size_t num_nodes = vrp_num_nodes (self);
     size_t cnt1, cnt2;
@@ -728,8 +726,7 @@ void vrp_generate_durations (vrp_t *self, double speed) {
             id1 = listu_get (self->node_ids, cnt1);
             id2 = listu_get (self->node_ids, cnt2);
             dist = matrixd_get (self->distances, id1, id2);
-            assert (dist >= 0);
-            matrixu_set (self->durations, id1, id2, (int)(dist / speed));
+            vrp_set_arc_duration (self, id1, id2, (int)(dist / speed));
         }
     }
 }
@@ -741,9 +738,18 @@ coord2d_sys_t vrp_coord_sys (vrp_t *self) {
 }
 
 
+const char *vrp_node_ext_id (vrp_t *self, size_t node_id) {
+    assert (self);
+    s_node_t *node = vrp_node (self, node_id);
+    assert (node != NULL);
+    return node->ext_id;
+}
+
+
 bool vrp_node_is_depot (vrp_t *self, size_t node_id) {
     assert (self);
     s_node_t *node = vrp_node (self, node_id);
+    assert (node != NULL);
     return node->role == NR_DEPOT;
 }
 
@@ -793,40 +799,22 @@ size_t vrp_num_customers (vrp_t *self) {
 }
 
 
-const listu_t *vrp_node_ids (vrp_t *self) {
+const listu_t *vrp_nodes (vrp_t *self) {
     assert (self);
     return self->node_ids;
 }
 
 
-const listu_t *vrp_depot_ids (vrp_t *self) {
+const listu_t *vrp_depots (vrp_t *self) {
     assert (self);
     return self->depot_ids;
 }
 
 
-const listu_t *vrp_customer_ids (vrp_t *self) {
+const listu_t *vrp_customers (vrp_t *self) {
     assert (self);
     return self->customer_ids;
 }
-
-
-// size_t *vrp_node_ids (vrp_t *self) {
-//     assert (self);
-//     return arrayset_id_array (self->nodes);
-// }
-
-
-// size_t *vrp_depot_ids (vrp_t *self) {
-//     assert (self);
-//     return listu_dump_array (self->depot_ids);
-// }
-
-
-// size_t *vrp_customer_ids (vrp_t *self) {
-//     assert (self);
-//     return listu_dump_array (self->customer_ids);
-// }
 
 
 double vrp_arc_distance (vrp_t *self, size_t from_node_id, size_t to_node_id) {
@@ -875,6 +863,12 @@ size_t vrp_add_vehicle (vrp_t *self,
     assert (vehicle);
 
     size_t id = arrayset_add (self->vehicles, vehicle, vehicle->ext_id);
+    if (id == ID_NONE) {
+        print_error ("vehicle with external ID %s already exists.\n", vehicle_ext_id);
+        s_vehicle_free (&vehicle);
+        return ID_NONE;
+    }
+
     vehicle->id = id;
     vehicle->max_capacity = max_capacity;
     vehicle->start_node_id = start_node_id;
@@ -891,16 +885,10 @@ size_t vrp_num_vehicles (vrp_t *self) {
 }
 
 
-const listu_t *vrp_vehicle_ids (vrp_t *self) {
+const listu_t *vrp_vehicles (vrp_t *self) {
     assert (self);
     return self->vehicle_ids;
 }
-
-
-// size_t *vrp_vehicle_ids (vrp_t *self) {
-//     assert (self);
-//     return arrayset_id_array (self->vehicles);
-// }
 
 
 const char *vrp_vehicle_ext_id (vrp_t *self, size_t vehicle_id) {
@@ -915,7 +903,6 @@ double vrp_vehicle_max_capacity (vrp_t *self, size_t vehicle_id) {
     s_vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
     return vehicle->max_capacity;
 }
-
 
 
 double vrp_vehicle_capacity (vrp_t *self, size_t vehicle_id) {
@@ -974,13 +961,11 @@ size_t vrp_vehicle_start_node_id (vrp_t *self, size_t vehicle_id) {
 }
 
 
-
 size_t vrp_vehicle_end_node_id (vrp_t *self, size_t vehicle_id) {
     assert (self);
     s_vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
     return vehicle->end_node_id;
 }
-
 
 
 size_t vrp_vehicle_route_id (vrp_t *self, size_t vehicle_id) {
@@ -1022,13 +1007,18 @@ static s_request_t *vrp_request (vrp_t *self, size_t request_id) {
 
 size_t vrp_add_request (vrp_t *self,
                         const char *request_ext_id,
-                        size_t pickup_node_id,
-                        size_t delivery_node_id,
+                        size_t pickup_node,
+                        size_t delivery_node,
                         double quantity) {
     assert (self);
     assert (request_ext_id); // @todo should ext_id be required?
-    assert (pickup_node_id == ID_NONE || vrp_node_exists (self, pickup_node_id));
-    assert (delivery_node_id == ID_NONE || vrp_node_exists (self, delivery_node_id));
+    assert (pickup_node == ID_NONE ||
+            vrp_node_exists (self, pickup_node));
+    assert (delivery_node == ID_NONE ||
+            vrp_node_exists (self, delivery_node));
+    assert (pickup_node == ID_NONE ||
+            delivery_node == ID_NONE ||
+            pickup_node != delivery_node);
     assert (quantity >= 0);
 
     // Create a new request
@@ -1037,15 +1027,15 @@ size_t vrp_add_request (vrp_t *self,
     request->id = id;
 
     // Set task
-    request->pickup_node_id = pickup_node_id;
-    request->delivery_node_id = delivery_node_id;
-    if (pickup_node_id == ID_NONE || delivery_node_id == ID_NONE)
+    request->pickup_node_id = pickup_node;
+    request->delivery_node_id = delivery_node;
+    if (pickup_node == ID_NONE || delivery_node == ID_NONE)
         request->type = RT_VISIT;
     else
         request->type = RT_PD;
     request->quantity = quantity;
 
-    listu_append (self->pending_requests, id);
+    listu_append (self->pending_request_ids, id);
     return id;
 }
 
@@ -1179,23 +1169,121 @@ size_t vrp_num_requests (vrp_t* self) {
 }
 
 
+const listu_t *vrp_pending_request_ids (vrp_t *self) {
+    assert (self);
+    return self->pending_request_ids;
+}
+
+
+size_t vrp_request_pickup_node (vrp_t *self, size_t request_id) {
+    assert (self);
+    s_request_t *request = vrp_request (self, request_id);
+    assert (request);
+    return request->pickup_node_id;
+}
+
+
+size_t vrp_request_delivery_node (vrp_t *self, size_t request_id) {
+    assert (self);
+    s_request_t *request = vrp_request (self, request_id);
+    assert (request);
+    return request->delivery_node_id;
+}
+
+
+double vrp_request_quantity (vrp_t *self, size_t request_id) {
+    assert (self);
+    s_request_t *request = vrp_request (self, request_id);
+    assert (request);
+    return request->quantity;
+}
+
+
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
 
 
 // ---------------------------------------------------------------------------
-// Submodels verifications
+// Submodel dispatch and solve
 // ---------------------------------------------------------------------------
 
+// Validate that roadgraph are well defined
+static bool vrp_validate_roadgraph (vrp_t *self) {
+    size_t num_nodes = vrp_num_nodes (self);
+    if (num_nodes == 0) {
+        print_error ("No node exist.\n");
+        return false;
+    }
 
-// bool vrp_fleet_is_homogeneous (vrp_t *self);
+    bool coord_sys_is_defined = (vrp_coord_sys (self) != CS_NONE);
+    for (size_t idx1 = 0; idx1 < num_nodes; idx1++) {
+        size_t node_id1 = listu_get (self->node_ids, idx1);
+
+        // All or none of node coordinates should be set
+        if (coord_sys_is_defined &&
+            coord2d_is_none (vrp_node_coord (self, idx1))) {
+            print_error ("Coordinate of node (external ID %s) is not set.\n",
+                         vrp_node_ext_id (self, node_id1));
+            return false;
+        }
+
+        for (size_t idx2 = 0; idx2 < num_nodes; idx2++) {
+            size_t node_id2 = listu_get (self->node_ids, idx2);
+
+            // All or none of arc distances should be set
+            if (self->distances != NULL) {
+                double dist = vrp_arc_distance (self, node_id1, node_id2);
+                if (dist == DOUBLE_NONE) {
+                    print_error ("Distance from node %s to node %s is not set.\n",
+                                 vrp_node_ext_id (self, node_id1),
+                                 vrp_node_ext_id (self, node_id2));
+                    return false;
+                }
+            }
+
+            // All or none of arc durations should be set
+            if (self->durations != NULL) {
+                double duration = vrp_arc_duration (self, node_id1, node_id2);
+                if (duration == DOUBLE_NONE) {
+                    print_error ("Duration from node %s to node %s is not set.\n",
+                                 vrp_node_ext_id (self, node_id1),
+                                 vrp_node_ext_id (self, node_id2));
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
 
 
-// bool vrp_is_cvrp (vrp_t *self);
+// Validate that fleet are well defined
+static bool vrp_validate_fleet (vrp_t *self) {
+    // At least one vehicle is added
+    if (vrp_num_vehicles (self) == 0) {
+        print_info ("No vehicle exists.\n");
+        return false;
+    }
+
+    return true;
+}
 
 
-bool vrp_is_tsp (vrp_t *self) {
+// Validate that model is well defined
+static bool vrp_validate (vrp_t *self) {
+    return vrp_validate_roadgraph (self) &&
+           vrp_validate_fleet (self);
+}
+
+
+// static bool vrp_fleet_is_homogeneous (vrp_t *self);
+
+
+// static bool vrp_is_cvrp (vrp_t *self);
+
+
+static bool vrp_is_tsp (vrp_t *self) {
     assert (self);
 
     // One vehicle
@@ -1210,8 +1298,8 @@ bool vrp_is_tsp (vrp_t *self) {
         // request type: visiting with zero quantity
         if (request->type != RT_VISIT || !double_equal (request->quantity, 0))
             return false;
-        assert ((request->pickup_node_id != ID_NONE && request->delivery_node_id == ID_NONE) &&
-            (request->pickup_node_id == ID_NONE && request->delivery_node_id != ID_NONE));
+        assert (!(request->pickup_node_id == ID_NONE &&
+                  request->delivery_node_id == ID_NONE));
 
         // No time window constraints
         if (request->pickup_time_windows != NULL &&
@@ -1226,24 +1314,50 @@ bool vrp_is_tsp (vrp_t *self) {
 }
 
 
+solution_t *vrp_solve (vrp_t *self) {
+    assert (self);
+
+    if (!vrp_validate (self))
+        return NULL;
+
+
+    // @todo Shink the roadgraph according to requests?
+
+
+    // Submodel inference
+    // @todo improve this process: submodel inference by attributes
+
+    solution_t *sol = NULL;
+
+    if (vrp_is_tsp (self)) {
+        print_info ("Submodel detected: TSP\n");
+        tsp_t *model = tsp_new_from (self);
+        assert (model);
+        sol = tsp_solve (model);
+        tsp_free (&model);
+    }
+    else
+        print_error ("Unsupported model. Not solved.\n");
+    return sol;
+}
+
+
 // ---------------------------------------------------------------------------
 void vrp_test (bool verbose) {
     print_info (" * vrp: \n");
 
-    // vrp_t *vrp = vrp_new ();
+    char filename[] =
+        // "benchmark/cvrp/A-n32-k5.vrp";
+        "benchmark/tsplib/tsp/berlin52.tsp";
 
-    vrp_t *vrp = vrp_new_from_file ("testdata/A-n32-k5.vrp");
+    vrp_t *vrp = vrp_new_from_file (filename);
     assert (vrp);
 
-    // size_t num_nodes = vrp_num_nodes (vrp);
-    // print_info ("num_nodes: %zu\n", num_nodes);
-    assert (vrp_num_nodes (vrp) == 32);
+    printf ("#nodes: %zu\n", vrp_num_nodes (vrp));
+    printf ("#vehicles: %zu\n", vrp_num_vehicles (vrp));
 
-    // size_t num_vehicles = vrp_num_vehicles (vrp);
-    // print_info ("num_vehicles: %zu\n", num_vehicles);
-    assert (vrp_num_vehicles (vrp) == 5);
+    vrp_solve (vrp);
 
-    //
     vrp_free (&vrp);
     print_info ("OK\n");
 }

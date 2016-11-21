@@ -12,9 +12,6 @@
 extern "C" {
 #endif
 
-// For now just extension of listu_t
-typedef listu_t route_t;
-
 // Create new route object with size
 route_t *route_new (size_t alloc_size);
 

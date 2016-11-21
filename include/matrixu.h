@@ -12,8 +12,6 @@
 extern "C" {
 #endif
 
-typedef struct _matrixu_t matrixu_t;
-
 // Create a new matrixu object.
 // initial_rows and initial_cols could be 0 if they are not known.
 matrixu_t *matrixu_new (size_t initial_rows, size_t initial_cols);

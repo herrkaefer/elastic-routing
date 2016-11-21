@@ -12,8 +12,6 @@
 extern "C" {
 #endif
 
-typedef struct _evol_t evol_t;
-
 // Genome representation
 typedef void *genome_t;
 

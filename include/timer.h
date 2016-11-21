@@ -12,8 +12,6 @@
 extern "C" {
 #endif
 
-typedef struct _timer_t timer_t;
-
 // Create a new timer
 timer_t *timer_new (const char *name);
 

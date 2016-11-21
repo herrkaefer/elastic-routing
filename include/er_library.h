@@ -23,18 +23,30 @@
     ER_VERSION_MINOR, \
     ER_VERSION_PATCH)
 
-// Public API classes
+// Public class structures
+typedef struct _arrayset_t arrayset_t;
+typedef struct _hash_t hash_t;
+typedef struct _listu_t listu_t;
+typedef struct _listx_t listx_t;
+typedef struct _matrixd_t matrixd_t;
+typedef struct _matrixu_t matrixu_t;
+typedef struct _queue_t queue_t;
+typedef struct _rng_t rng_t;
+typedef struct _timer_t timer_t;
+typedef struct _evol_t evol_t;
+
+
+// Public API headers
 #include "types.h"
-#include "rng.h"
-#include "timer.h"
-#include "hash.h"
-#include "queue.h"
 #include "arrayset.h"
-#include "matrixd.h"
-#include "matrixu.h"
+#include "hash.h"
 #include "listu.h"
 #include "listx.h"
+#include "matrixd.h"
+#include "matrixu.h"
+#include "queue.h"
+#include "rng.h"
+#include "timer.h"
 #include "evol.h"
-#include "solver.h"
 
 #endif

@@ -12,29 +12,6 @@
 extern "C" {
 #endif
 
-// Coordinate systems
-typedef enum {
-    CS_NONE,
-    CS_CARTESIAN2D,
-    CS_POLAR2D,
-    CS_WGS84, // World Geodetic System 1984. See:
-              // https://en.wikipedia.org/wiki/World_Geodetic_System
-    CS_GCJ02 // Mars Coordinates. See:
-       // https://en.wikipedia.org/wiki/Restrictions_on_geographic_data_in_China
-} coord2d_sys_t;
-
-// Generic 2D coordinates representation.
-// Use this struct to represent any 2D point with the above coordinate system.
-// Need to combine with an outside variable to specify its coordinate system.
-// For CS_CARTESIAN2D: v1->x, v2->y
-// For CS_POLAR2D: v1->radius, v2->theta
-// For geodetic system: v1->latitude, v2->longitude
-typedef struct {
-    double v1; // x, or r,     lat
-    double v2; // y, or theta, lng
-} coord2d_t;
-
-
 // Distance between two points
 // Two points should be under the same coordinate system
 double coord2d_distance (const coord2d_t *p1,

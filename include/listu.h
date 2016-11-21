@@ -13,8 +13,6 @@
 extern "C" {
 #endif
 
-typedef struct _listu_t listu_t;
-
 // Create a new list.
 // alloc_size is the initial size, or 0 to use a default value.
 listu_t *listu_new (size_t alloc_size);

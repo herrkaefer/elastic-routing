@@ -14,8 +14,6 @@
 extern "C" {
 #endif
 
-typedef struct _rng_t rng_t;
-
 // Create a rng
 rng_t *rng_new (void);
 

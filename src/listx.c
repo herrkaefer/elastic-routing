@@ -77,9 +77,9 @@ static s_node_t *s_node_walk (s_node_t *node, size_t num_steps, bool forward) {
 }
 
 
-// Create a new node from item for list.
-// Duplicate the item if deplicate function is set.
-static s_node_t *listx_new_node (listx_t *self, void *item) {
+// Create a new node from item.
+// Duplicate the item if duplicator is set.
+static s_node_t *listx_new_node (const listx_t *self, void *item) {
     if (self->duplicator) {
         item = self->duplicator (item);
         assert (item);
@@ -90,7 +90,7 @@ static s_node_t *listx_new_node (listx_t *self, void *item) {
 
 
 // Get node by index
-static s_node_t *listx_node (listx_t *self, size_t index) {
+static s_node_t *listx_node (const listx_t *self, size_t index) {
     return (index < self->size / 2) ?
            s_node_walk (self->head->next, index, true) :
            s_node_walk (self->head->prev, self->size-index-1, false);
@@ -110,8 +110,8 @@ static void listx_set_not_sorted (listx_t *self) {
 
 
 // Check if node is sorted properly with its previous node
-static bool listx_node_is_sorted_with_prev (listx_t *self,
-                                             s_node_t *node) {
+static bool listx_node_is_sorted_with_prev (const listx_t *self,
+                                            const s_node_t *node) {
     if (node->prev == self->head) // first node
         return listx_is_sorted (self);
     else
@@ -123,8 +123,8 @@ static bool listx_node_is_sorted_with_prev (listx_t *self,
 
 
 // Check if node is sorted properly with its next node
-static bool listx_node_is_sorted_with_next (listx_t *self,
-                                             s_node_t *node) {
+static bool listx_node_is_sorted_with_next (const listx_t *self,
+                                            const s_node_t *node) {
     if (node->next == self->head) // last node
         return listx_is_sorted (self);
     else
@@ -266,7 +266,7 @@ static void listx_quick_sort (listx_t *self,
 // coorsponding node pointer. If item is not found, the index is SIZE_NONE
 // (by which you can know that item is not found), and the node pointer is the
 // node just sorted after the given item.
-static s_indicator_t listx_binary_search (listx_t *self, void *item) {
+static s_indicator_t listx_binary_search (const listx_t *self, const void *item) {
     size_t head = 0,
            tail = listx_size (self),
            mid;
@@ -321,7 +321,7 @@ static s_indicator_t listx_binary_search (listx_t *self, void *item) {
 // Find item in list.
 // Return struct s_indicator_t which includes the index of item and
 // coorsponding node pointer. If item is not found, return {SIZE_NONE, NULL}.
-static s_indicator_t listx_find_node (listx_t *self, void *item) {
+static s_indicator_t listx_find_node (const listx_t *self, const void *item) {
     s_indicator_t indicator = {SIZE_NONE, NULL};
     if (self->size == 0)
         return indicator;
@@ -414,25 +414,25 @@ size_t listx_size (const listx_t *self) {
 }
 
 
-bool listx_is_sorted (listx_t *self) {
+bool listx_is_sorted (const listx_t *self) {
     assert (self);
     return self->sorting_state != LIST4X_NOT_SORTED;
 }
 
 
-bool listx_is_sorted_ascending (listx_t *self) {
+bool listx_is_sorted_ascending (const listx_t *self) {
     assert (self);
     return self->sorting_state == LIST4X_ASCENDING_SORTED;
 }
 
 
-bool listx_is_sorted_descending (listx_t *self) {
+bool listx_is_sorted_descending (const listx_t *self) {
     assert (self);
     return self->sorting_state == LIST4X_DESCENDING_SORTED;
 }
 
 
-void *listx_item (listx_t *self, void *handle) {
+void *listx_item (const listx_t *self, const void *handle) {
     assert (self);
     assert (handle);
     assert (((s_node_t *) handle)->attached);
@@ -440,7 +440,7 @@ void *listx_item (listx_t *self, void *handle) {
 }
 
 
-void *listx_item_at (listx_t *self, size_t index) {
+void *listx_item_at (const listx_t *self, size_t index) {
     assert (self);
     assert (index < self->size);
     s_node_t *node = listx_node (self, index);
@@ -448,7 +448,7 @@ void *listx_item_at (listx_t *self, size_t index) {
 }
 
 
-void *listx_first (listx_t *self) {
+void *listx_first (const listx_t *self) {
     assert (self);
     return (self->head->next == self->head) ?
            NULL :
@@ -456,7 +456,7 @@ void *listx_first (listx_t *self) {
 }
 
 
-void *listx_last (listx_t *self) {
+void *listx_last (const listx_t *self) {
     assert (self);
     return (self->head->prev == self->head) ?
            NULL :
@@ -883,7 +883,7 @@ void listx_shuffle (listx_t *self, rng_t *rng) {
 }
 
 
-size_t listx_index (listx_t *self, void *item) {
+size_t listx_index (const listx_t *self, void *item) {
     assert (self);
     assert (item);
     s_indicator_t indicator = listx_find_node (self, item);
@@ -891,7 +891,7 @@ size_t listx_index (listx_t *self, void *item) {
 }
 
 
-void *listx_find (listx_t *self, void *item) {
+void *listx_find (const listx_t *self, const void *item) {
     assert (self);
     assert (item);
     s_indicator_t indicator = listx_find_node (self, item);
@@ -899,14 +899,14 @@ void *listx_find (listx_t *self, void *item) {
 }
 
 
-bool listx_includes (listx_t *self, void *item) {
+bool listx_includes (const listx_t *self, const void *item) {
     assert (self);
     assert (item);
     return listx_find (self, item) != NULL;
 }
 
 
-bool listx_includes_identical (listx_t *self, void *item) {
+bool listx_includes_identical (const listx_t *self, const void *item) {
     assert (self);
     assert (item);
     s_node_t *node = self->head->next;
@@ -919,7 +919,7 @@ bool listx_includes_identical (listx_t *self, void *item) {
 }
 
 
-size_t listx_count (listx_t *self, void *item) {
+size_t listx_count (const listx_t *self, const void *item) {
     assert (self);
     assert (item);
     size_t cnt;
@@ -1003,13 +1003,13 @@ size_t listx_count (listx_t *self, void *item) {
 // }
 
 
-listx_iterator_t listx_iter_init (listx_t *self, bool forward) {
+listx_iterator_t listx_iter_init (const listx_t *self, bool forward) {
     assert (self);
     return (listx_iterator_t) {self->head, forward};
 }
 
 
-listx_iterator_t listx_iter_init_from (listx_t *self,
+listx_iterator_t listx_iter_init_from (const listx_t *self,
                                        void *handle,
                                        bool forward) {
     assert (self);
@@ -1020,7 +1020,7 @@ listx_iterator_t listx_iter_init_from (listx_t *self,
 }
 
 
-void *listx_iter (listx_t *self, listx_iterator_t *iterator) {
+void *listx_iter (const listx_t *self, listx_iterator_t *iterator) {
     assert (self);
     assert (iterator);
     iterator->handle = iterator->forward ?
@@ -1059,7 +1059,7 @@ void listx_iter_remove (listx_t *self, listx_iterator_t *iterator) {
 }
 
 
-listx_t *listx_map (listx_t *self, mapping_t mapping) {
+listx_t *listx_map (const listx_t *self, mapping_t mapping) {
     assert (self);
     assert (mapping);
 
@@ -1075,7 +1075,7 @@ listx_t *listx_map (listx_t *self, mapping_t mapping) {
 }
 
 
-void *listx_reduce (listx_t *self, reducer_t reducer, void *initial) {
+void *listx_reduce (const listx_t *self, reducer_t reducer, void *initial) {
     assert (self);
     assert (reducer);
 
@@ -1096,7 +1096,7 @@ void *listx_reduce (listx_t *self, reducer_t reducer, void *initial) {
 }
 
 
-listx_t *listx_filter (listx_t *self, filter_t filter) {
+listx_t *listx_filter (const listx_t *self, filter_t filter) {
     assert (self);
     assert (filter);
 
@@ -1119,7 +1119,7 @@ listx_t *listx_filter (listx_t *self, filter_t filter) {
 }
 
 
-bool listx_all (listx_t *self, filter_t filter) {
+bool listx_all (const listx_t *self, filter_t filter) {
     assert (self);
     assert (filter);
     for (s_node_t *node = self->head->next;
@@ -1131,7 +1131,7 @@ bool listx_all (listx_t *self, filter_t filter) {
 }
 
 
-bool listx_any (listx_t *self, filter_t filter) {
+bool listx_any (const listx_t *self, filter_t filter) {
     assert (self);
     assert (filter);
     for (s_node_t *node = self->head->next;
@@ -1218,7 +1218,7 @@ void listx_print (const listx_t *self) {
 }
 
 
-void listx_assert_sort (listx_t *self, const char *order) {
+void listx_assert_sort (const listx_t *self, const char *order) {
     assert (self);
     if (streq (order, "ascending")) {
         assert (listx_is_sorted (self));

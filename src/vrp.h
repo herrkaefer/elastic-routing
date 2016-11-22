@@ -37,7 +37,7 @@ void vrp_set_coord_sys (vrp_t *self, coord2d_sys_t coord_sys);
 
 // Add a new node.
 // Return node ID (ID_NONE if node already exists).
-size_t vrp_add_node (vrp_t *self, const char *ext_id, node_role_t role);
+size_t vrp_add_node (vrp_t *self, const char *ext_id, node_type_t type);
 
 // Set node coordinate
 void vrp_set_node_coord (vrp_t *self, size_t node_id, coord2d_t coord);
@@ -194,35 +194,35 @@ void vrp_set_service_duration_for_request (vrp_t *self,
                                            size_t service_duration);
 
 // Get number of pickup TWs
-size_t vrp_num_pickup_time_windows_of_request (vrp_t *self, size_t request_id);
+size_t vrp_request_num_pickup_time_windows (vrp_t *self, size_t request_id);
 
 // Get earliest from pickup TW
-size_t vrp_earliest_pickup_time_of_request (vrp_t *self,
-                                            size_t request_id,
-                                            size_t tw_idx);
+size_t vrp_request_earliest_of_pickup_time_window (vrp_t *self,
+                                                   size_t request_id,
+                                                   size_t tw_idx);
 // Get latest from pickup TW
-size_t vrp_latest_pickup_time_of_request (vrp_t *self,
-                                          size_t request_id,
-                                          size_t tw_idx);
+size_t vrp_request_latest_of_pickup_time_window (vrp_t *self,
+                                                 size_t request_id,
+                                                 size_t tw_idx);
 
 // Get number of delivery TWs
-size_t vrp_num_delivery_time_windows_of_request (vrp_t *self, size_t request_id);
+size_t vrp_request_num_delivery_time_windows (vrp_t *self, size_t request_id);
 
 // Get earliest from delivery TW
-size_t vrp_earliest_delivery_time_of_request (vrp_t *self,
-                                              size_t request_id,
-                                              size_t tw_idx);
+size_t vrp_request_earliest_of_delivery_time_window (vrp_t *self,
+                                                     size_t request_id,
+                                                     size_t tw_idx);
 
 // Get latest from delivery TW
-size_t vrp_latest_delivery_time_of_request (vrp_t *self,
-                                            size_t request_id,
-                                            size_t tw_idx);
+size_t vrp_request_latest_of_delivery_time_window (vrp_t *self,
+                                                   size_t request_id,
+                                                   size_t tw_idx);
 
 // Get pickup service duration
-size_t vrp_pickup_duration_of_request (vrp_t *self, size_t request_id);
+size_t vrp_request_pickup_duration (vrp_t *self, size_t request_id);
 
 // Get delivery service duration
-size_t vrp_delivery_duration_of_request (vrp_t *self, size_t request_id);
+size_t vrp_request_delivery_duration (vrp_t *self, size_t request_id);
 
 // Query a request by external ID.
 // Return request ID if request exists, ID_NONE if not.

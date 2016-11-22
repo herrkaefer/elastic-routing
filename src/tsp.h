@@ -1,5 +1,14 @@
 /*  =========================================================================
-    tsp - TSP model derived from generic model
+    tsp - classic TSP model derived from generic model
+
+    TSP model:
+        Mimimizing total distance of one route (a number of visiting reqeuests
+        accomplished by one vehicle).
+
+        No sequential, time window, or other constraints.
+
+        The start or end node may be specified or not (open), and they may be
+        same (round trip) or not (one-way trip).
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
     =========================================================================

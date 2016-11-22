@@ -20,15 +20,18 @@ all_tests [] = {
     // { "matrixu", matrixu_test },
     // { "hash", hash_test },
     // { "arrayset", arrayset_test },
-    { "vrp", vrp_test },
     // { "listu", listu_test },
     // { "listx", listx_test },
     // { "rng", rng_test },
     // { "timer", timer_test },
     // { "evol", evol_test },
     // { "route", route_test },
+    // { "solution", solution_test },
     // { "tspi", tspi_test },
     // { "tsp", tsp_test },
+    { "cvrp", cvrp_test },
+    // { "vrptw", vrptw_test },
+    // { "vrp", vrp_test },
 // #endif // WITH_DRAFTS
     {0, 0}          //  Sentinel
 };

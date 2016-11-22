@@ -92,30 +92,30 @@ void listx_set_printer (listx_t *self, printer_t printer);
 size_t listx_size (const listx_t *self);
 
 // Check if list is sorted
-bool listx_is_sorted (listx_t *self);
+bool listx_is_sorted (const listx_t *self);
 
 // Check if list is sorted ascendingly
-bool listx_is_sorted_ascending (listx_t *self);
+bool listx_is_sorted_ascending (const listx_t *self);
 
 // Check if list is sorted descendingly
-bool listx_is_sorted_descending (listx_t *self);
+bool listx_is_sorted_descending (const listx_t *self);
 
 // Get item by handle
-void *listx_item (listx_t *self, void *handle);
+void *listx_item (const listx_t *self, const void *handle);
 
 // Get item at index.
 // Note that for list traversing, using list_iterator_t is faster.
-void *listx_item_at (listx_t *self, size_t index);
+void *listx_item_at (const listx_t *self, size_t index);
 
 // Return the first item of the list
 // Return NULL if list is empty
-void *listx_first (listx_t *self);
+void *listx_first (const listx_t *self);
 
 // Return the last item of the list
 // Return NULL if list is empty
-void *listx_last (listx_t *self);
+void *listx_last (const listx_t *self);
 
-// Set item by handle
+// Set item by handle.
 // Note that handle-item binding will be updated. Use this carefully if you use
 // handle as ID.
 void listx_set_item (listx_t *self, void *handle, void *item);
@@ -207,25 +207,25 @@ void listx_shuffle (listx_t *self, rng_t *rng);
 // The index could be arbitrary if multiple items exist.
 // Note that "found" means the two items are "equal" defined by the comparator
 // rather than "identical".
-size_t listx_index (listx_t *self, void *item);
+size_t listx_index (const listx_t *self, void *item);
 
 // Find item in list.
 // Return item handle if item is found, NULL if not found.
 // If multiple same items exist, return arbitrary one of them.
 // Note that "found" means the two items are "equal" defined by the comparator
 // rather than "identical".
-void *listx_find (listx_t *self, void *item);
+void *listx_find (const listx_t *self, const void *item);
 
 // Check if item is in list
 // Note that "include" means the two items are "equal" defined by the comparator
 // rather than "identical".
-bool listx_includes (listx_t *self, void *item);
+bool listx_includes (const listx_t *self, const void *item);
 
 // Check if the item is itself (identical item) in the list
-bool listx_includes_identical (listx_t *self, void *item);
+bool listx_includes_identical (const listx_t *self, const void *item);
 
 // Count numbers of item in list
-size_t listx_count (listx_t *self, void *item);
+size_t listx_count (const listx_t *self, const void *item);
 
 // // Get previous item's handle.
 // // Return NULL if the end is reached.
@@ -239,19 +239,19 @@ size_t listx_count (listx_t *self, void *item);
 // Set forward to true for iterating forward, or false for backward.
 // Note that after creation, the iterator does not point to the first item, and
 // you should then call listx_iter () to get the item.
-listx_iterator_t listx_iter_init (listx_t *self, bool forward);
+listx_iterator_t listx_iter_init (const listx_t *self, bool forward);
 
 // Create a list iterator starting from given item handle.
 // Set forward to true for iterating forward, or false for backward.
 // Note that calling listx_iter () will get the NEXT item after handle.
-listx_iterator_t listx_iter_init_from (listx_t *self,
-                                         void *handle,
-                                         bool forward);
+listx_iterator_t listx_iter_init_from (const listx_t *self,
+                                       void *handle,
+                                       bool forward);
 
 // Get the next item using list iterator.
 // Return the item, or NULL if iterator reaches the end.
 // If item is returned, iterator->handle is just the handle of item.
-void *listx_iter (listx_t *self, listx_iterator_t *iterator);
+void *listx_iter (const listx_t *self, listx_iterator_t *iterator);
 
 // Pop current item during iteration.
 // The iterator will go back to last position.
@@ -263,22 +263,22 @@ void listx_iter_remove (listx_t *self, listx_iterator_t *iterator);
 
 // Apply mapping on items in the list.
 // Return a list of the results.
-listx_t *listx_map (listx_t *self, mapping_t mapping);
+listx_t *listx_map (const listx_t *self, mapping_t mapping);
 
 // Apply a function of two arguments cumulatively to the items of a list,
 // from left to right, so as to reduce the sequence to a single item.
 // initial item could be NULL.
-void *listx_reduce (listx_t *self, reducer_t reducer, void *initial);
+void *listx_reduce (const listx_t *self, reducer_t reducer, void *initial);
 
 // Return a list contains items for which filter (item) is true
 // The returned list has the same callbacks and sorting state with input list
-listx_t *listx_filter (listx_t *self, filter_t filter);
+listx_t *listx_filter (const listx_t *self, filter_t filter);
 
 // All items in list satisfy filter (item) == true
-bool listx_all (listx_t *self, filter_t filter);
+bool listx_all (const listx_t *self, filter_t filter);
 
 // Any item in list satisfies filter (item) == true
-bool listx_any (listx_t *self, filter_t filter);
+bool listx_any (const listx_t *self, filter_t filter);
 
 // Duplicate a list
 listx_t *listx_dup (const listx_t *self);
@@ -295,7 +295,7 @@ void listx_print (const listx_t *self);
 // Assert that list is sorted correctly in given order.
 // param order could be "ascending", "descending", or "no".
 // This method is provided for debug purpose.
-void listx_assert_sort (listx_t *self, const char *order);
+void listx_assert_sort (const listx_t *self, const char *order);
 
 // Self test
 void listx_test (bool verbose);

@@ -86,8 +86,12 @@ void solution_print (const solution_t *self) {
         route_t *route = listx_item_at (self->routes, idx_r);
         size_t route_len = route_size (route);
         printf ("route #%zu (#nodes: %zu):", idx_r, route_len);
-        for (size_t idx_n = 0; idx_n < route_len; idx_n++)
-            printf (" %zu", route_at (route, idx_n));
+        for (size_t idx_n = 0; idx_n < route_len; idx_n++) {
+            if (self->vrp != NULL)
+                printf (" %s", vrp_node_ext_id (self->vrp, route_at (route, idx_n)));
+            else
+                printf (" %zu", route_at (route, idx_n));
+        }
         printf ("\n");
     }
 }

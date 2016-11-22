@@ -1,6 +1,10 @@
 /*  =========================================================================
     tspi - TSP model solved with evol (independent of generic model)
 
+    TSP: mimimize total distance of one route (a number of visiting reqeuest
+         accomplished by one vehicle). The start or end node may be specified
+         or not (open), and be same (round trip) or not (one-way trip).
+
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
     =========================================================================
 */

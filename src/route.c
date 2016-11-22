@@ -111,22 +111,31 @@ double route_flip_delta_distance (route_t *self,
     assert (self);
     assert (vrp);
     assert (i <= j);
-    assert (j < route_size (self));
+    size_t len = route_size (self);
+    assert (j < len);
 
     if (i == j)
         return 0;
 
-    double dcost =
-        vrp_arc_distance (vrp, route_at (self, i - 1), route_at (self, j)) +
-        vrp_arc_distance (vrp, route_at (self, i), route_at (self, j + 1)) -
-        vrp_arc_distance (vrp, route_at (self, i - 1), route_at (self, i)) -
-        vrp_arc_distance (vrp, route_at (self, j), route_at (self, j + 1));
+    double dcost = 0;
+
+    // Bug fixed: i or j may be the end.
+    if (i > 0)
+        dcost = dcost +
+            vrp_arc_distance (vrp, route_at (self, i - 1), route_at (self, j)) -
+            vrp_arc_distance (vrp, route_at (self, i - 1), route_at (self, i));
+
+    if (j < len - 1)
+        dcost = dcost +
+            vrp_arc_distance (vrp, route_at (self, i), route_at (self, j + 1)) -
+            vrp_arc_distance (vrp, route_at (self, j), route_at (self, j + 1));
 
     for (size_t k = i; k < j; k++) {
         dcost = dcost +
           vrp_arc_distance (vrp, route_at (self, k + 1), route_at (self, k)) -
           vrp_arc_distance (vrp, route_at (self, k), route_at (self, k + 1));
     }
+
     return dcost;
 }
 
@@ -247,6 +256,7 @@ double route_2_opt (route_t *self,
         }
     }
 
+    print_info ("2-opt local search end.\n");
     return total_delta_cost;
 }
 

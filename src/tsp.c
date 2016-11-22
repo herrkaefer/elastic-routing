@@ -325,7 +325,7 @@ solution_t *tsp_solve (tsp_t *self) {
 
     // Return route as generic solution representation.
     // Set model reference as NULL because this model is not a generic one.
-    solution_t *sol = solution_new (NULL);
+    solution_t *sol = solution_new (self->vrp);
     solution_add_route (sol, route);
 
     return sol;
@@ -357,7 +357,7 @@ void tsp_test (bool verbose) {
     char *ext_id = malloc (16);
     for (size_t idx = 0; idx < num_nodes; idx++) {
         sprintf (ext_id, "node-%4zu", idx);
-        size_t nid = vrp_add_node (vrp, ext_id, NR_CUSTOMER);
+        size_t nid = vrp_add_node (vrp, ext_id, NT_CUSTOMER);
         vrp_set_node_coord (vrp, nid, node_coords[idx]);
 
         sprintf (ext_id, "visit-%4zu", idx);

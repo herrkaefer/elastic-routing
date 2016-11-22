@@ -35,14 +35,15 @@ typedef listu_t route_t;
 typedef struct _solution_t solution_t;
 
 typedef enum {
-    NR_NONE,
-    NR_DEPOT,
-    NR_CUSTOMER
-} node_role_t;
+    NT_NONE,
+    NT_DEPOT,
+    NT_CUSTOMER
+} node_type_t;
 
 typedef struct _vrp_t vrp_t;
-typedef struct _tsp_t tsp_t;
 typedef struct _cvrp_t cvrp_t;
+typedef struct _tsp_t tsp_t;
+typedef struct _vrptw_t vrptw_t;
 typedef struct _tspi_t tspi_t;
 
 // Coordinate systems

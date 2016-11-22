@@ -21,7 +21,7 @@ typedef struct {
     size_t id; // internal id, for fast query
     char ext_id[UUID_STR_LEN]; // external id connecting to outside
 
-    node_role_t role; // NR_DEPOT or NR_CUSTOMER
+    node_type_t type; // NT_DEPOT or NT_CUSTOMER
     coord2d_t coord; // 2D coordinates
 } s_node_t;
 
@@ -37,7 +37,7 @@ static s_node_t *s_node_new (const char *ext_id) {
     self->id = ID_NONE;
 
     strcpy (self->ext_id, ext_id);
-    self->role = NR_NONE;
+    self->type = NT_NONE;
     coord2d_set_none (&self->coord);
 
     return self;
@@ -563,9 +563,9 @@ vrp_t *vrp_new_from_file (const char *filename) {
             sprintf (ext_id, "node-%04zu", cnt + 1);
             if (demands != NULL) // CVRP
                 node_id = vrp_add_node (self, ext_id,
-                                        (cnt == 0) ? NR_DEPOT : NR_CUSTOMER);
+                                        (cnt == 0) ? NT_DEPOT : NT_CUSTOMER);
             else // TSP
-                node_id = vrp_add_node (self, ext_id, NR_CUSTOMER);
+                node_id = vrp_add_node (self, ext_id, NT_CUSTOMER);
 
             if (coords != NULL)
                 vrp_set_node_coord (self, node_id, coords[cnt]);
@@ -631,7 +631,7 @@ void vrp_set_coord_sys (vrp_t *self, coord2d_sys_t coord_sys) {
 }
 
 
-size_t vrp_add_node (vrp_t *self, const char *ext_id, node_role_t role) {
+size_t vrp_add_node (vrp_t *self, const char *ext_id, node_type_t type) {
     assert (self);
 
     s_node_t *node = s_node_new (ext_id);
@@ -644,11 +644,11 @@ size_t vrp_add_node (vrp_t *self, const char *ext_id, node_role_t role) {
     }
 
     node->id = id;
-    node->role = role;
+    node->type = type;
     listu_append (self->node_ids, id);
-    if (role == NR_DEPOT)
+    if (type == NT_DEPOT)
         listu_append (self->depot_ids, id);
-    else if (role == NR_CUSTOMER)
+    else if (type == NT_CUSTOMER)
         listu_append (self->customer_ids, id);
 
     return id;
@@ -750,14 +750,14 @@ bool vrp_node_is_depot (vrp_t *self, size_t node_id) {
     assert (self);
     s_node_t *node = vrp_node (self, node_id);
     assert (node != NULL);
-    return node->role == NR_DEPOT;
+    return node->type == NT_DEPOT;
 }
 
 
 bool vrp_node_is_customer (vrp_t *self, size_t node_id) {
     assert (self);
     s_node_t *node = vrp_node (self, node_id);
-    return node->role == NR_CUSTOMER;
+    return node->type == NT_CUSTOMER;
 }
 
 
@@ -1083,7 +1083,7 @@ void vrp_set_service_duration_for_request (vrp_t *self,
 }
 
 
-size_t vrp_num_pickup_time_windows_of_request (vrp_t *self, size_t request_id) {
+size_t vrp_request_num_pickup_time_windows (vrp_t *self, size_t request_id) {
     assert (self);
     s_request_t *request = vrp_request (self, request_id);
     if (request->pickup_time_windows != NULL)
@@ -1093,9 +1093,9 @@ size_t vrp_num_pickup_time_windows_of_request (vrp_t *self, size_t request_id) {
 }
 
 
-size_t vrp_earliest_pickup_time_of_request (vrp_t *self,
-                                             size_t request_id,
-                                             size_t tw_idx) {
+size_t vrp_request_earliest_of_pickup_time_window (vrp_t *self,
+                                                   size_t request_id,
+                                                   size_t tw_idx) {
     assert (self);
     s_request_t *request = vrp_request (self, request_id);
     assert (request->pickup_time_windows);
@@ -1103,9 +1103,9 @@ size_t vrp_earliest_pickup_time_of_request (vrp_t *self,
 }
 
 
-size_t vrp_latest_pickup_time_of_request (vrp_t *self,
-                                           size_t request_id,
-                                           size_t tw_idx) {
+size_t vrp_request_latest_of_pickup_time_window (vrp_t *self,
+                                                 size_t request_id,
+                                                 size_t tw_idx) {
     assert (self);
     s_request_t *request = vrp_request (self, request_id);
     assert (request->pickup_time_windows);
@@ -1113,7 +1113,7 @@ size_t vrp_latest_pickup_time_of_request (vrp_t *self,
 }
 
 
-size_t vrp_num_delivery_time_windows_of_request (vrp_t *self, size_t request_id) {
+size_t vrp_request_num_delivery_time_windows (vrp_t *self, size_t request_id) {
     assert (self);
     s_request_t *request = vrp_request (self, request_id);
     if (request->delivery_time_windows != NULL)
@@ -1123,9 +1123,9 @@ size_t vrp_num_delivery_time_windows_of_request (vrp_t *self, size_t request_id)
 }
 
 
-size_t vrp_earliest_delivery_time_of_request (vrp_t *self,
-                                               size_t request_id,
-                                               size_t tw_idx) {
+size_t vrp_request_earliest_of_delivery_time_window (vrp_t *self,
+                                                     size_t request_id,
+                                                     size_t tw_idx) {
     assert (self);
     s_request_t *request = vrp_request (self, request_id);
     assert (request->delivery_time_windows);
@@ -1133,9 +1133,9 @@ size_t vrp_earliest_delivery_time_of_request (vrp_t *self,
 }
 
 
-size_t vrp_latest_delivery_time_of_request (vrp_t *self,
-                                             size_t request_id,
-                                             size_t tw_idx) {
+size_t vrp_request_latest_of_delivery_time_window (vrp_t *self,
+                                                   size_t request_id,
+                                                   size_t tw_idx) {
     assert (self);
     s_request_t *request = vrp_request (self, request_id);
     assert (request->delivery_time_windows);
@@ -1143,14 +1143,14 @@ size_t vrp_latest_delivery_time_of_request (vrp_t *self,
 }
 
 
-size_t vrp_pickup_duration_of_request (vrp_t *self, size_t request_id) {
+size_t vrp_request_pickup_duration (vrp_t *self, size_t request_id) {
     assert (self);
     s_request_t *request = vrp_request (self, request_id);
     return request->pickup_duration;
 }
 
 
-size_t vrp_delivery_duration_of_request (vrp_t *self, size_t request_id) {
+size_t vrp_request_delivery_duration (vrp_t *self, size_t request_id) {
     assert (self);
     s_request_t *request = vrp_request (self, request_id);
     return request->delivery_duration;
@@ -1266,6 +1266,47 @@ static bool vrp_validate_fleet (vrp_t *self) {
         return false;
     }
 
+    // @todo others ...
+
+    return true;
+}
+
+
+static bool vrp_validate_requests (vrp_t *self) {
+
+    // Check pending requests
+    for (size_t idx = 0; idx < listu_size (self->pending_request_ids); idx++) {
+
+        size_t request_id = listu_get (self->pending_request_ids, idx);
+        s_request_t *request = vrp_request (self, request_id);
+
+        size_t num_ptw =
+            vrp_request_num_pickup_time_windows (self, request_id);
+        size_t num_dtw =
+            vrp_request_num_delivery_time_windows (self, request_id);
+
+        if (num_ptw > 0 && num_dtw > 0) {
+            size_t earliest_pickup_time =
+                vrp_request_earliest_of_pickup_time_window (self, request_id, 0);
+            size_t latest_delivery_time =
+                vrp_request_latest_of_delivery_time_window (self, request_id, num_dtw-1);
+            size_t arc_duration =
+                vrp_arc_duration (self,
+                                  vrp_request_pickup_node (self, request_id),
+                                  vrp_request_delivery_node (self, request_id));
+            size_t pickup_duration =
+                vrp_request_pickup_duration (self, request_id);
+
+            if (earliest_pickup_time + pickup_duration + arc_duration >
+                latest_delivery_time) {
+                print_error (
+                    "Time windows constraints cannot be satisfied for request %s.\n",
+                    request->ext_id);
+                return false;
+            }
+        }
+    }
+
     return true;
 }
 
@@ -1273,7 +1314,8 @@ static bool vrp_validate_fleet (vrp_t *self) {
 // Validate that model is well defined
 static bool vrp_validate (vrp_t *self) {
     return vrp_validate_roadgraph (self) &&
-           vrp_validate_fleet (self);
+           vrp_validate_fleet (self) &&
+           vrp_validate_requests (self);
 }
 
 
@@ -1291,11 +1333,15 @@ static bool vrp_is_tsp (vrp_t *self) {
         return false;
 
     // Check all requests
-    for (s_request_t *request = arrayset_first (self->requests);
-         request != NULL;
-         request = arrayset_next (self->requests)) {
+    // for (s_request_t *request = arrayset_first (self->requests);
+    //      request != NULL;
+    //      request = arrayset_next (self->requests)) {
 
-        // request type: visiting with zero quantity
+    for (size_t idx = 0; idx < listu_size (self->pending_request_ids); idx++) {
+        size_t request_id = listu_get (self->pending_request_ids, idx);
+        s_request_t *request = vrp_request (self, request_id);
+
+        // Check request type: visiting with zero quantity
         if (request->type != RT_VISIT || !double_equal (request->quantity, 0))
             return false;
         assert (!(request->pickup_node_id == ID_NONE &&
@@ -1312,6 +1358,34 @@ static bool vrp_is_tsp (vrp_t *self) {
 
     return true;
 }
+
+
+static bool vrp_is_vrptw (vrp_t *self) {
+    if (vrp_num_vehicles (self) == 1)
+        print_warning ("One vehicle, encessentially TSP\n");
+
+    for (size_t idx = 0; idx < listu_size (self->pending_request_ids); idx++) {
+        size_t request_id = listu_get (self->pending_request_ids, idx);
+        s_request_t *request = vrp_request (self, request_id);
+
+        // Check request type: PD
+        if (request->type != RT_PD || !double_equal (request->quantity, 0))
+            return false;
+        assert (!(request->pickup_node_id == ID_NONE &&
+                  request->delivery_node_id == ID_NONE));
+
+        // No time window constraints
+        if (request->pickup_time_windows != NULL &&
+            listu_size (request->pickup_time_windows) > 0)
+            return false;
+        if (request->delivery_time_windows != NULL &&
+            listu_size (request->delivery_time_windows) > 0)
+            return false;
+    }
+
+    return true;
+}
+
 
 
 solution_t *vrp_solve (vrp_t *self) {
@@ -1349,6 +1423,7 @@ void vrp_test (bool verbose) {
     char filename[] =
         // "benchmark/cvrp/A-n32-k5.vrp";
         "benchmark/tsplib/tsp/berlin52.tsp";
+    // "benchmark/tsplib/tsp/a280.tsp";
 
     vrp_t *vrp = vrp_new_from_file (filename);
     assert (vrp);
@@ -1356,7 +1431,9 @@ void vrp_test (bool verbose) {
     printf ("#nodes: %zu\n", vrp_num_nodes (vrp));
     printf ("#vehicles: %zu\n", vrp_num_vehicles (vrp));
 
-    vrp_solve (vrp);
+    solution_t *sol = vrp_solve (vrp);
+    if (sol != NULL)
+        solution_print (sol);
 
     vrp_free (&vrp);
     print_info ("OK\n");

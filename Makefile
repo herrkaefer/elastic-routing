@@ -62,7 +62,8 @@ _MODULES = numeric_ext \
 	       solution \
 	       evol \
 	       tspi \
-	       tsp
+	       tsp \
+	       cvrp
 
 
 _OBJ = $(_MODULES:=.o)

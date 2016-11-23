@@ -102,12 +102,10 @@ void route_shuffle (route_t *self,
 }
 
 
-// Cost increment for route_flip operation.
-// Flip of route slice [i, j]
-// (0, ..., i-1, i, i+1, ..., j-1, j, j+1, ..., route_length-1) =>
-// (0, ..., i-1, j, j-1, ..., i+1, i, j+1, ..., route_length-1)
-double route_flip_delta_distance (route_t *self,
-                                  vrp_t *vrp, int i, int j) {
+// Distance increment of route flip operation.
+// Note the the operation is not performed.
+static double route_flip_delta_distance (route_t *self,
+                                         vrp_t *vrp, int i, int j) {
     assert (self);
     assert (vrp);
     assert (i <= j);
@@ -229,15 +227,8 @@ double route_2_opt (route_t *self,
     assert (idx_begin <= idx_end);
     assert (idx_end < route_size (self));
 
-    print_info ("2-opt local search start.\n");
     if (idx_begin == idx_end)
         return 0;
-
-    // size_t route_len = route_size (route);
-    // size_t idx_begin = (self->start_node != SIZE_NONE) ? 1 : 0;
-    // size_t idx_end =
-    //     (self->end_node != SIZE_NONE) ? (route_len-2) : (route_len-1);
-    // print_info ("idx_begin: %zu, idx_end: %zu\n", idx_begin, idx_end);
 
     double total_delta_cost = 0, delta_cost;
     bool improved = true;
@@ -256,7 +247,6 @@ double route_2_opt (route_t *self,
         }
     }
 
-    print_info ("2-opt local search end.\n");
     return total_delta_cost;
 }
 

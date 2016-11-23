@@ -13,7 +13,7 @@ extern "C" {
 #endif
 
 // Create CVRP model from generic VRP model
-void cvrp_new_from (vrp_t *vrp);
+cvrp_t *cvrp_new_from (vrp_t *vrp);
 
 // Destroy cvrp object
 void cvrp_free (cvrp_t **self_p);

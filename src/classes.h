@@ -83,5 +83,6 @@ typedef struct {
 #include "vrp.h"
 #include "tspi.h"
 #include "tsp.h"
+#include "cvrp.h"
 
 #endif

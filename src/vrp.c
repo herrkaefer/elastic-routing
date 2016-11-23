@@ -1360,6 +1360,85 @@ static bool vrp_is_tsp (vrp_t *self) {
 }
 
 
+static bool vrp_is_cvrp (vrp_t *self) {
+    size_t depot_id = ID_NONE;
+
+    // Check requests
+    size_t num_requests = listu_size (self->pending_request_ids);
+    if (num_requests == 0) {
+        print_info ("num_requests\n");
+        return false;
+    }
+
+    for (size_t idx = 0; idx < num_requests; idx++) {
+        size_t request_id = listu_get (self->pending_request_ids, idx);
+        s_request_t *request = vrp_request (self, request_id);
+
+        // Check request type: PD with quantity > 0
+        if (request->type != RT_PD || double_equal (request->quantity, 0)) {
+            print_info ("request type\n");
+            return false;
+        }
+
+        // Check pickup node: depot
+        if (depot_id == ID_NONE)
+            depot_id = request->pickup_node_id;
+        if (depot_id != request->pickup_node_id) {
+            print_info ("pick node\n");
+            return false;
+        }
+
+        // Check delivery node: not depot
+        if (depot_id == request->delivery_node_id) {
+            print_info ("delivery node\n");
+            return false;
+        }
+
+        // Check time windows: not defined
+        if (vrp_request_num_pickup_time_windows (self, request_id) > 0 ||
+            vrp_request_num_delivery_time_windows (self, request_id) > 0) {
+            print_info ("nun tw\n");
+            return false;
+        }
+
+    }
+
+    // Check vehicles
+    size_t num_vehicles = listu_size (self->vehicle_ids);
+    if (num_vehicles == 0) {
+        print_info ("nun vehicle\n");
+        return false;
+    }
+
+    double max_capacity = DOUBLE_NONE;
+
+    for (size_t idx = 0; idx < num_vehicles; idx++) {
+        size_t vehicle_id = listu_get (self->vehicle_ids, idx);
+        s_vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
+
+        // Check max capacity: equal
+        if (double_is_none (max_capacity))
+            max_capacity = vehicle->max_capacity;
+        if (!double_equal (max_capacity, vehicle->max_capacity)) {
+            print_info ("capacity: %.3f, %.3f\n", max_capacity, vehicle->max_capacity);
+            return false;
+        }
+
+        // Check start and end node: depot or undefined
+        if (vehicle->start_node_id != depot_id &&
+            vehicle->start_node_id != ID_NONE)
+            return false;
+
+        if (vehicle->end_node_id != depot_id &&
+            vehicle->end_node_id != ID_NONE)
+            return false;
+    }
+
+    return true;
+}
+
+
+// @todo not finished
 static bool vrp_is_vrptw (vrp_t *self) {
     if (vrp_num_vehicles (self) == 1)
         print_warning ("One vehicle, encessentially TSP\n");
@@ -1410,6 +1489,13 @@ solution_t *vrp_solve (vrp_t *self) {
         sol = tsp_solve (model);
         tsp_free (&model);
     }
+    else if (vrp_is_cvrp (self)) {
+        print_info ("Submodel detected: CVRP\n");
+        cvrp_t *model = cvrp_new_from (self);
+        assert (model);
+        sol = cvrp_solve (model);
+        cvrp_free (&model);
+    }
     else
         print_error ("Unsupported model. Not solved.\n");
     return sol;
@@ -1421,8 +1507,8 @@ void vrp_test (bool verbose) {
     print_info (" * vrp: \n");
 
     char filename[] =
-        // "benchmark/cvrp/A-n32-k5.vrp";
-        "benchmark/tsplib/tsp/berlin52.tsp";
+        "benchmark/cvrp/A-n32-k5.vrp";
+        // "benchmark/tsplib/tsp/berlin52.tsp";
     // "benchmark/tsplib/tsp/a280.tsp";
 
     vrp_t *vrp = vrp_new_from_file (filename);
@@ -1433,7 +1519,7 @@ void vrp_test (bool verbose) {
 
     solution_t *sol = vrp_solve (vrp);
     if (sol != NULL)
-        solution_print (sol);
+        solution_print_internal (sol);
 
     vrp_free (&vrp);
     print_info ("OK\n");

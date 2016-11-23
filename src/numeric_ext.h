@@ -29,7 +29,7 @@ extern "C" {
 #define DOUBLE_THRESHOLD (2*DBL_MIN)
 
 #define double_is_none(a) (isnan (a))
-#define double_equal(a,b) (fabs ((a) - (b)) < DOUBLE_THRESHOLD)
+#define double_equal(a,b) ((isnan (a) && isnan (b)) || (fabs ((a) - (b)) < DOUBLE_THRESHOLD))
 
 // Compare two double values, for sorting
 inline int double_compare (const double *a, const double *b) {

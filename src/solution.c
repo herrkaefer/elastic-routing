@@ -97,6 +97,22 @@ void solution_print (const solution_t *self) {
 }
 
 
+void solution_print_internal (const solution_t *self) {
+    assert (self);
+    printf ("\nsolution: #routes: %zu\n", listx_size (self->routes));
+    printf ("--------------------------------------------------\n");
+    for (size_t idx_r = 0; idx_r < listx_size (self->routes); idx_r++) {
+        route_t *route = listx_item_at (self->routes, idx_r);
+        size_t route_len = route_size (route);
+        printf ("route #%zu (#nodes: %zu):", idx_r, route_len);
+        for (size_t idx_n = 0; idx_n < route_len; idx_n++)
+            printf (" %zu", route_at (route, idx_n));
+        printf ("\n");
+    }
+    printf ("\n");
+}
+
+
 void solution_test (bool verbose) {
     print_info (" * solution: \n");
     // roadnet_t *roadnet = roadnet_new ();

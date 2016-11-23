@@ -35,6 +35,9 @@ route_t *solution_route (solution_t *self, size_t route_idx);
 // Printer
 void solution_print (const solution_t *self);
 
+// Printer (display internal node ID)
+void solution_print_internal (const solution_t *self);
+
 // Self test
 void solution_test (bool verbose);
 

@@ -67,8 +67,8 @@ void route_shuffle (route_t *self,
 // Flip of route slice [i, j]:
 // (0, ..., i-1, i, i+1, ..., j-1, j, j+1, ..., route_length-1) =>
 // (0, ..., i-1, j, j-1, ..., i+1, i, j+1, ..., route_length-1)
-double route_flip_delta_distance (route_t *self,
-                                  vrp_t *vrp, int idx_begin, int idx_end);
+// double route_flip_delta_distance (route_t *self,
+//                                   vrp_t *vrp, int idx_begin, int idx_end);
 
 // Reverse (flip) route slice.
 // (..., i, i+1, -->, j, ...) =>
@@ -89,6 +89,8 @@ void route_ox (route_t *r1, route_t *r2,
                rng_t *rng);
 
 // 2-opt local search.
+// Only route cost is concerned. No constraint (such as time window or sequence)
+// is taken into account.
 // Brute force search: stop when no improvement is possible in neighborhood.
 // Return cost increment (negative).
 double route_2_opt (route_t *self,

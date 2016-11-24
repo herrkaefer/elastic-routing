@@ -139,6 +139,9 @@ size_t *listu_dump_array (const listu_t *self);
 // Duplicator
 listu_t *listu_dup (const listu_t *self);
 
+// Matcher: check if two lists are equal: same items in the same sequence.
+bool listu_equal (const listu_t *self, const listu_t *list);
+
 // Printer
 void listu_print (const listu_t *self);
 

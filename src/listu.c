@@ -636,6 +636,23 @@ listu_t *listu_dup (const listu_t *self) {
 }
 
 
+bool listu_equal (const listu_t *self, const listu_t *list) {
+    if (self == NULL && list == NULL)
+        return true;
+    else if (self == NULL || list == NULL)
+        return false;
+
+    if (listu_size (self) != listu_size (list))
+        return false;
+
+    for (size_t idx = 0; idx < listu_size (self); idx++) {
+        if (listu_get (self, idx) != listu_get (list, idx))
+            return false;
+    }
+    return true;
+}
+
+
 void listu_print (const listu_t *self) {
     assert (self);
     size_t size = self->data[LIST4U_INDEX_SIZE];

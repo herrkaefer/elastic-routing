@@ -280,13 +280,13 @@ bool listx_all (const listx_t *self, filter_t filter);
 // Any item in list satisfies filter (item) == true
 bool listx_any (const listx_t *self, filter_t filter);
 
-// Duplicate a list
+// Duplicator: duplicate a list
 listx_t *listx_dup (const listx_t *self);
 
-// Check if two lists are equal: same items in the same sequence.
+// Matcher: check if two lists are equal: same items in the same sequence.
 bool listx_equal (const listx_t *self, const listx_t *list);
 
-// Print a list.
+// Printer.
 // Items are displayed using provided printer if available.
 // If printer is not set, just display some basic infomations.
 void listx_print (const listx_t *self);

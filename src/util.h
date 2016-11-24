@@ -52,6 +52,7 @@ extern "C" {
 
 // ---------------------------------------------------------------------------
 
+// Common destructor for object created with malloc or calloc
 // void safe_free (void **self_p) {
 //     assert (self_p);
 //     if (*self_p) {

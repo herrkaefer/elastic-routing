@@ -26,6 +26,11 @@ route_t *route_new_from_list (const listu_t *node_ids) {
 }
 
 
+route_t *route_new_range (size_t start, size_t stop, int step) {
+    return listu_new_range (start, stop, step);
+}
+
+
 void route_free (route_t **self_p) {
     assert (self_p);
     listu_free (self_p);

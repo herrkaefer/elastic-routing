@@ -21,6 +21,9 @@ route_t *route_new_from_array (const size_t *node_ids, size_t num_nodes);
 // Create route object from node id list
 route_t *route_new_from_list (const listu_t *node_ids);
 
+// Create route with values [start, start+step, ..., (end)]
+route_t *route_new_range (size_t start, size_t stop, int step);
+
 // Destroy route object
 void route_free (route_t **self_p);
 

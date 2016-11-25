@@ -28,7 +28,7 @@ struct _arrayset_t {
     queue_t *holes; // record of removed nodes. A FIFO queue.
 
     hash_t *hash; // an optional hash table for indexing data by foreign key
-    destructor_t data_free_func; // callback for destroying data
+    destructor_t destructor; // free function for data
 };
 
 
@@ -45,8 +45,8 @@ static void arrayset_set_entry (arrayset_t *self,
 
     entry->id = id;
     entry->valid = valid;
-    if (entry->data != NULL && self->data_free_func != NULL)
-        self->data_free_func (&entry->data);
+    if (entry->data != NULL && self->destructor != NULL)
+        self->destructor (&entry->data);
     entry->data = data;
     entry->hash_handle = hash_handle;
 }
@@ -141,7 +141,7 @@ arrayset_t *arrayset_new (size_t alloc_size) {
 
     self->holes = queue_new ();
     self->hash = NULL;
-    self->data_free_func = NULL;
+    self->destructor = NULL;
 
     print_info ("arrayset created.\n");
     return self;
@@ -157,9 +157,9 @@ void arrayset_free (arrayset_t **self_p) {
 
         queue_free (&self->holes);
 
-        if (self->data_free_func != NULL) {
+        if (self->destructor != NULL) {
             for (size_t id = 0; id < self->length; id++)
-                self->data_free_func (&self->entries[id].data);
+                self->destructor (&self->entries[id].data);
         }
         free (self->entries);
 
@@ -170,26 +170,26 @@ void arrayset_free (arrayset_t **self_p) {
 }
 
 
-void arrayset_set_data_free_func (arrayset_t *self,
-                                  destructor_t data_free_func) {
+void arrayset_set_data_destructor (arrayset_t *self,
+                                   destructor_t data_destructor) {
     assert (self);
-    assert (self->data_free_func == NULL);
-    self->data_free_func = data_free_func;
+    assert (self->destructor == NULL);
+    self->destructor = data_destructor;
 }
 
 
-void arrayset_set_hash_funcs (arrayset_t *self,
-                              hashfunc_t hash_func,
-                              matcher_t foreign_key_equal_func,
-                              destructor_t foreign_key_free_func) {
+void arrayset_set_hash (arrayset_t *self,
+                        hashfunc_t hash_func,
+                        matcher_t foreign_key_matcher,
+                        destructor_t foreign_key_destructor) {
     assert (self);
     assert (hash_func);
-    assert (foreign_key_equal_func);
+    assert (foreign_key_matcher);
     assert (self->hash == NULL);
 
-    self->hash = hash_new (hash_func, foreign_key_equal_func);
+    self->hash = hash_new (hash_func, foreign_key_matcher);
     assert (self->hash);
-    hash_set_destructors (self->hash, foreign_key_free_func, NULL);
+    hash_set_destructors (self->hash, foreign_key_destructor, NULL);
     assert (self->hash);
 }
 
@@ -259,8 +259,8 @@ size_t arrayset_update (arrayset_t *self, void *data, void *foreign_key) {
             assert (entry->valid);
 
             // update entry's data
-            if (entry->data != NULL && self->data_free_func != NULL)
-                self->data_free_func (&entry->data);
+            if (entry->data != NULL && self->destructor != NULL)
+                self->destructor (&entry->data);
             entry->data = data;
 
             return id;
@@ -287,8 +287,8 @@ void arrayset_remove (arrayset_t *self, size_t id) {
     }
 
     // Free data if needed
-    if (entry->data != NULL && self->data_free_func != NULL)
-        self->data_free_func (&entry->data);
+    if (entry->data != NULL && self->destructor != NULL)
+        self->destructor (&entry->data);
 
     // Add entry to holes queue
     queue_push_tail (self->holes, (void *)entry);
@@ -402,10 +402,10 @@ void arrayset_test (bool verbose) {
     assert (as);
     assert (arrayset_size (as) == 0);
 
-    arrayset_set_hash_funcs (as,
-                             (hashfunc_t) string_hash,
-                             (matcher_t) string_equal,
-                             NULL);
+    arrayset_set_hash (as,
+                       (hashfunc_t) string_hash,
+                       (matcher_t) string_equal,
+                       NULL);
 
     size_t id;
 

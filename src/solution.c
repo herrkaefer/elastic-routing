@@ -11,7 +11,11 @@
 struct _solution_t {
     vrp_t *vrp; // Problem reference. Solution does not own it.
     listx_t *routes; // list of route_t objects
-    listu_t *vehicle_ids;
+    listu_t *vehicles; // list of vehicles cooresponding to routes
+
+    // auxiliaries
+    bool feasible;
+    double total_distance;
 };
 
 
@@ -28,7 +32,10 @@ solution_t *solution_new (vrp_t *vrp) {
     assert (self->routes);
     listx_set_destructor (self->routes, (destructor_t) route_free);
 
-    print_info ("solution created.\n");
+    self->vehicles = NULL;
+    self->total_distance = DOUBLE_NONE;
+
+    // print_info ("solution created.\n");
     return self;
 }
 
@@ -39,13 +46,13 @@ void solution_free (solution_t **self_p) {
     if (*self_p) {
         solution_t *self = *self_p;
 
-        if (self->routes != NULL)
-            listx_free (&self->routes);
+        listx_free (&self->routes);
+        listu_free (&self->vehicles);
 
         free (self);
         *self_p = NULL;
     }
-    print_info ("solution freed.\n");
+    // print_info ("solution freed.\n");
 }
 
 
@@ -78,9 +85,33 @@ route_t *solution_route (solution_t *self, size_t route_idx) {
 }
 
 
+void solution_set_total_distance (solution_t *self, double distance) {
+    assert (self);
+    self->total_distance = distance;
+}
+
+
+double solution_calculate_total_distance (solution_t *self, vrp_t *vrp) {
+    assert (self);
+    assert (vrp);
+    double total_dist = 0;
+    for (size_t idx = 0; idx < solution_num_routes (self); idx++)
+        total_dist += route_total_distance (solution_route (self, idx), vrp);
+    self->total_distance = total_dist;
+    return total_dist;
+}
+
+
+double solution_total_distance (solution_t *self) {
+    assert (self);
+    return self->total_distance;
+}
+
+
 void solution_print (const solution_t *self) {
     assert (self);
-    printf ("solution: #routes: %zu\n", listx_size (self->routes));
+    printf ("\nsolution: #routes: %zu, total distance: %.2f\n",
+            listx_size (self->routes), self->total_distance);
     printf ("--------------------------------------------------\n");
     for (size_t idx_r = 0; idx_r < listx_size (self->routes); idx_r++) {
         route_t *route = listx_item_at (self->routes, idx_r);
@@ -99,7 +130,8 @@ void solution_print (const solution_t *self) {
 
 void solution_print_internal (const solution_t *self) {
     assert (self);
-    printf ("\nsolution: #routes: %zu\n", listx_size (self->routes));
+    printf ("\nsolution: #routes: %zu, total distance: %.2f\n",
+            listx_size (self->routes), self->total_distance);
     printf ("--------------------------------------------------\n");
     for (size_t idx_r = 0; idx_r < listx_size (self->routes); idx_r++) {
         route_t *route = listx_item_at (self->routes, idx_r);

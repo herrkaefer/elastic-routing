@@ -32,6 +32,15 @@ size_t solution_num_routes (solution_t *self);
 // Get route in solution
 route_t *solution_route (solution_t *self, size_t route_idx);
 
+// Set total distance
+void solution_set_total_distance (solution_t *self, double distance);
+
+// Calculate total distance
+double solution_calculate_total_distance (solution_t *self, vrp_t *vrp);
+
+// Get total distance
+double solution_total_distance (solution_t *self);
+
 // Printer
 void solution_print (const solution_t *self);
 

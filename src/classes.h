@@ -40,6 +40,12 @@ typedef enum {
     NT_CUSTOMER
 } node_type_t;
 
+typedef enum {
+    NR_NONE,
+    NR_SENDER,
+    NR_RECEIVER
+} node_role_t;
+
 typedef struct _vrp_t vrp_t;
 typedef struct _cvrp_t cvrp_t;
 typedef struct _tsp_t tsp_t;

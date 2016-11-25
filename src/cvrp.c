@@ -7,10 +7,20 @@
 
 /* Todos:
 
+- [ ] remove customer duplicates when creating model
 - [x] fitness (cost of splited giant tour)
 - [ ] split giant tour to solution_t
 - [ ] inter-route local search
 - [ ] more heuristics
+
+
+Details:
+
+For evolution:
+
+- genome: giant tour - sequence of customers (node IDs in generic model)
+- crossover: OX
+- cost of genome: cost of splited giant tour
 
 */
 
@@ -50,13 +60,14 @@ typedef struct {
 } s_genome_t;
 
 
-static s_genome_t *s_genome_new_from_giant_tour (route_t *gtour) {
-    assert (gtour);
+// Create genome by setting at least one of gtour or sol
+static s_genome_t *s_genome_new (route_t *gtour, solution_t *sol) {
+    assert (gtour != NULL || sol != NULL);
     s_genome_t *self = (s_genome_t *) malloc (sizeof (s_genome_t));
     assert (self);
     self->gtour = gtour;
-    self->sol = NULL;
-    self->cost = DOUBLE_NONE;
+    self->sol = sol;
+    return self;
 }
 
 
@@ -75,10 +86,56 @@ static void s_genome_free (s_genome_t **self_p) {
 // ----------------------------------------------------------------------------
 // Helpers
 
-static double cvrp_arc_distance (cvrp_t *self, size_t i, size_t j) {
+// static size_t cvrp_node_id (cvrp_t *self, size_t i) {
+//     return self->nodes[i].id;
+// }
+
+
+// static double cvrp_node_demand (cvrp_t *self, size_t i) {
+//     return self->nodes[i].demand;
+// }
+
+
+// static const coord2d_t *cvrp_node_coord (cvrp_t *self, size_t i) {
+//     return self->nodes[i].coord;
+// }
+
+
+static double cvrp_arc_distance_by_idx (cvrp_t *self, size_t i, size_t j) {
     return vrp_arc_distance (self->vrp,
                              self->nodes[i].id, self->nodes[j].id);
 }
+
+
+static double cvrp_node_demand (cvrp_t *self, size_t node_id) {
+    if (node_id == self->nodes[0].id) // depot
+        return 0;
+
+    const listu_t *requests =
+        vrp_node_pending_request_ids (self->vrp, node_id);
+
+    assert (listu_size (requests) == 1);
+    size_t request_id = listu_get (requests, 0);
+    assert (node_id == vrp_request_receiver (self->vrp, request_id));
+    return vrp_request_quantity (self->vrp, request_id);
+}
+
+
+// Transform CVRP solution to giant tour representation
+static route_t *cvrp_giant_tour_from_solution (cvrp_t *self, solution_t *sol) {
+    route_t *gtour = route_new (self->num_customers);
+    for (size_t idx_r = 0; idx_r < solution_num_routes (sol); idx_r++) {
+        route_t *route = solution_route (sol, idx_r);
+        for (size_t idx = 0; idx < route_size (route); idx++) {
+            size_t node = route_at (route, idx);
+            if (node != self->nodes[0].id)
+                route_append_node (gtour, route_at (route, idx));
+        }
+    }
+    assert (route_size (gtour) == self->num_customers);
+    return gtour;
+}
+
 
 
 // ----------------------------------------------------------------------------
@@ -110,8 +167,8 @@ static int compare_cwsavings (const void *a, const void *b) {
 }
 
 
-// Return giant tour
-static route_t *cvrp_clark_wright_parallel (cvrp_t *self, double lambda) {
+// Return solution in which nodes are with generic IDs
+static solution_t *cvrp_clark_wright_parallel (cvrp_t *self, double lambda) {
     size_t N = self->num_customers;
 
     // Initialize with 0
@@ -142,9 +199,9 @@ static route_t *cvrp_clark_wright_parallel (cvrp_t *self, double lambda) {
             savings[cnt].c1 = i;
             savings[cnt].c2 = j;
             savings[cnt].saving =
-                cvrp_arc_distance (self, i, 0) +
-                cvrp_arc_distance (self, 0, j) -
-                lambda * cvrp_arc_distance (self, i, j);
+                cvrp_arc_distance_by_idx (self, i, 0) +
+                cvrp_arc_distance_by_idx (self, 0, j) -
+                lambda * cvrp_arc_distance_by_idx (self, i, j);
             cnt++;
         }
     }
@@ -184,61 +241,67 @@ static route_t *cvrp_clark_wright_parallel (cvrp_t *self, double lambda) {
     }
 
     // Construct solution from predecessors and successors
-
-    // @todo problem: solution with inner ID?
-    // solution_t *sol = solution_new (self->vrp);
-
-    // for (size_t idx = 1; idx <= N; idx++) {
-    //     if (predecessors[idx] == 0) { // idx is a first customer of route
-    //         route_t *route = route_new (3); // at least 3 nodes in route
-    //         route_append_node (route, 0); // depot
-    //         size_t successor = idx;
-    //         while (successor != 0) {
-    //             route_append_node (route, successor);
-    //             successor = successors[successor];
-    //         }
-    //         route_append_node (route, 0); // depot
-    //         solution_add_route (sol, route);
-    //     }
-    // }
-
-    route_t *gtour = route_new (N);
-    assert (gtour);
+    solution_t *sol = solution_new (self->vrp);
 
     for (size_t idx = 1; idx <= N; idx++) {
-        if (predecessors[idx] == 0) { // first customer on route
+        if (predecessors[idx] == 0) { // idx is a first customer of route
+            route_t *route = route_new (3); // at least 3 nodes in route
+            route_append_node (route, self->nodes[0].id); // depot
             size_t successor = idx;
             while (successor != 0) {
-                route_append_node (gtour, successor);
+                route_append_node (route, self->nodes[successor].id);
                 successor = successors[successor];
             }
+            route_append_node (route, self->nodes[0].id); // depot
+            solution_add_route (sol, route);
         }
     }
+
+    // route_t *gtour = route_new (N);
+    // assert (gtour);
+
+    // for (size_t idx = 1; idx <= N; idx++) {
+    //     if (predecessors[idx] == 0) { // first customer on route
+    //         size_t successor = idx;
+    //         while (successor != 0) {
+    //             route_append_node (gtour, successor);
+    //             successor = successors[successor];
+    //         }
+    //     }
+    // }
 
     free (predecessors);
     free (successors);
     free (route_demands);
     free (savings);
 
-    assert (route_size (gtour) == N);
-    return gtour;
+    return sol;
 }
 
 
-// Clark-Wright heuristic.
-// Return list of at most 7 giant tours (duplicates removed)
+// Heuristic: Clark-Wright.
+// is_random: false
+// max_expected: 7 (duplicates removed)
 static listx_t *cvrp_clark_wright (cvrp_t *self) {
+    print_info ("CW starting ...\n");
     listx_t *genomes = listx_new ();
     listu_t *hashes = listu_new (7);
 
     for (double lambda = 0.4; lambda <= 1.0; lambda += 0.1) {
-        route_t *gtour = cvrp_clark_wright_parallel (self, lambda);
+        solution_t *sol = cvrp_clark_wright_parallel (self, lambda);
+        route_t *gtour = cvrp_giant_tour_from_solution (self, sol);
         size_t hash = giant_tour_hash (gtour);
         if (!listu_includes (hashes, hash)) {
-            s_genome_t *genome = s_genome_new_from_giant_tour (gtour);
+            solution_calculate_total_distance (sol, self->vrp);
+            s_genome_t *genome = s_genome_new (gtour, sol);
             listx_append (genomes, genome);
             listu_append (hashes, hash);
+            solution_print_internal (sol);
             route_print (gtour);
+        }
+        else { // drop duplicate solution
+            solution_free (&sol);
+            route_free (&gtour);
         }
     }
 
@@ -248,12 +311,25 @@ static listx_t *cvrp_clark_wright (cvrp_t *self) {
 }
 
 
-// Heuristic: random giant tour
+// ----------------------------------------------------------------------------
+
+// Random giant tour
 static route_t *cvrp_random_giant_tour (cvrp_t *self) {
-    route_t *giant_tour = route_new_range (1, self->num_customers, 1);
-    assert (giant_tour);
-    route_shuffle (giant_tour, 0, self->num_customers - 1, self->rng);
-    return giant_tour;
+    route_t *gtour = route_new (self->num_customers);
+    assert (gtour);
+    for (size_t idx = 1; idx <= self->num_customers; idx++)
+        route_append_node (gtour, self->nodes[idx].id);
+    route_shuffle (gtour, 0, self->num_customers - 1, self->rng);
+    return gtour;
+}
+
+
+// Heuristic: random giant tour.
+// is_random: true
+// max_expected: factorial (self->num_customers)
+static s_genome_t *cvrp_random_genome (cvrp_t *self) {
+    route_t *gtour = cvrp_random_giant_tour (self);
+    return s_genome_new2 (gtour, NULL);
 }
 
 
@@ -266,111 +342,112 @@ static route_t *cvrp_random_giant_tour (cvrp_t *self) {
    @param route: TSP route. format: 0->route[1]->route[2]->...->route[vrp->N]->...
    @param individual (output): CVRP individual
 */
-void split(const CVRP_Problem *vrp, const int *route, Individual *individual)
-{
-    int N = vrp->N;
-    double *sp_cost = NULL; // cost of the shortest path from node 0 to node j in auxiliary graph H
-    int *predecessor = NULL; // predecessor of node j on the shortest path
-    double route_demand, route_cost;
-    int i, j, k;
+// void split(const CVRP_Problem *vrp, const int *route, Individual *individual)
+// {
+//     int N = vrp->N;
+//     double *sp_cost = NULL; // cost of the shortest path from node 0 to node j in auxiliary graph H
+//     int *predecessor = NULL; // predecessor of node j on the shortest path
+//     double route_demand, route_cost;
+//     int i, j, k;
 
-    sp_cost = (double *)malloc((N+1)*sizeof(double));
-    predecessor = (int *)malloc((N+1)*sizeof(int));
-    if (sp_cost == NULL || predecessor == NULL)
-    {
-        PRINT("ERROR: split: out of memory.\n");
-        goto LABEL_SPLIT;
-    }
+//     sp_cost = (double *)malloc((N+1)*sizeof(double));
+//     predecessor = (int *)malloc((N+1)*sizeof(int));
+//     if (sp_cost == NULL || predecessor == NULL)
+//     {
+//         PRINT("ERROR: split: out of memory.\n");
+//         goto LABEL_SPLIT;
+//     }
 
-    // initialize
-    for (i = 0; i <= N; i++)
-    {
-        sp_cost[i] = DBL_MAX;
-        predecessor[i] = -1; // NIL
-    }
-    sp_cost[0] = 0;
+//     // initialize
+//     for (i = 0; i <= N; i++)
+//     {
+//         sp_cost[i] = DBL_MAX;
+//         predecessor[i] = -1; // NIL
+//     }
+//     sp_cost[0] = 0;
 
-    // relax. NOTE: only capacity constraint is considered (i.e. CVRP).
-    for (i = 1; i <= N; i++)
-    {
-        route_demand = 0;
-        route_cost = 0;
+//     // relax. NOTE: only capacity constraint is considered (i.e. CVRP).
+//     for (i = 1; i <= N; i++)
+//     {
+//         route_demand = 0;
+//         route_cost = 0;
 
-        for (j = i; j <= N; j++)
-        {
-            route_demand += (vrp->q)[route[j]];
+//         for (j = i; j <= N; j++)
+//         {
+//             route_demand += (vrp->q)[route[j]];
 
-            if (route_demand <= vrp->Q) // arc (i-1,j) exists in auxiliary graph H
-            {
-                if (i == j)
-                {
-                    route_cost = (vrp->c)[route[j]] + (vrp->c)[(N+1)*route[j]]; // c(0,route[j])+c(route[j],0)
-                }
-                else
-                {
-                    route_cost  = route_cost
-                                - (vrp->c)[(N+1)*route[j-1]]          // c(route[j-1],0)
-                                + (vrp->c)[(N+1)*route[j-1]+route[j]] // c(route[j-1],route[j])
-                                + (vrp->c)[(N+1)*route[j]];           // c(route[j],0)
-                }
+//             if (route_demand <= vrp->Q) // arc (i-1,j) exists in auxiliary graph H
+//             {
+//                 if (i == j)
+//                 {
+//                     route_cost = (vrp->c)[route[j]] + (vrp->c)[(N+1)*route[j]]; // c(0,route[j])+c(route[j],0)
+//                 }
+//                 else
+//                 {
+//                     route_cost  = route_cost
+//                                 - (vrp->c)[(N+1)*route[j-1]]          // c(route[j-1],0)
+//                                 + (vrp->c)[(N+1)*route[j-1]+route[j]] // c(route[j-1],route[j])
+//                                 + (vrp->c)[(N+1)*route[j]];           // c(route[j],0)
+//                 }
 
-                if (sp_cost[i-1] + route_cost < sp_cost[j])
-                {
-                    sp_cost[j] = sp_cost[i-1] + route_cost;
-                    predecessor[j] = i - 1;
-                }
-            }
-            else
-            {
-                break; // to next i
-            }
-        }
-    }
+//                 if (sp_cost[i-1] + route_cost < sp_cost[j])
+//                 {
+//                     sp_cost[j] = sp_cost[i-1] + route_cost;
+//                     predecessor[j] = i - 1;
+//                 }
+//             }
+//             else
+//             {
+//                 break; // to next i
+//             }
+//         }
+//     }
 
-    // PRINT("\nroute:");
-    // for (i = 0; i <= N; i++) PRINT(" %d", route[i]);
-    // PRINT("\n");
+//     // PRINT("\nroute:");
+//     // for (i = 0; i <= N; i++) PRINT(" %d", route[i]);
+//     // PRINT("\n");
 
-    // PRINT("predecessor:");
-    // for (i = 0; i <= N; i++) PRINT(" %d", predecessor[i]);
-    // PRINT("\n");
-    // PRINT("sp_cost:");
-    // for (i = 0; i <= N; i++) PRINT(" %.2f", sp_cost[i]);
-    // PRINT("\n");
+//     // PRINT("predecessor:");
+//     // for (i = 0; i <= N; i++) PRINT(" %d", predecessor[i]);
+//     // PRINT("\n");
+//     // PRINT("sp_cost:");
+//     // for (i = 0; i <= N; i++) PRINT(" %.2f", sp_cost[i]);
+//     // PRINT("\n");
 
-    // generate individual from predecessor
-    individual->num_route = 0;
-    j = N;
-    i = predecessor[N];
-    while (i >= 0)
-    {
-        (individual->first_customer)[individual->num_route] = route[i+1];
-        for (k = i+1; k < j; k++)
-        {
-            individual->successor[route[k]-1] = route[k+1];
-        }
-        individual->successor[route[j]-1] = 0;
+//     // generate individual from predecessor
+//     individual->num_route = 0;
+//     j = N;
+//     i = predecessor[N];
+//     while (i >= 0)
+//     {
+//         (individual->first_customer)[individual->num_route] = route[i+1];
+//         for (k = i+1; k < j; k++)
+//         {
+//             individual->successor[route[k]-1] = route[k+1];
+//         }
+//         individual->successor[route[j]-1] = 0;
 
-        individual->num_route += 1;
-        j = i;
-        i = predecessor[i];
-    }
+//         individual->num_route += 1;
+//         j = i;
+//         i = predecessor[i];
+//     }
 
-    if (sp_cost[N] > 0)
-    {
-        individual->feasible = 1;
-        individual->cost = sp_cost[N];
-        // individual->cost = cvrp_compute_cost(vrp, individual); // for comparison
-    }
+//     if (sp_cost[N] > 0)
+//     {
+//         individual->feasible = 1;
+//         individual->cost = sp_cost[N];
+//         // individual->cost = cvrp_compute_cost(vrp, individual); // for comparison
+//     }
 
-    LABEL_SPLIT:
+//     LABEL_SPLIT:
 
-        free(sp_cost);
-        free(predecessor);
-}
+//         free(sp_cost);
+//         free(predecessor);
+// }
 
 
-static void cvrp_split (cvrp_t *self, s_genome_t *genome) {
+// Split algorithm: giant tour -> CVRP solution
+static solution_t *cvrp_split (cvrp_t *self, route_t *gtour) {
     size_t N = self->num_customers;
     double route_demand, route_cost;
 
@@ -389,10 +466,7 @@ static void cvrp_split (cvrp_t *self, s_genome_t *genome) {
     }
     sp_cost[0] = 0;
 
-@todo modified HERE 11.24 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-    // relax. NOTE: only capacity constraint is considered (i.e. CVRP).
+    // Relax. NOTE: only capacity constraint is considered (i.e. CVRP).
     for (size_t i = 1; i <= N; i++) {
 
         route_demand = 0;
@@ -400,19 +474,27 @@ static void cvrp_split (cvrp_t *self, s_genome_t *genome) {
 
         for (size_t j = i; j <= N; j++) {
 
-            route_demand += (vrp->q)[route[j]];
+            // route_demand += (vrp->q)[route[j]];
+            // get demand from generic ID?
+            route_demand += cvrp_node_demand (self, route_at (gtour, j));
 
             // arc (i-1,j) exists in auxiliary graph H
-            if (route_demand <= vrp->Q)  {
+            if (route_demand <= self->capacity)  {
                 if (i == j)
-                    route_cost = (vrp->c)[route[j]] + (vrp->c)[(N+1)*route[j]]; // c(0,route[j])+c(route[j],0)
+                    route_cost = cvrp_arc_distance_by_idx (self, 0, j) +
+                                 cvrp_arc_distance_by_idx (self, j, 0);
+                    // route_cost = (vrp->c)[route[j]] + (vrp->c)[(N+1)*route[j]]; // c(0,route[j])+c(route[j],0)
 
                 else
-                    route_cost  = route_cost
-                                - (vrp->c)[(N+1)*route[j-1]]          // c(route[j-1],0)
-                                + (vrp->c)[(N+1)*route[j-1]+route[j]] // c(route[j-1],route[j])
-                                + (vrp->c)[(N+1)*route[j]];           // c(route[j],0)
+                    // route_cost  = route_cost
+                    //             - (vrp->c)[(N+1)*route[j-1]]          // c(route[j-1],0)
+                    //             + (vrp->c)[(N+1)*route[j-1]+route[j]] // c(route[j-1],route[j])
+                    //             + (vrp->c)[(N+1)*route[j]];           // c(route[j],0)
 
+                    route_cost = route_cost -
+                                 cvrp_arc_distance_by_idx (self, j-1, 0) +
+                                 cvrp_arc_distance_by_idx (self, j-1, j) +
+                                 cvrp_arc_distance_by_idx (self, j, 0);
 
                 if (sp_cost[i-1] + route_cost < sp_cost[j]) {
                     sp_cost[j] = sp_cost[i-1] + route_cost;
@@ -437,44 +519,43 @@ static void cvrp_split (cvrp_t *self, s_genome_t *genome) {
     // PRINT("\n");
 
     // generate individual from predecessor
-    individual->num_route = 0;
-    j = N;
-    i = predecessor[N];
-    while (i >= 0)
-    {
-        (individual->first_customer)[individual->num_route] = route[i+1];
-        for (k = i+1; k < j; k++)
-        {
-            individual->successor[route[k]-1] = route[k+1];
-        }
-        individual->successor[route[j]-1] = 0;
+    // individual->num_route = 0;
 
-        individual->num_route += 1;
+    solution_t *sol = solution_new (self->vrp);
+    assert (sol);
+
+    size_t j = N;
+    size_t i = predecessor[N];
+
+    while (i != SIZE_NONE) {
+        route_t *route = route_new (2+j-i);
+        route_append_node (route, self->nodes[0].id); // depot
+        for (size_t k = i + 1; k <= j; k++)
+            route_append_node (route, route_at (gtour, k));
+        route_append_node (route, self->nodes[0].id); // depot
+        solution_add_route (sol, route);
+
         j = i;
         i = predecessor[i];
     }
 
     if (sp_cost[N] > 0)
-    {
-        individual->feasible = 1;
-        individual->cost = sp_cost[N];
-        // individual->cost = cvrp_compute_cost(vrp, individual); // for comparison
-    }
+        solution_set_total_distance (sol, sp_cost[N]);
 
-    LABEL_SPLIT:
-
-        free(sp_cost);
-        free(predecessor);
-
+    free (sp_cost);
+    free (predecessor);
+    return sol;
 }
 
 
 // Fitness of genome: inverse of average cost of splited giant tour.
 // Note that solution is also generated and saved in genome with cost.
-static double cvrp_fitness (cvrp, s_genome_t *genome) {
+static double cvrp_fitness (cvrp_t *self, s_genome_t *genome) {
     // If genome->sol does not exists, split giant tour
-    if (genome->sol == NULL)
-        cvrp_split (self, genome);
+    if (genome->sol == NULL) {
+        genome->sol = cvrp_split (self, genome->gtour);
+        genome->cost = solution_total_distance (genome->sol);
+    }
 
     assert (genome->sol != NULL);
     assert (!double_is_none (genome->cost));
@@ -490,12 +571,12 @@ static double cvrp_fitness (cvrp, s_genome_t *genome) {
 // Crossover
 
 static listx_t *cvrp_crossover (cvrp_t *self, s_genome_t *g1, s_genome_t *g2) {
-    route_t *r1 = route_dup (g1->tour);
-    route_t *r2 = route_dup (g2->tour);
+    route_t *r1 = route_dup (g1->gtour);
+    route_t *r2 = route_dup (g2->gtour);
     route_ox (r1, r2, 0, self->num_customers-1, self->rng);
     listx_t *children = listx_new ();
-    listx_append (children, s_genome_new_from_giant_tour (r1));
-    listx_append (children, s_genome_new_from_giant_tour (r2));
+    listx_append (children, s_genome_new (r1, NULL));
+    listx_append (children, s_genome_new (r2, NULL));
     return children;
 }
 
@@ -521,8 +602,7 @@ cvrp_t *cvrp_new_from (vrp_t *vrp) {
     // Note that number of all customers on roadgraph is used to allocate
     // self->nodes, which may be larger than need.
     self->nodes =
-        (s_node_t *) malloc (sizeof (s_node_t) *
-                                 (vrp_num_customers (vrp) + 1));
+        (s_node_t *) malloc (sizeof (s_node_t) * (vrp_num_customers (vrp) + 1));
     assert (self->nodes);
     self->nodes[0].id = ID_NONE;
     self->num_customers = num_requests;
@@ -536,15 +616,15 @@ cvrp_t *cvrp_new_from (vrp_t *vrp) {
 
         // depot
         if (self->nodes[0].id == ID_NONE) {
-            self->nodes[0].id = vrp_request_pickup_node (vrp, request);
+            self->nodes[0].id = vrp_request_sender (vrp, request);
             // printf ("depot set to: %zu\n", self->nodes[0].id);
             self->nodes[0].demand = 0;
             self->nodes[0].coord = vrp_node_coord (vrp, self->nodes[0].id);
         }
-        assert (self->nodes[0].id == vrp_request_pickup_node (vrp, request));
+        assert (self->nodes[0].id == vrp_request_sender (vrp, request));
 
         // customer
-        self->nodes[idx+1].id = vrp_request_delivery_node (vrp, request);
+        self->nodes[idx+1].id = vrp_request_receiver (vrp, request);
         self->nodes[idx+1].demand = vrp_request_quantity (vrp, request);
         self->nodes[idx+1].coord =
             vrp_node_coord (vrp, self->nodes[idx+1].id);

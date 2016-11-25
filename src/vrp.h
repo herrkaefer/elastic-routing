@@ -59,17 +59,8 @@ void vrp_generate_beeline_distances (vrp_t *self);
 // Note that arc distances should already be set or generated.
 void vrp_generate_durations (vrp_t *self, double speed);
 
-// Get coordinate system
+// Get coordinate system of roadgraph
 coord2d_sys_t vrp_coord_sys (vrp_t *self);
-
-// Get external ID of node
-const char *vrp_node_ext_id (vrp_t *self, size_t node_id);
-
-// Check if node is depot
-bool vrp_node_is_depot (vrp_t *self, size_t node_id);
-
-// Check if node is customer
-bool vrp_node_is_customer (vrp_t *self, size_t node_id);
 
 // Query node by external id.
 // Return node ID if node exists, ID_NONE if not.
@@ -78,31 +69,42 @@ size_t vrp_query_node (vrp_t *self, const char *node_ext_id);
 // Check if node exists by id
 bool vrp_node_exists (vrp_t *self, size_t node_id);
 
+// Get external ID of node
+const char *vrp_node_ext_id (vrp_t *self, size_t node_id);
+
+// Get node type
+node_type_t vrp_node_type (vrp_t *self, size_t node_id);
+
 // Get node coordinate
 const coord2d_t *vrp_node_coord (vrp_t *self, size_t node_id);
 
-// Get number of nodes
+// Get list of associated request ids
+const listu_t *vrp_node_pending_request_ids (vrp_t *self, size_t node_id);
+
+// Get number of nodes in roadgraph
 size_t vrp_num_nodes (vrp_t *self);
 
-// Get number of depots
+// Get number of depots in roadgraph
 size_t vrp_num_depots (vrp_t *self);
 
-// Get number of customers
+// Get number of customers in roadgraph
 size_t vrp_num_customers (vrp_t *self);
 
-// Get list of node IDs
+// Get ID list of nodes in roadgraph
 const listu_t *vrp_nodes (vrp_t *self);
 
-// Get ID list of depots
+// Get ID list of depots in roadgraph
 const listu_t *vrp_depots (vrp_t *self);
 
-// Get ID list of customers
+// Get ID list of customers in roadgraph
 const listu_t *vrp_customers (vrp_t *self);
 
-// Get distance between two nodes
+// Get distance between two nodes.
+// The caller must ensure that arc distances are already properly set.
 double vrp_arc_distance (vrp_t *self, size_t from_node_id, size_t to_node_id);
 
-// Get duration between two nodes
+// Get duration between two nodes.
+// The caller must ensure that arc durations are already properly set.
 size_t vrp_arc_duration (vrp_t *self, size_t from_node_id, size_t to_node_id);
 
 // ---------------------------------------------------------------------------
@@ -169,60 +171,30 @@ size_t vrp_vehicle_route_id (vrp_t *self, size_t vehicle_id);
 
 // Add a new request by setting a task.
 // Return request ID.
-// For node-visiting task with some quantity (could be 0), set either
-// pickup_node_id or delivery_node_id, and the other one to ID_NONE.
+// For node-visiting task with some quantity (could be 0), set either one of
+// sender or receiver, and the other one to ID_NONE.
 size_t vrp_add_request (vrp_t *self,
                         const char *request_ext_id,
-                        size_t pickup_node,
-                        size_t delivery_node,
+                        size_t sender,
+                        size_t receiver,
                         double quantity);
 
-// Add time window for request.
+// Add time window for sender or receiver of request.
 // Multiple time windows can be added by calling this one by one.
-// time is represented by an non-negative int number which means number of time
-// units since a reference point.
-void vrp_add_time_window_for_request (vrp_t *self,
-                                      size_t requset_id,
-                                      bool is_pickup,
-                                      size_t earliest,
-                                      size_t latest);
+// Time is represented by an non-negative int number which means number of time
+// units since a common reference point.
+void vrp_add_time_window (vrp_t *self,
+                          size_t requset_id,
+                          node_role_t node_role,
+                          size_t earliest,
+                          size_t latest);
 
-// Set service duration for request.
-void vrp_set_service_duration_for_request (vrp_t *self,
-                                           size_t request_id,
-                                           bool is_pickup,
-                                           size_t service_duration);
-
-// Get number of pickup TWs
-size_t vrp_request_num_pickup_time_windows (vrp_t *self, size_t request_id);
-
-// Get earliest from pickup TW
-size_t vrp_request_earliest_of_pickup_time_window (vrp_t *self,
-                                                   size_t request_id,
-                                                   size_t tw_idx);
-// Get latest from pickup TW
-size_t vrp_request_latest_of_pickup_time_window (vrp_t *self,
-                                                 size_t request_id,
-                                                 size_t tw_idx);
-
-// Get number of delivery TWs
-size_t vrp_request_num_delivery_time_windows (vrp_t *self, size_t request_id);
-
-// Get earliest from delivery TW
-size_t vrp_request_earliest_of_delivery_time_window (vrp_t *self,
-                                                     size_t request_id,
-                                                     size_t tw_idx);
-
-// Get latest from delivery TW
-size_t vrp_request_latest_of_delivery_time_window (vrp_t *self,
-                                                   size_t request_id,
-                                                   size_t tw_idx);
-
-// Get pickup service duration
-size_t vrp_request_pickup_duration (vrp_t *self, size_t request_id);
-
-// Get delivery service duration
-size_t vrp_request_delivery_duration (vrp_t *self, size_t request_id);
+// Set service duration for sender or receiver of request.
+// Default: 0.
+void vrp_set_service_duration (vrp_t *self,
+                               size_t request_id,
+                               size_t sender_or_receiver_id,
+                               size_t service_duration);
 
 // Query a request by external ID.
 // Return request ID if request exists, ID_NONE if not.
@@ -231,17 +203,40 @@ size_t vrp_query_request (vrp_t *self, const char *request_ext_id);
 // Get number of requests
 size_t vrp_num_requests (vrp_t* self);
 
-// Get pending requsts' IDs
+// Get pending requests' IDs
 const listu_t *vrp_pending_request_ids (vrp_t *self);
 
 // Get pickup node of request
-size_t vrp_request_pickup_node (vrp_t *self, size_t request_id);
+size_t vrp_request_sender (vrp_t *self, size_t request_id);
 
 // Get delivery node of request
-size_t vrp_request_delivery_node (vrp_t *self, size_t request_id);
+size_t vrp_request_receiver (vrp_t *self, size_t request_id);
 
 // Get quantity of request
 double vrp_request_quantity (vrp_t *self, size_t request_id);
+
+// Get number of time windows of sender or receiver
+size_t vrp_num_time_windows (vrp_t *self,
+                             size_t request_id,
+                             node_role_t node_role);
+
+// Get earliest of time window of sender or receiver
+size_t vrp_earliest_of_time_window (vrp_t *self,
+                                    size_t request_id,
+                                    node_role_t node_role,
+                                    size_t tw_idx);
+
+// Get latest of time window of sender or receiver
+size_t vrp_latest_of_time_window (vrp_t *self,
+                                  size_t request_id,
+                                  node_role_t node_role,
+                                  size_t tw_idx);
+
+// Get service duration of sender or receiver
+size_t vrp_service_duration (vrp_t *self,
+                             size_t request_id,
+                             node_role_t node_role);
+
 
 // ---------------------------------------------------------------------------
 // Solve

@@ -149,7 +149,7 @@ void *listx_pop_last (listx_t *self);
 void *listx_pop_at (listx_t *self, size_t index);
 
 // Extend list by appending items from another list
-void listx_extend (listx_t *self, listx_t *list);
+void listx_extend (listx_t *self, const listx_t *list);
 
 // Extend list by appending items from an array
 void listx_extend_array (listx_t *self, void **array, size_t length);
@@ -190,7 +190,7 @@ void listx_purge (listx_t *self);
 void listx_sort (listx_t *self, bool ascending);
 
 // Reorder an item to the right position in list according to the sorting order.
-// The item is given by handle, in list or not.
+// The item is specified by handle, in list or not.
 // It is assumed that the list is sorted except for the only item which is just
 // altered and needs to be replaced to the right position.
 void listx_reorder (listx_t *self, void *handle);
@@ -207,7 +207,7 @@ void listx_shuffle (listx_t *self, rng_t *rng);
 // The index could be arbitrary if multiple items exist.
 // Note that "found" means the two items are "equal" defined by the comparator
 // rather than "identical".
-size_t listx_index (const listx_t *self, void *item);
+size_t listx_index (const listx_t *self, const void *item);
 
 // Find item in list.
 // Return item handle if item is found, NULL if not found.

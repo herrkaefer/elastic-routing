@@ -70,22 +70,31 @@ void solution_append_route (solution_t *self, route_t *route) {
 }
 
 
-void solution_add_route_from_array (solution_t *self,
-                                    const size_t *node_ids,
-                                    size_t num_nodes) {
+void solution_prepend_route_from_array (solution_t *self,
+                                        const size_t *node_ids,
+                                        size_t num_nodes) {
+    assert (self);
+    assert (node_ids);
+    listx_prepend (self->routes, route_new_from_array (node_ids, num_nodes));
+}
+
+
+void solution_append_route_from_array (solution_t *self,
+                                       const size_t *node_ids,
+                                       size_t num_nodes) {
     assert (self);
     assert (node_ids);
     listx_append (self->routes, route_new_from_array (node_ids, num_nodes));
 }
 
 
-size_t solution_num_routes (solution_t *self) {
+size_t solution_num_routes (const solution_t *self) {
     assert (self);
     return listx_size (self->routes);
 }
 
 
-route_t *solution_route (solution_t *self, size_t route_idx) {
+route_t *solution_route (const solution_t *self, size_t route_idx) {
     assert (self);
     assert (route_idx < solution_num_routes (self));
     return listx_item_at (self->routes, route_idx);
@@ -109,9 +118,23 @@ double solution_calculate_total_distance (solution_t *self, vrp_t *vrp) {
 }
 
 
-double solution_total_distance (solution_t *self) {
+double solution_total_distance (const solution_t *self) {
     assert (self);
     return self->total_distance;
+}
+
+
+solution_t *solution_dup (const solution_t *self) {
+    assert (self);
+    solution_t *copy = solution_new (self->vrp);
+    for (size_t idx = 0; idx < solution_num_routes (self); idx++)
+        solution_append_route (copy,
+                               route_dup (listx_item_at (self->routes, idx)));
+
+    copy->vehicles = listu_dup (self->vehicles);
+    copy->feasible = self->feasible;
+    copy->total_distance = self->total_distance;
+    return copy;
 }
 
 

@@ -101,11 +101,11 @@ const listu_t *vrp_customers (vrp_t *self);
 
 // Get distance between two nodes.
 // The caller must ensure that arc distances are already properly set.
-double vrp_arc_distance (vrp_t *self, size_t from_node_id, size_t to_node_id);
+double vrp_arc_distance (const vrp_t *self, size_t from_node_id, size_t to_node_id);
 
 // Get duration between two nodes.
 // The caller must ensure that arc durations are already properly set.
-size_t vrp_arc_duration (vrp_t *self, size_t from_node_id, size_t to_node_id);
+size_t vrp_arc_duration (const vrp_t *self, size_t from_node_id, size_t to_node_id);
 
 // ---------------------------------------------------------------------------
 // Fleet

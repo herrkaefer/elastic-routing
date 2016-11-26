@@ -12,10 +12,10 @@
 extern "C" {
 #endif
 
-// Create CVRP model from generic VRP model
+// Constructor: create CVRP model from generic VRP model
 cvrp_t *cvrp_new_from (vrp_t *vrp);
 
-// Destroy cvrp object
+// Destructor
 void cvrp_free (cvrp_t **self_p);
 
 // Solve

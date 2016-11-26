@@ -1768,7 +1768,7 @@ static void evol_report_stats (evol_t *self) {
 // ---------------------------------------------------------------------------
 
 // @todo need to check every item
-evol_t *evol_new (void) {
+evol_t *evol_new (void *context) {
     evol_t *self = malloc (sizeof (evol_t));
     assert (self);
 
@@ -1781,7 +1781,7 @@ evol_t *evol_new (void) {
     // ------------------ Parameters ------------------ //
 
     // Individual context
-    self->context = NULL;
+    self->context = context;
 
     // Group size
     self->max_livings   = EVOL_DEFAULT_MAX_LIVINGS;
@@ -1868,12 +1868,6 @@ void evol_free (evol_t **self_p) {
         *self_p = NULL;
     }
     print_info ("evol freed.\n");
-}
-
-
-void evol_set_context (evol_t *self, void *context) {
-    assert (self);
-    self->context = context;
 }
 
 
@@ -2135,10 +2129,10 @@ void evol_test (bool verbose) {
     str_evol_context_t context = {rng_context};
 
     // Create evolution object
-    evol_t *evol = evol_new ();
+    evol_t *evol = evol_new (&context);
 
     // Set context
-    evol_set_context (evol, &context);
+    // evol_set_context (evol, &context);
 
     // Set all necessary callbacks
     evol_set_genome_destructor (evol, (destructor_t) string_free);

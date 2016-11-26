@@ -7,9 +7,6 @@
 
 #include "classes.h"
 
-// For now just extension of listu_t
-// typedef listu_t _route_t;
-
 
 route_t *route_new (size_t alloc_size) {
     return listu_new (alloc_size);
@@ -37,7 +34,29 @@ void route_free (route_t **self_p) {
 }
 
 
-size_t route_size (route_t *self) {
+route_t *route_dup (const route_t *self) {
+    assert (self);
+    return listu_dup (self);
+}
+
+
+bool route_equal (const route_t *self, const route_t *route) {
+    assert (self);
+    assert (route);
+    return listu_equal (self, route);
+}
+
+
+void route_print (const route_t *self) {
+    size_t size = route_size (self);
+    printf ("route (#node: %zu):", size);
+    for (size_t idx = 0; idx < size; idx++)
+        printf (" %zu", route_at (self, idx));
+    printf ("\n");
+}
+
+
+size_t route_size (const route_t *self) {
     assert (self);
     return listu_size (self);
 }
@@ -50,22 +69,16 @@ void route_set_at (route_t *self, size_t idx, size_t node_id) {
 }
 
 
-size_t route_at (route_t *self, size_t idx) {
+size_t route_at (const route_t *self, size_t idx) {
     assert (self);
     assert (idx < route_size (self));
     return listu_get (self, idx);
 }
 
 
-const size_t *route_node_array (route_t *self) {
+const size_t *route_node_array (const route_t *self) {
     assert (self);
     return listu_array (self);
-}
-
-
-route_t *route_dup (const route_t *self) {
-    assert (self);
-    return listu_dup (self);
 }
 
 
@@ -75,7 +88,7 @@ void route_append_node (route_t *self, size_t node_id) {
 }
 
 
-size_t route_find (route_t *self, size_t node_id) {
+size_t route_find (const route_t *self, size_t node_id) {
     assert (self);
     return listu_find (self, node_id);
 }
@@ -87,7 +100,7 @@ void route_swap_nodes (route_t *self, size_t idx1, size_t idx2) {
 }
 
 
-double route_total_distance (route_t *self, vrp_t *vrp) {
+double route_total_distance (const route_t *self, const vrp_t *vrp) {
     assert (self);
     assert (vrp);
     size_t len = route_size (self);
@@ -108,9 +121,9 @@ void route_shuffle (route_t *self,
 
 
 // Distance increment of route flip operation.
-// Note the the operation is not performed.
+// Note that flip operation is not actually performed.
 static double route_flip_delta_distance (route_t *self,
-                                         vrp_t *vrp, int i, int j) {
+                                         const vrp_t *vrp, int i, int j) {
     assert (self);
     assert (vrp);
     assert (i <= j);
@@ -226,7 +239,9 @@ void route_ox (route_t *route1, route_t *route2,
 
 
 double route_2_opt (route_t *self,
-                    vrp_t *vrp, size_t idx_begin, size_t idx_end) {
+                    const vrp_t *vrp,
+                    size_t idx_begin, size_t idx_end,
+                    bool exhaustive) {
     assert (self);
     assert (vrp);
     assert (idx_begin <= idx_end);
@@ -246,6 +261,8 @@ double route_2_opt (route_t *self,
                 if (delta_cost < -DOUBLE_THRESHOLD) {
                     route_flip (self, i, j);
                     total_delta_cost += delta_cost;
+                    if (!exhaustive)
+                        return total_delta_cost;
                     improved = true;
                 }
             }
@@ -253,15 +270,6 @@ double route_2_opt (route_t *self,
     }
 
     return total_delta_cost;
-}
-
-
-void route_print (route_t *self) {
-    size_t size = route_size (self);
-    printf ("route (#node: %zu):", size);
-    for (size_t idx = 0; idx < size; idx++)
-        printf (" %zu", route_at (self, idx));
-    printf ("\n");
 }
 
 

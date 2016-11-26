@@ -570,7 +570,7 @@ void *listx_pop_at (listx_t *self, size_t index) {
 }
 
 
-void listx_extend (listx_t *self, listx_t *list) {
+void listx_extend (listx_t *self, const listx_t *list) {
     assert (self);
     assert (list);
     for (s_node_t *node = list->head->next;
@@ -883,7 +883,7 @@ void listx_shuffle (listx_t *self, rng_t *rng) {
 }
 
 
-size_t listx_index (const listx_t *self, void *item) {
+size_t listx_index (const listx_t *self, const void *item) {
     assert (self);
     assert (item);
     s_indicator_t indicator = listx_find_node (self, item);

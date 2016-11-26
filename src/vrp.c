@@ -249,7 +249,10 @@ struct _vrp_t {
     double max_route_duration;
     // ...
 
+
     // Auxiliaries
+    rng_t *rng;
+
     listu_t *node_ids;
     listu_t *depot_ids;
     listu_t *customer_ids;
@@ -301,6 +304,7 @@ vrp_t *vrp_new (void) {
     self->max_route_duration = SIZE_MAX;
 
     // Auxiliaries
+    self->rng = rng_new ();
     self->node_ids = listu_new (0);
     self->depot_ids = listu_new (0);
     self->customer_ids = listu_new (0);
@@ -324,6 +328,7 @@ void vrp_free (vrp_t **self_p) {
         arrayset_free (&self->requests);
 
         // auxiliaries
+        rng_free (&self->rng);
         listu_free (&self->node_ids);
         listu_free (&self->depot_ids);
         listu_free (&self->customer_ids);
@@ -828,14 +833,16 @@ const listu_t *vrp_customers (vrp_t *self) {
 }
 
 
-double vrp_arc_distance (vrp_t *self, size_t from_node_id, size_t to_node_id) {
+double vrp_arc_distance (const vrp_t *self,
+                         size_t from_node_id, size_t to_node_id) {
     assert (self);
     assert (self->distances != NULL);
     return matrixd_get (self->distances, from_node_id, to_node_id);
 }
 
 
-size_t vrp_arc_duration (vrp_t *self, size_t from_node_id, size_t to_node_id) {
+size_t vrp_arc_duration (const vrp_t *self,
+                         size_t from_node_id, size_t to_node_id) {
     assert (self);
     assert (self->durations != NULL);
     return matrixu_get (self->durations, from_node_id, to_node_id);

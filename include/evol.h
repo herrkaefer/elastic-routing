@@ -64,14 +64,15 @@ typedef bool (*evol_stopper_t) (void *context);
 
 // ---------------------------------------------------------------------------
 
-// Create evolution object
-evol_t *evol_new (void);
+// Create evolution object.
+// Set the context to which genome operations are refered (e.g. a model)
+evol_t *evol_new (void *context);
 
 // Destroy evolution object
 void evol_free (evol_t **self_p);
 
 // Set the context to which individuals are refered (e.g. a model)
-void evol_set_context (evol_t *self, void *context);
+// void evol_set_context (evol_t *self, void *context);
 
 // Set livings group size
 // If this is not set, default value is used.

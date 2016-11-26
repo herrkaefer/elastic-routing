@@ -433,10 +433,7 @@ solution_t *tspi_solve (tspi_t *self) {
     }
 
     // Create evolution object
-    evol_t *evol = evol_new ();
-
-    // Set context
-    evol_set_context (evol, self);
+    evol_t *evol = evol_new (self);
 
     // Set all necessary callbacks
     evol_set_genome_destructor (evol, (destructor_t) route_free);

@@ -19,8 +19,8 @@ rng_t *rng_new (void) {
     assert (self);
 
     uint64_t seeds[2];
-    entropy_getbytes((void*)seeds, sizeof(seeds));
-    pcg32_srandom_r(&self->rng, seeds[0], seeds[1]);
+    entropy_getbytes ((void *) seeds, sizeof (seeds));
+    pcg32_srandom_r (&self->rng, seeds[0], seeds[1]);
 
     // "quick and dirty way to do the initialization"
     // pcg32_srandom_r(&self->rng, time(NULL), (intptr_t)&self->rng);

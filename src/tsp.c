@@ -147,13 +147,25 @@ static listx_t *tsp_ox (tsp_t *self, route_t *route1, route_t *route2) {
 }
 
 
-static double tsp_2_opt (tsp_t *self, route_t *route) {
-    print_info ("tsp 2-opt start.\n");
+// Local searcher for evol: 2-opt returned after first improvement
+static void tsp_local_search_for_evol (tsp_t *self, route_t *route) {
+    // print_info ("tsp 2-opt start.\n");
     size_t idx_begin = (self->start_node != ID_NONE) ? 1 : 0;
     size_t idx_end = route_size (route) -
                      ((self->end_node != ID_NONE) ? 2 : 1);
-    print_info ("idx_begin: %zu, idx_end: %zu\n", idx_begin, idx_end);
-    return route_2_opt (route, self->vrp, idx_begin, idx_end);
+    // print_info ("idx_begin: %zu, idx_end: %zu\n", idx_begin, idx_end);
+    route_2_opt (route, self->vrp, idx_begin, idx_end, false);
+}
+
+
+// Post optimization: exhaustive 2-opt
+static double tsp_post_optimize (tsp_t *self, route_t *route) {
+    // print_info ("tsp 2-opt start.\n");
+    size_t idx_begin = (self->start_node != ID_NONE) ? 1 : 0;
+    size_t idx_end = route_size (route) -
+                     ((self->end_node != ID_NONE) ? 2 : 1);
+    // print_info ("idx_begin: %zu, idx_end: %zu\n", idx_begin, idx_end);
+    return route_2_opt (route, self->vrp, idx_begin, idx_end, true);
 }
 
 
@@ -181,7 +193,7 @@ static solution_t *tsp_solve_small_model (tsp_t *self) {
     route_t *route = route_dup (self->template);
     double route_cost = route_total_distance (route, self->vrp);
     print_info ("route cost before local search: %.2f\n", route_cost);
-    double delta_cost = tsp_2_opt (self, route);
+    double delta_cost = tsp_post_optimize (self, route);
     double improvement = -delta_cost / route_cost;
     route_cost = route_total_distance (route, self->vrp);
     print_info ("route cost after local search: %.2f (%+.2f%% improved)\n",
@@ -271,12 +283,9 @@ solution_t *tsp_solve (tsp_t *self) {
         return tsp_solve_small_model (self);
 
     // Create evolution object
-    evol_t *evol = evol_new ();
+    evol_t *evol = evol_new (self);
 
-    // Set context
-    evol_set_context (evol, self);
-
-    // Set all necessary callbacks
+    // Set all necessary callbacks of evol
     evol_set_genome_destructor (evol, (destructor_t) route_free);
     evol_set_genome_printer (evol, (printer_t) route_print);
     evol_set_fitness_assessor (evol, (evol_fitness_assessor_t) tsp_fitness);
@@ -297,11 +306,14 @@ solution_t *tsp_solve (tsp_t *self) {
                              factorial (num_free_nodes));
 
     evol_register_crossover (evol, (evol_crossover_t) tsp_ox);
+    evol_register_local_improver (
+                        evol,
+                        (evol_local_improver_t) tsp_local_search_for_evol);
 
     // Run evolution
     evol_run (evol);
 
-    // Get best route
+    // Get best genome (route)
     route_t *route = route_dup ((route_t *) evol_best_genome (evol));
     assert (route);
 
@@ -312,7 +324,7 @@ solution_t *tsp_solve (tsp_t *self) {
     print_info ("route cost after evol: %.2f\n", route_cost);
 
     // Post optimization
-    double delta_cost = tsp_2_opt (self, route);
+    double delta_cost = tsp_post_optimize (self, route);
     double improvement = -delta_cost / route_cost;
     route_cost = route_total_distance (route, self->vrp);
     print_info ("route cost after post-optimization: %.2f\n", route_cost);
@@ -371,7 +383,7 @@ void tsp_test (bool verbose) {
     // Solve
     solution_t *sol = tsp_solve (tsp);
     assert (sol);
-    solution_print (sol);
+    solution_print_internal (sol);
 
     free (ext_id);
     tsp_free (&tsp);
@@ -381,6 +393,26 @@ void tsp_test (bool verbose) {
     solution_free (&sol);
     assert (sol == NULL);
 
+    // 2. problem derived from generic model
+
+    char filename[] =
+        "benchmark/tsplib/tsp/berlin52.tsp";
+        // "benchmark/tsplib/tsp/a280.tsp";
+
+    vrp = vrp_new_from_file (filename);
+    assert (vrp);
+
+    printf ("#nodes: %zu\n", vrp_num_nodes (vrp));
+    printf ("#vehicles: %zu\n", vrp_num_vehicles (vrp));
+
+    sol = vrp_solve (vrp);
+    solution_calculate_total_distance (sol, vrp);
+    solution_print_internal (sol);
+
+    vrp_free (&vrp);
+    assert (vrp == NULL);
+    solution_free (&sol);
+    assert (sol == NULL);
 
     print_info ("OK\n");
 }

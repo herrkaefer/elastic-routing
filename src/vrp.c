@@ -586,10 +586,14 @@ vrp_t *vrp_new_from_file (const char *filename) {
                 vrp_add_request (self, ext_id, ID_NONE, node_id, 0);
 
             for (size_t cnt1 = 0; cnt1 <= cnt; cnt1++) {
-                vrp_set_arc_distance (self, cnt1, cnt,
-                                      matrixd_get (costs, cnt1, cnt));
-                vrp_set_arc_distance (self, cnt, cnt1,
-                                      matrixd_get (costs, cnt, cnt1));
+                if (cnt1 == cnt)
+                    vrp_set_arc_distance (self, cnt1, cnt, 0);
+                else {
+                    vrp_set_arc_distance (self, cnt1, cnt,
+                                          matrixd_get (costs, cnt1, cnt));
+                    vrp_set_arc_distance (self, cnt, cnt1,
+                                          matrixd_get (costs, cnt, cnt1));
+                }
             }
         }
 
@@ -1233,14 +1237,16 @@ static bool vrp_validate_roadgraph (vrp_t *self) {
         print_error ("No node exist.\n");
         return false;
     }
+    assert (num_nodes == listu_size (self->node_ids));
 
     bool coord_sys_is_defined = (vrp_coord_sys (self) != CS_NONE);
+
     for (size_t idx1 = 0; idx1 < num_nodes; idx1++) {
         size_t node_id1 = listu_get (self->node_ids, idx1);
 
         // All or none of node coordinates should be set
         if (coord_sys_is_defined &&
-            coord2d_is_none (vrp_node_coord (self, idx1))) {
+            coord2d_is_none (vrp_node_coord (self, node_id1))) {
             print_error ("Coordinate of node (external ID %s) is not set.\n",
                          vrp_node_ext_id (self, node_id1));
             return false;
@@ -1347,6 +1353,9 @@ static bool vrp_validate (vrp_t *self) {
 static bool vrp_is_tsp (vrp_t *self) {
     assert (self);
 
+    if (self->distances == NULL)
+        return false;
+
     // One vehicle
     if (vrp_num_vehicles (self) != 1)
         return false;
@@ -1381,6 +1390,9 @@ static bool vrp_is_tsp (vrp_t *self) {
 
 static bool vrp_is_cvrp (vrp_t *self) {
     size_t depot_id = ID_NONE;
+
+    if (self->distances == NULL)
+        return false;
 
     // Check requests
     size_t num_requests = listu_size (self->pending_request_ids);
@@ -1476,7 +1488,6 @@ solution_t *vrp_solve (vrp_t *self) {
 
     if (!vrp_validate (self))
         return NULL;
-
 
     // @todo Shink the roadgraph according to requests?
 

@@ -173,7 +173,7 @@ static solution_t *tsp_solve_small_model (tsp_t *self) {
           (num_nodes == 2 &&
           (self->start_node != ID_NONE || self->end_node != ID_NONE)) ) {
         route_t *route = route_dup (self->template);
-        solution_add_route (sol, route);
+        solution_append_route (sol, route);
         return sol;
     }
 
@@ -187,7 +187,7 @@ static solution_t *tsp_solve_small_model (tsp_t *self) {
     print_info ("route cost after local search: %.2f (%+.2f%% improved)\n",
                 route_cost, improvement * 100);
 
-    solution_add_route (sol, route);
+    solution_append_route (sol, route);
     return sol;
 }
 
@@ -321,7 +321,7 @@ solution_t *tsp_solve (tsp_t *self) {
     // Return route as generic solution representation.
     // Set model reference as NULL because this model is not a generic one.
     solution_t *sol = solution_new (self->vrp);
-    solution_add_route (sol, route);
+    solution_append_route (sol, route);
 
     return sol;
 }

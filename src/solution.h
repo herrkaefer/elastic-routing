@@ -18,8 +18,11 @@ solution_t *solution_new (vrp_t *vrp);
 // Destroy solution object
 void solution_free (solution_t **self_p);
 
-// Add a route to solution. The route is then taken over ownership by solution.
-void solution_add_route (solution_t *self, route_t *route);
+// Append a route to solution. The route is then taken over ownership by solution.
+void solution_prepend_route (solution_t *self, route_t *route);
+
+// Prepend a route to solution. The route is then taken over ownership by solution.
+void solution_append_route (solution_t *self, route_t *route);
 
 // Add a route from node ids array
 void solution_add_route_from_array (solution_t *self,

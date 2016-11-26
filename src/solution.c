@@ -56,7 +56,14 @@ void solution_free (solution_t **self_p) {
 }
 
 
-void solution_add_route (solution_t *self, route_t *route) {
+void solution_prepend_route (solution_t *self, route_t *route) {
+    assert (self);
+    assert (route);
+    listx_prepend (self->routes, route);
+}
+
+
+void solution_append_route (solution_t *self, route_t *route) {
     assert (self);
     assert (route);
     listx_append (self->routes, route);

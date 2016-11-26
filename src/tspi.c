@@ -480,7 +480,7 @@ solution_t *tspi_solve (tspi_t *self) {
     // Return route as generic solution representation.
     // Set model reference as NULL because this model is not a generic one.
     solution_t *sol = solution_new (NULL);
-    solution_add_route (sol, route);
+    solution_append_route (sol, route);
 
     return sol;
 }

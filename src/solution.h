@@ -44,7 +44,7 @@ route_t *solution_route (const solution_t *self, size_t route_idx);
 void solution_set_total_distance (solution_t *self, double distance);
 
 // Calculate total distance explicitly
-double solution_calculate_total_distance (solution_t *self, vrp_t *vrp);
+double solution_cal_set_total_distance (solution_t *self, vrp_t *vrp);
 
 // Get total distance
 double solution_total_distance (const solution_t *self);

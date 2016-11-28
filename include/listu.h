@@ -103,6 +103,10 @@ void listu_reverse (listu_t *self);
 // Reverse list slice in place
 void listu_reverse_slice (listu_t *self, size_t idx_begin, size_t idx_end);
 
+// Rorate list by num elements.
+// num > 0: right rotation; num < 0: left rotation.
+void listu_rotate (listu_t *self, int num);
+
 // Shuffle list in place
 // Set rng to use your random number generator, or NULL to use the inner one.
 void listu_shuffle (listu_t *self, rng_t *rng);

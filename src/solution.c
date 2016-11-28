@@ -107,7 +107,7 @@ void solution_set_total_distance (solution_t *self, double distance) {
 }
 
 
-double solution_calculate_total_distance (solution_t *self, vrp_t *vrp) {
+double solution_cal_set_total_distance (solution_t *self, vrp_t *vrp) {
     assert (self);
     assert (vrp);
     double total_dist = 0;

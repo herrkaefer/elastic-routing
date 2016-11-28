@@ -569,6 +569,9 @@ vrp_t *vrp_new_from_file (const char *filename) {
         char ext_id[UUID_STR_LEN];
         size_t depot_id, node_id;
 
+        if (edge_weight_type == EUC_2D && coords != NULL)
+            vrp_set_coord_sys (self, CS_CARTESIAN2D);
+
         // Add nodes, arc distances, and requests
         for (size_t cnt = 0; cnt < num_nodes; cnt++) {
             sprintf (ext_id, "node-%04zu", cnt + 1);

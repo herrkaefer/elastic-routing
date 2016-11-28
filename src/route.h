@@ -68,6 +68,9 @@ double route_total_distance (const route_t *self, const vrp_t *vrp);
 void route_shuffle (route_t *self,
                     size_t idx_begin, size_t idx_end, rng_t *rng);
 
+// Cyclic shift of nodes
+void route_rotate (route_t *self, int num);
+
 // Reverse (flip) route slice.
 // (..., i, i+1, -->, j, ...) =>
 // (..., j, j-1, -->, i, ...)

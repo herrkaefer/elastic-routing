@@ -508,6 +508,25 @@ void listu_reverse_slice (listu_t *self, size_t idx_begin, size_t idx_end) {
 }
 
 
+void listu_rotate (listu_t *self, int num) {
+    assert (self);
+    size_t size = listu_size (self);
+    num = num % (int) size;
+    if (num == 0)
+        return;
+
+    if (num < 0)
+        num = (int) size + num;
+    size_t d = (size_t) (num);
+
+    arrayu_reverse (self->data + real_index (0), size - d);
+    arrayu_reverse (self->data + real_index (size - d), d);
+    arrayu_reverse (self->data + real_index (0), size);
+
+    listu_set_sorting_state (self, LIST4U_UNSORTED);
+}
+
+
 void listu_shuffle (listu_t *self, rng_t *rng) {
     assert (self);
 
@@ -789,9 +808,27 @@ void listu_test (bool verbose) {
     listu_swap (list, 2, 2);
     listu_print (list);
 
+    listu_rotate (list, listu_size (list) + 4);
+    listu_print (list);
+
+    listu_rotate (list, -4);
+    listu_print (list);
+
+    listu_t *copy = listu_dup (list);
+    assert (copy);
+    assert (listu_equal (list, copy));
+
+    size_t size = listu_size (list);
+    for (size_t cnt = 0; cnt < 1000; cnt++) {
+        int num = rng_random_int (rng, -100 * (int) size, 100 * (int) size);
+        listu_rotate (copy, num);
+        listu_rotate (copy, -num);
+        assert (listu_equal (copy, list));
+    }
+
+
     rng_free (&rng);
     listu_free (&list);
-
 
     print_info ("OK\n");
 }

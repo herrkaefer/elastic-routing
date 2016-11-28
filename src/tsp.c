@@ -406,7 +406,7 @@ void tsp_test (bool verbose) {
     printf ("#vehicles: %zu\n", vrp_num_vehicles (vrp));
 
     sol = vrp_solve (vrp);
-    solution_calculate_total_distance (sol, vrp);
+    solution_cal_set_total_distance (sol, vrp);
     solution_print_internal (sol);
 
     vrp_free (&vrp);

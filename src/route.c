@@ -120,6 +120,12 @@ void route_shuffle (route_t *self,
 }
 
 
+void route_rotate (route_t *self, int num) {
+    assert (self);
+    listu_rotate (self, num);
+}
+
+
 // Distance increment of route flip operation.
 // Note that flip operation is not actually performed.
 static double route_flip_delta_distance (route_t *self,

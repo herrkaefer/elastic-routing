@@ -233,26 +233,42 @@ size_t listu_pop_last (listu_t *self) {
 
 void listu_extend (listu_t *self, const listu_t *list) {
     assert (self);
+    assert (list);
     size_t size = listu_size (self);
     size_t list_size = listu_size (list);
+    if (list_size == 0)
+        return;
 
     if (size + list_size > listu_alloced (self))
         listu_enlarge (self, size + list_size - listu_alloced (self));
 
-    for (size_t index = 0; index < list_size; index++)
-        listu_append (self, listu_get (list, index));
+    memcpy (self->data + real_index (size),
+            list->data + real_index (0),
+            sizeof (size_t) * list_size);
+    listu_set_size (self, size + list_size);
+    listu_set_sorting_state (self, LIST4U_UNSORTED);
+
+    // for (size_t index = 0; index < list_size; index++)
+    //     listu_append (self, listu_get (list, index));
 }
 
 
 void listu_extend_array (listu_t *self, const size_t *array, size_t length) {
     assert (self);
-    size_t size = listu_size (self);
+    assert (array);
+    if (length == 0)
+        return;
 
+    size_t size = listu_size (self);
     if (size + length > listu_alloced (self))
         listu_enlarge (self, size + length - listu_alloced (self));
 
-    for (size_t index = 0; index < length; index++)
-        listu_append (self, array[index]);
+    memcpy (self->data + real_index (size), array, sizeof (size_t) * length);
+    listu_set_size (self, size + length);
+    listu_set_sorting_state (self, LIST4U_UNSORTED);
+
+    // for (size_t index = 0; index < length; index++)
+    //     listu_append (self, array[index]);
 }
 
 
@@ -260,7 +276,11 @@ void listu_insert_at (listu_t *self, size_t index, size_t value) {
     assert (self);
 
     size_t size = listu_size (self);
-    assert (index < size);
+    assert (index <= size);
+
+    // Insert value after the last
+    if (index == size)
+        return listu_append (self, value);
 
     if (size == listu_alloced (self))
         listu_enlarge (self, 1);
@@ -826,9 +846,22 @@ void listu_test (bool verbose) {
         assert (listu_equal (copy, list));
     }
 
+    listu_t *list2 = listu_new_range (10, 20, 5);
+    assert (list2);
+    listu_print (list2);
+
+    listu_extend (list, list2);
+    listu_print (list);
+
+    const size_t *arr = listu_array (list2);
+    listu_extend_array (list, arr, listu_size (list2));
+    listu_print (list);
+
 
     rng_free (&rng);
     listu_free (&list);
+    listu_free (&copy);
+    listu_free (&list2);
 
     print_info ("OK\n");
 }

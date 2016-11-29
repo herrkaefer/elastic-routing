@@ -165,7 +165,7 @@ static double tsp_post_optimize (tsp_t *self, route_t *route) {
     size_t idx_end = route_size (route) -
                      ((self->end_node != ID_NONE) ? 2 : 1);
     // print_info ("idx_begin: %zu, idx_end: %zu\n", idx_begin, idx_end);
-    return route_2_opt (route, self->vrp, idx_begin, idx_end, true);
+    return -1 * route_2_opt (route, self->vrp, idx_begin, idx_end, true);
 }
 
 
@@ -193,8 +193,8 @@ static solution_t *tsp_solve_small_model (tsp_t *self) {
     route_t *route = route_dup (self->template);
     double route_cost = route_total_distance (route, self->vrp);
     print_info ("route cost before local search: %.2f\n", route_cost);
-    double delta_cost = tsp_post_optimize (self, route);
-    double improvement = -delta_cost / route_cost;
+    double saving = tsp_post_optimize (self, route);
+    double improvement = saving / route_cost;
     route_cost = route_total_distance (route, self->vrp);
     print_info ("route cost after local search: %.2f (%+.2f%% improved)\n",
                 route_cost, improvement * 100);

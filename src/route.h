@@ -89,18 +89,31 @@ void route_ox (route_t *r1, route_t *r2,
                size_t idx_begin, size_t idx_end,
                rng_t *rng);
 
-// 2-opt local search.
-// Only route cost is concerned. No constraint (such as time window or sequence)
-// is taken into account.
+// 2-opt local search on route slice.
+// Only route distance is concerned. No constraint (such as time window or
+// sequence) is taken into account.
 // If exhaustive is set true, exhaustive searching will stop when no improvement
 // is possible in neighborhood. If exhaustive is set false, searching will stop
 // whenever the first improvement is achieved.
-// Return cost increment (negative).
+// Return increment of total distance (non-negative).
 double route_2_opt (route_t *self,
                     const vrp_t *vrp,
                     size_t idx_begin, size_t idx_end,
                     bool exhaustive);
 
+// Remove node at specific index.
+// Return increment of total distance.
+double route_remove_node (route_t *self, const vrp_t *vrp, size_t idx);
+
+// Remove two consecutive nodes at idx and (idx+1).
+// Return increment of total distance.
+double route_remove_link (route_t *self, const vrp_t *vrp, size_t idx);
+
+// Insert node at specific index (before the original one at index).
+// If idx == size, append the node at tail.
+// Return increment of total distance
+double route_insert_node (route_t *self,
+                          const vrp_t *vrp, size_t idx, size_t node_id);
 
 #ifdef __cplusplus
 }

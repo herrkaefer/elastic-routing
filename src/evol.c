@@ -35,10 +35,10 @@
 #define EVOL_DEFAULT_NUM_ELITES 2
 #define EVOL_DEFAULT_MAX_NEIGHBORS 5
 
-#define EVOL_DEFAULT_STEP_MAX_ITERS 50
-#define EVOL_DEFAULT_STEP_MAX_TIME 0.1 // seconds
+#define EVOL_DEFAULT_STEP_MAX_ITERS 100
+#define EVOL_DEFAULT_STEP_MAX_TIME 0.2 // seconds
 
-#define EVOL_DEFAULT_UNIMPROVED_ITERS 5000
+#define EVOL_DEFAULT_UNIMPROVED_ITERS 30000
 #define EVOL_DEFAULT_UNIMPROVED_PERIOD 4.0 // seconds
 #define EVOL_DEFAULT_MIN_IMPROVED_FITNESS 0.001 // percentage
 
@@ -1723,10 +1723,12 @@ static void evol_update_recorders (evol_t *self) {
           DOUBLE_MAX :
           (current_best_fit - self->last_best_fit) / fabs (self->last_best_fit);
 
-        print_info ("fitness improved: %.3f%% during %zu iters and %.2f s\n",
+        print_info ("fitness improved: %.3f%% during %zu iters and %.2f s. "
+                    "best fitness: %.6f\n",
                     100 * self->improved_fit_percent,
                     self->iters_cnt - self->improved_fit_iters_begin,
-                    evol_time - self->improved_fit_time_begin);
+                    evol_time - self->improved_fit_time_begin,
+                    evol_best_fitness (self));
 
         // update references
         self->last_best_fit = current_best_fit;

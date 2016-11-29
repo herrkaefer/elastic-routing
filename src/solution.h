@@ -43,7 +43,7 @@ route_t *solution_route (const solution_t *self, size_t route_idx);
 // Set total distance
 void solution_set_total_distance (solution_t *self, double distance);
 
-// Calculate total distance explicitly
+// Calculate and set total distance
 double solution_cal_set_total_distance (solution_t *self, vrp_t *vrp);
 
 // Get total distance
@@ -60,6 +60,7 @@ void solution_print_internal (const solution_t *self);
 
 // Self test
 void solution_test (bool verbose);
+
 
 #ifdef __cplusplus
 }

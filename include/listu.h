@@ -52,7 +52,7 @@ void listu_extend (listu_t *self, const listu_t *list);
 // Extend list by appending values from an array
 void listu_extend_array (listu_t *self, const size_t *array, size_t length);
 
-// Insert value at index (before the original one at index).
+// Insert value before the one at index.
 // index range: 0 ~ size. index == size means insert value at tail.
 void listu_insert_at (listu_t *self, size_t index, size_t value);
 

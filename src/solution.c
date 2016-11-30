@@ -8,6 +8,14 @@
 #include "classes.h"
 
 
+// struct _solution_iterator_t {
+//     listx_iterator_t routes_iter;
+//     // void *route_handle;
+//     size_t idx_node; // index of node on current route
+//     size_t node_id;
+// };
+
+
 struct _solution_t {
     vrp_t *vrp; // Problem reference. Solution does not own it.
     listx_t *routes; // list of route_t objects
@@ -21,8 +29,6 @@ struct _solution_t {
 
 // Create a new solution object
 solution_t *solution_new (vrp_t *vrp) {
-    // assert (vrp);
-
     solution_t *self = (solution_t *) malloc (sizeof (solution_t));
     assert (self);
 
@@ -88,6 +94,13 @@ void solution_append_route_from_array (solution_t *self,
 }
 
 
+void solution_remove_route (solution_t *self, size_t idx) {
+    assert (self);
+    assert (idx < listx_size (self->routes));
+    listx_remove_at (self->routes, idx);
+}
+
+
 size_t solution_num_routes (const solution_t *self) {
     assert (self);
     return listx_size (self->routes);
@@ -114,6 +127,17 @@ double solution_cal_set_total_distance (solution_t *self, vrp_t *vrp) {
     for (size_t idx = 0; idx < solution_num_routes (self); idx++)
         total_dist += route_total_distance (solution_route (self, idx), vrp);
     self->total_distance = total_dist;
+    return total_dist;
+}
+
+
+double solution_cal_total_distance (solution_t *self, vrp_t *vrp) {
+    assert (self);
+    assert (vrp);
+    double total_dist = 0;
+    for (size_t idx = 0; idx < solution_num_routes (self); idx++)
+        total_dist += route_total_distance (solution_route (self, idx), vrp);
+    // self->total_distance = total_dist;
     return total_dist;
 }
 
@@ -175,11 +199,98 @@ void solution_print_internal (const solution_t *self) {
 }
 
 
+solution_iterator_t solution_iter_init (const solution_t *self) {
+    assert (self);
+    return (solution_iterator_t) {SIZE_NONE, NULL, SIZE_NONE, ID_NONE};
+}
+
+
+// route_t *solution_iter_route (const solution_t *self, solution_iterator_t *iter) {
+//     assert (self);
+//     assert (iter);
+//     iter->idx_route = (iter->idx_route < listx_size (self) - 1) ?
+//                       (iter->idx_route + 1) :
+//                       SIZE_NONE;
+
+//     iter->route = (iter->idx_route != SIZE_NONE) ?
+//                   listx_item_at (self->routes, iter->idx_route) :
+//                   NULL;
+
+//     iter->idx_node = SIZE_NONE;
+//     iter->node_id = ID_NONE;
+//     return iter->route;
+// }
+
+
+size_t solution_iter_node (const solution_t *self, solution_iterator_t *iter) {
+    assert (self);
+    assert (iter);
+
+    // Not first iteration
+    if (iter->route != NULL) {
+        // next node of current route
+        if (iter->idx_node < route_size (iter->route) - 1) {
+            iter->idx_node++;
+            iter->node_id = route_at (iter->route, iter->idx_node);
+            return iter->node_id;
+        }
+        // first node of next route
+        else {
+            // there is next route
+            if (iter->idx_route < listx_size (self->routes) - 1) {
+                iter->idx_route++;
+                iter->route = listx_item_at (self->routes, iter->idx_route);
+                assert (route_size (iter->route) > 0);
+                iter->idx_node = 0;
+                iter->node_id = route_at (iter->route, 0);
+                return iter->node_id;
+            }
+            // there is no next route
+            else
+                return ID_NONE;
+        }
+    }
+    // First iteration
+    else {
+        iter->route = listx_first (self->routes);
+        if (iter->route != NULL) {
+            iter->idx_route = 0;
+            assert (route_size (iter->route) > 0);
+            iter->idx_node = 0;
+            iter->node_id = route_at (iter->route, 0);
+            return iter->node_id;
+        }
+        else // no route exists in solution
+            return ID_NONE;
+    }
+}
+
+
+
 void solution_test (bool verbose) {
     print_info (" * solution: \n");
-    // roadnet_t *roadnet = roadnet_new ();
-    // // ...
-    // roadnet_free (&roadnet);
+
+    rng_t *rng = rng_new ();
+    solution_t *sol = solution_new (NULL);
+    size_t num_routes = 1000;
+    for (size_t idx = 0; idx < num_routes; idx++) {
+        route_t *route = route_new_range (rng_random_int (rng, 1, 100),
+                                          rng_random_int (rng, 100, 200), 1);
+        solution_append_route (sol, route);
+    }
+
+    // solution_print_internal (sol);
+
+    solution_iterator_t iter = solution_iter_init (sol);
+    while (solution_iter_node (sol, &iter) != ID_NONE) {
+        // printf ("route idx: %zu, node idx: %zu, node id: %zu\n",
+        //         iter.idx_route, iter.idx_node, iter.node_id);
+        assert (iter.route == solution_route (sol, iter.idx_route));
+        assert (iter.node_id == route_at (iter.route, iter.idx_node));
+    }
+
+    solution_free (&sol);
+    rng_free (&rng);
     print_info ("OK\n");
 }
 

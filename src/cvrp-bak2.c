@@ -62,16 +62,132 @@ struct _cvrp_t {
 
 
 // ----------------------------------------------------------------------------
+// Private represention of CVRP solution
+
+typedef struct {
+    listu_t *links;
+    size_t N; // num_customers
+    double total_distance;
+    // size_t num_routes;
+} s_sol_t;
+
+typedef listu_t *s_sol_t;
+
+
+static s_sol_t *s_sol_new (cvrp_t *cvrp) {
+    if (num_vehicles > num_customers)
+        num_vehicles = num_customers;
+    if (num_vehicles == 0)
+        num_vehicles = 2;
+
+    s_sol_t *self =
+
+    listu_new (self->num_customers * 2 + num_vehicles);
+    assert (self);
+
+    listu_append (self, num_customers);
+    for (size_t idx = 1; idx <= 2 * num_customers; idx++)
+        listu_append (self, SIZE_NONE);
+
+    return self;
+}
+
+
+static void s_sol_free (s_sol_t **self_p) {
+    listu_free (self_p);
+}
+
+
+static void s_sol_set_predecessor (self, size_t idx, size_t idx_predecessor) {
+    listu_set (self, idx, idx_predecessor);
+}
+
+
+static void s_sol_set_successor (self, size_t idx, size_t idx_successor) {
+    listu_set (self, N + idx, idx_successor);
+}
+
+
+static void s_sol_append_route (s_sol_t *self, const route_t *route) {
+    size_t size = route_size (route);
+    for (size_t idx = 0; idx < size; idx++) {
+        if (idx > 0)
+            s_sol_set_predecessor (self,
+                                   route_at (route, idx),
+                                   route_at (route, idx - 1));
+        if (idx < size - 1)
+            s_sol_set_successor (self,
+                                 route_at (route, idx),
+                                 route_at (route, idx + 1));
+    }
+    listu_append (self, route_at (route, 1));
+}
+
+
+static void s_sol_prepend_route (s_sol_t *self, const route_t *route) {
+    size_t size = route_size (route);
+    for (size_t idx = 0; idx < size; idx++) {
+        if (idx > 0)
+            s_sol_set_predecessor (self,
+                                   route_at (route, idx),
+                                   route_at (route, idx - 1));
+        if (idx < size - 1)
+            s_sol_set_successor (self,
+                                 route_at (route, idx),
+                                 route_at (route, idx + 1));
+    }
+    listu_insert_at (self, 2 * listu_get (self, 0) + 1, route_at (route, 1));
+}
+
+
+static size_t s_sol_num_routes (s_sol_t *self) {
+    return listu_size (self) - 2 * listu_get (self, 0) - 1;
+}
+
+
+static size_t s_sol_starter (s_sol_t *self, size_t idx_route) {
+    return listu_get (self, 2 * listu_get (self, 0) + idx_route + 1);
+}
+
+
+static size_t s_sol_predesessor (s_sol_t *self, size_t idx) {
+    return listu_get (self, idx);
+}
+
+
+static size_t s_sol_successor (s_sol_t *self, size_t idx) {
+    return listu_get (self, listu_get (self, 0) + idx);
+}
+
+
+static void s_sol_print (s_sol_t *self) {
+    printf ("\nsolution: #routes: %zu, total distance: %.2f\n",
+            listx_size (self->routes), self->total_distance);
+    printf ("--------------------------------------------------\n");
+    for (size_t idx_r = 0; idx_r < listx_size (self->routes); idx_r++) {
+        route_t *route = listx_item_at (self->routes, idx_r);
+        size_t route_len = route_size (route);
+        printf ("route #%zu (#nodes: %zu):", idx_r, route_len);
+        for (size_t idx_n = 0; idx_n < route_len; idx_n++)
+            printf (" %zu", route_at (route, idx_n));
+        printf ("\n");
+    }
+    printf ("\n");
+
+}
+
+
+// ----------------------------------------------------------------------------
 // Genome for evolution
 
 typedef struct {
     route_t *gtour; // giant tour: a sequence of customers: 1 ~ N
-    solution_t *sol; // splited giant tour
+    s_sol_t *sol; // splited giant tour
 } s_genome_t;
 
 
 // Create genome by setting at least one of gtour or sol
-static s_genome_t *s_genome_new (route_t *gtour, solution_t *sol) {
+static s_genome_t *s_genome_new (route_t *gtour, s_sol_t *sol) {
     assert (gtour != NULL || sol != NULL);
     s_genome_t *self = (s_genome_t *) malloc (sizeof (s_genome_t));
     assert (self);
@@ -559,244 +675,65 @@ static listx_t *cvrp_crossover (cvrp_t *self, s_genome_t *g1, s_genome_t *g2) {
 // ----------------------------------------------------------------------------
 // Local search
 
-// Inter-route or-opt of node: relocate one node to another route
-static double cvrp_or_opt_node (cvrp_t *self, solution_t *sol, bool exhaustive) {
-    double saving = 0;
-    bool improved = true;
-
-    while (improved) {
-        improved = false;
-
-        solution_iterator_t iter1 = solution_iter_init (sol);
-        while (solution_iter_node (sol, &iter1) != ID_NONE && !improved) {
-            if (iter1.node_id == self->nodes[0].id) // ignore depot
-                continue;
-
-            // Removal of customer node
-            double dcost_remove =
-                route_remove_node_delta_distance (iter1.route,
-                                                  self->vrp,
-                                                  iter1.idx_node);
-
-            // Try to insert node to another route
-            solution_iterator_t iter2 = solution_iter_init (sol);
-            while (solution_iter_node (sol, &iter2) != ID_NONE && !improved) {
-                if (iter1.idx_route == iter2.idx_route || iter2.idx_node == 0)
-                    continue;
-
-                double dcost_insert =
-                    route_insert_node_delta_distance (iter2.route,
-                                                      self->vrp,
-                                                      iter2.idx_node,
-                                                      iter1.node_id);
-                double dcost = dcost_remove + dcost_insert;
-                if (dcost < 0) {
-                    // printf ("improved: %.2f\n", -dcost);
-                    route_remove_node (iter1.route, iter1.idx_node);
-                    route_insert_node (iter2.route, iter2.idx_node, iter1.node_id);
-                    // Remove route if it is empty (only depot nodes left)
-                    if (route_size (iter1.route) == 2)
-                        solution_remove_route (sol, iter1.idx_route);
-                    saving -= dcost;
-                    solution_set_total_distance (
-                        sol,
-                        solution_total_distance (sol) + dcost);
-                    if (!exhaustive) {
-                        // print_info ("or-opt-node saving: %.2f\n", saving);
-                        return saving;
-                    }
-                    improved = true;
-                }
-            }
+static double cvrp_or_opt_node (cvrp_t *self, solution_t *sol) {
+    for (size_t idx_r = 0; idx_r < solution_num_routes (sol); idx_r++) {
+        route_t *route = solution_route (sol, idx_r);
+        for (size_t idx_n = 1; idx_n < route_size (route) - 1; idx_n++) {
+            double dcost = route_remove_node (route, self->vrp, idx_n);
         }
     }
-    // print_info ("or-opt-node saving: %.2f\n", saving);
-    return saving;
 }
 
 
-// Inter-route or-opt of two consecutive nodes
-// @todo not implemented
-static double cvrp_or_opt_link (cvrp_t *self, solution_t *sol, bool exhaustive) {
-    return 0;
-}
 
-
-// Inter-route local search: exchange two nodes of two routes
-// @todo not tested right
-static double cvrp_exchange (cvrp_t *self, solution_t *sol, bool exhaustive) {
-    double saving = 0;
-    bool improved = true;
-
-    while (improved) {
-        improved = false;
-
-        solution_iterator_t iter1 = solution_iter_init (sol);
-        while (solution_iter_node (sol, &iter1) != ID_NONE && !improved) {
-            if (iter1.node_id == self->nodes[0].id) // ignore depot
-                continue;
-
-            // Removal of customer node
-            double dcost_remove1 =
-                route_remove_node_delta_distance (iter1.route,
-                                                  self->vrp,
-                                                  iter1.idx_node);
-
-            solution_iterator_t iter2 = solution_iter_init (sol);
-            while (solution_iter_node (sol, &iter2) != ID_NONE && !improved) {
-                if (iter1.idx_route == iter2.idx_route || // ignore same routes
-                    iter2.node_id == self->nodes[0].id) // ignore depot
-                    continue;
-
-                double dcost_remove2 =
-                    route_remove_node_delta_distance (iter2.route,
-                                                      self->vrp,
-                                                      iter2.idx_node);
-
-                double dcost_insert1 =
-                    route_insert_node_delta_distance (iter1.route,
-                                                      self->vrp,
-                                                      iter1.idx_node,
-                                                      iter2.node_id);
-
-
-                double dcost_insert2 =
-                    route_insert_node_delta_distance (iter2.route,
-                                                      self->vrp,
-                                                      iter2.idx_node,
-                                                      iter1.node_id);
-
-                double dcost = dcost_remove1 + dcost_remove2 +
-                               dcost_insert1 + dcost_insert2;
-                if (dcost < 0) {
-                    // printf ("improved: %.2f\n", -dcost);
-                    // route_remove_node (iter1.route, iter1.idx_node);
-                    // route_remove_node (iter2.route, iter2.idx_node);
-                    // route_insert_node (iter1.route, iter1.idx_node, iter2.node_id);
-                    // route_insert_node (iter2.route, iter2.idx_node, iter1.node_id);
-                    route_set_at (iter1.route, iter1.idx_node, iter2.node_id);
-                    route_set_at (iter2.route, iter2.idx_node, iter1.node_id);
-
-                    saving -= dcost;
-                    solution_set_total_distance (
-                        sol,
-                        solution_total_distance (sol) + dcost);
-                    if (!exhaustive) {
-                        print_info ("exchange saving: %.3f\n", saving);
-                        return saving;
-                    }
-                    improved = true;
-                }
-            }
-        }
-    }
-    print_info ("exchange saving: %.3f\n", saving);
-    return saving;
-}
-
-
-// Intra-route 2-opt
-static double cvrp_2_opt (cvrp_t *self, solution_t *sol, bool exhaustive) {
-    double saving = 0;
-    bool improved = true;
-    size_t num_routes = solution_num_routes (sol);
-
-    while (improved) {
-        improved = false;
-        for (size_t idx = 0; idx < num_routes && !improved; idx++) {
-            route_t *route = solution_route (sol, idx);
-            assert (route_size (route) >= 2);
-            double dcost =
-                route_2_opt (route, self->vrp, 1, route_size (route) - 2, false);
-            if (dcost < 0) {
-                saving -= dcost;
-                solution_set_total_distance (
-                    sol,
-                    solution_total_distance (sol) + dcost);
-                if (!exhaustive) {
-                    // print_info ("2-opt saving: %.2f\n", saving);
-                    return saving;
-                }
-                improved = true;
-            }
-        }
-    }
-    // print_info ("2-opt saving: %.2f\n", saving);
-    return saving;
-}
-
-
-// ----------------------------------------------------------------------------
-
-// Local search used in evolution
+// Local search for evolution: intra-route 2-opt search (stops after first
+// improvement)
 static void cvrp_local_search_for_evol (cvrp_t *self, s_genome_t *g) {
     if (g->sol == NULL)
         g->sol = cvrp_split (self, g->gtour);
     assert (g->sol != NULL);
 
-    double saving;
-    while (true) {
-        saving = cvrp_or_opt_node (self, g->sol, false);
-        if (saving > 0)
-            break;
-
-        saving = cvrp_2_opt (self, g->sol, false);
-        break;
+    double saving = 0;
+    size_t num_routes = solution_num_routes (g->sol);
+    for (size_t idx = 0; idx < num_routes; idx++) {
+        route_t *route = solution_route (g->sol, idx);
+        assert (route_size (route) >= 2);
+        saving -=
+            route_2_opt (route, self->vrp, 1, route_size (route) - 2, false);
     }
 
-    // Bug fixed: update gtour if improved
+    // Bug fixed: update solution's total distance and update gtour if improved
     if (saving > 0) {
+        solution_set_total_distance (
+            g->sol,
+            solution_total_distance (g->sol) - saving);
         route_free (&g->gtour);
         g->gtour = cvrp_giant_tour_from_solution (self, g->sol);
     }
 }
 
 
-// Post optimization.
-// Return saving.
+// Post optimization: exhaustive intra-route 2-opt search
+// @todo add inter-route local search
 static double cvrp_post_optimize (cvrp_t *self, solution_t *sol) {
     double cost_before = solution_total_distance (sol);
-    double total_saving = 0;
-    bool improved = true;
-    double saving;
-
-    print_info ("cal cost before: %.2f\n", solution_cal_total_distance (sol, self->vrp));
-
-    while (improved) {
-        improved = false;
-
-        // Exchange of nodes
-        saving = cvrp_exchange (self, sol, false);
-        if (saving > 0) {
-            total_saving += saving;
-            improved = true;
-            continue;
-        }
-
-        // Or-opt of node
-        saving = cvrp_or_opt_node (self, sol, false);
-        if (saving > 0) {
-            total_saving += saving;
-            improved = true;
-            continue;
-        }
-
-        // intra-route 2-opt
-        saving = cvrp_2_opt (self, sol, false);
-        if (saving > 0) {
-            total_saving += saving;
-            improved = true;
-            continue;
-        }
+    double saving = 0;
+    size_t num_routes = solution_num_routes (sol);
+    for (size_t idx = 0; idx < num_routes; idx++) {
+        route_t *route = solution_route (sol, idx);
+        assert (route_size (route) >= 2);
+        saving -=
+            route_2_opt (route, self->vrp, 1, route_size (route) - 2, true);
     }
 
-    print_info ("cal cost after post optimization: %.2f\n",
-                solution_cal_total_distance (sol, self->vrp));
-    solution_print_internal (sol);
+    // Update solution's total distance
+    if (saving > 0)
+        solution_set_total_distance (
+            sol,
+            solution_total_distance (sol) - saving);
 
     print_info ("post-optimization improvement: %.3f%% (%.2f -> %.2f)\n",
-                total_saving / cost_before * 100,
-                cost_before, solution_total_distance (sol));
+        saving / cost_before * 100, cost_before, solution_total_distance (sol));
     return saving;
 }
 

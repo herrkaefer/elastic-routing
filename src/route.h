@@ -101,19 +101,35 @@ double route_2_opt (route_t *self,
                     size_t idx_begin, size_t idx_end,
                     bool exhaustive);
 
+// Distance increment of removing node at specific index.
+// Note that node removal is not actually performed.
+double route_remove_node_delta_distance (route_t *self,
+                                         const vrp_t *vrp, size_t idx);
+
 // Remove node at specific index.
 // Return increment of total distance.
-double route_remove_node (route_t *self, const vrp_t *vrp, size_t idx);
+void route_remove_node (route_t *self, size_t idx);
 
-// Remove two consecutive nodes at idx and (idx+1).
+// Distance increment of removing two consecutive nodes at first_idx and
+// (first_idx+1).
+// Note that removal is not actually performed.
+double route_remove_link_delta_distance (route_t *self,
+                                         const vrp_t *vrp, size_t first_idx);
+
+// Remove two consecutive nodes at first_idx and (first_idx+1).
 // Return increment of total distance.
-double route_remove_link (route_t *self, const vrp_t *vrp, size_t idx);
+void route_remove_link (route_t *self, size_t first_idx);
 
-// Insert node at specific index (before the original one at index).
+// Distance increment of insert node at specific index (before the original
+// one at index). If idx == size, append the node at tail.
+// Note that insertion is not actually performed.
+double route_insert_node_delta_distance (const route_t *self,
+                                         const vrp_t *vrp,
+                                         size_t idx, size_t node_id);
+
+// Insert node before the one at index.
 // If idx == size, append the node at tail.
-// Return increment of total distance
-double route_insert_node (route_t *self,
-                          const vrp_t *vrp, size_t idx, size_t node_id);
+void route_insert_node (route_t *self, size_t idx, size_t node_id);
 
 #ifdef __cplusplus
 }

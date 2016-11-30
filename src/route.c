@@ -281,7 +281,8 @@ double route_2_opt (route_t *self,
 }
 
 
-double route_remove_node (route_t *self, const vrp_t *vrp, size_t idx) {
+double route_remove_node_delta_distance (route_t *self,
+                                         const vrp_t *vrp, size_t idx) {
     assert (self);
     assert (vrp);
     size_t size = route_size (self);
@@ -289,24 +290,30 @@ double route_remove_node (route_t *self, const vrp_t *vrp, size_t idx) {
 
     double dcost = 0;
     if (idx > 0) // there is a predecessor to unlink with
-        dcost += vrp_arc_distance (vrp,
+        dcost -= vrp_arc_distance (vrp,
                                     route_at (self, idx - 1),
                                     route_at (self, idx));
     if (idx + 1 < size) // there is a successor to unlink with
-        dcost += vrp_arc_distance (vrp,
+        dcost -= vrp_arc_distance (vrp,
                                     route_at (self, idx),
                                     route_at (self, idx + 1));
     if (idx > 0 && idx + 1 < size) // link predesessor with successor
-        dcost -= vrp_arc_distance (vrp,
+        dcost += vrp_arc_distance (vrp,
                                     route_at (self, idx - 1),
                                     route_at (self, idx + 1));
-
-    listu_remove_at (self, idx);
     return dcost;
 }
 
 
-double route_remove_link (route_t *self, const vrp_t *vrp, size_t idx) {
+void route_remove_node (route_t *self, size_t idx) {
+    assert (self);
+    assert (idx < route_size (self));
+    listu_remove_at (self, idx);
+}
+
+
+double route_remove_link_delta_distance (route_t *self,
+                                         const vrp_t *vrp, size_t idx) {
     assert (self);
     assert (vrp);
     size_t size = route_size (self);
@@ -314,25 +321,32 @@ double route_remove_link (route_t *self, const vrp_t *vrp, size_t idx) {
 
     double dcost = 0;
     if (idx > 0) // there is a predecessor to unlink with
-        dcost += vrp_arc_distance (vrp,
+        dcost -= vrp_arc_distance (vrp,
                                    route_at (self, idx - 1),
                                    route_at (self, idx));
     if (idx + 2 < size) // there is a successor to unlink with
-        dcost += vrp_arc_distance (vrp,
+        dcost -= vrp_arc_distance (vrp,
                                    route_at (self, idx + 1),
                                    route_at (self, idx + 2));
     if (idx > 0 && idx + 2 < size) // link predesessor with successor
-        dcost -= vrp_arc_distance (vrp,
+        dcost += vrp_arc_distance (vrp,
                                    route_at (self, idx - 1),
                                    route_at (self, idx + 2));
-
-    listu_remove_slice (self, idx, idx + 1);
     return dcost;
 }
 
 
-double route_insert_node (route_t *self,
-                          const vrp_t *vrp, size_t idx, size_t node_id) {
+void route_remove_link (route_t *self, size_t idx) {
+    assert (self);
+    assert (idx + 1 < route_size (self));
+    listu_remove_slice (self, idx, idx + 1);
+}
+
+
+double route_insert_node_delta_distance (const route_t *self,
+                                         const vrp_t *vrp,
+                                         size_t idx,
+                                         size_t node_id) {
     assert (self);
     assert (vrp);
     size_t size = route_size (self);
@@ -351,9 +365,14 @@ double route_insert_node (route_t *self,
         dcost -= vrp_arc_distance (vrp,
                                    route_at (self, idx - 1),
                                    route_at (self, idx));
-
-    listu_insert_at (self, idx, node_id);
     return dcost;
+}
+
+
+void route_insert_node (route_t *self, size_t idx, size_t node_id) {
+    assert (self);
+    assert (idx <= route_size (self));
+    listu_insert_at (self, idx, node_id);
 }
 
 

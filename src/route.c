@@ -369,6 +369,35 @@ double route_insert_node_delta_distance (const route_t *self,
 }
 
 
+double route_replace_node_delta_distance (const route_t *self,
+                                          const vrp_t *vrp,
+                                          size_t idx, size_t node_id) {
+    assert (self);
+    assert (vrp);
+    size_t size = route_size (self);
+    assert (idx <= size);
+
+    double dcost = 0;
+    if (idx > 0) { // there is a node before to link with
+        dcost -= vrp_arc_distance (vrp,
+                                   route_at (self, idx - 1),
+                                   route_at (self, idx));
+        dcost += vrp_arc_distance (vrp,
+                                   route_at (self, idx - 1),
+                                   node_id);
+    }
+    if (idx + 1 < size) { // there is a node after to link with
+        dcost -= vrp_arc_distance (vrp,
+                                   route_at (self, idx),
+                                   route_at (self, idx + 1));
+        dcost += vrp_arc_distance (vrp,
+                                   node_id,
+                                   route_at (self, idx + 1));
+    }
+    return dcost;
+}
+
+
 void route_insert_node (route_t *self, size_t idx, size_t node_id) {
     assert (self);
     assert (idx <= route_size (self));

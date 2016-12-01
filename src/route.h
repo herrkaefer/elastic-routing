@@ -127,6 +127,10 @@ double route_insert_node_delta_distance (const route_t *self,
                                          const vrp_t *vrp,
                                          size_t idx, size_t node_id);
 
+double route_replace_node_delta_distance (const route_t *self,
+                                          const vrp_t *vrp,
+                                          size_t idx, size_t node_id);
+
 // Insert node before the one at index.
 // If idx == size, append the node at tail.
 void route_insert_node (route_t *self, size_t idx, size_t node_id);

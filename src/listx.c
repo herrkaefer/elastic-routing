@@ -745,9 +745,9 @@ void listx_sort (listx_t *self, bool ascending) {
     // Otherwise, do a quick sort
     else {
         listx_quick_sort (self,
-                           self->head->next,
-                           self->head->prev,
-                           ascending);
+                          self->head->next,
+                          self->head->prev,
+                          ascending);
         listx_set_sorted (self, ascending);
     }
 }

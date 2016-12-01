@@ -40,7 +40,7 @@ For evolution:
 #include "classes.h"
 
 
-#define SMALL_NUM_NODES 10
+#define SMALL_NUM_NODES 40
 
 
 // Private node representation
@@ -122,6 +122,18 @@ static double cvrp_node_demand (cvrp_t *self, size_t node_id) {
 static double cvrp_route_demand (cvrp_t *self, route_t *route) {
     double demand = 0;
     for (size_t idx = 0; idx < route_size (route); idx++)
+        demand += cvrp_node_demand (self, route_at (route, idx));
+    return demand;
+}
+
+
+// Sum of node demands on route slice [idx_from, idx_to]
+static double cvrp_route_slice_demand (cvrp_t *self, route_t *route,
+                                       size_t idx_from, size_t idx_to) {
+    assert (idx_from <= idx_to);
+    assert (idx_to < route_size (route));
+    double demand = 0;
+    for (size_t idx = idx_from; idx <= idx_to; idx++)
         demand += cvrp_node_demand (self, route_at (route, idx));
     return demand;
 }
@@ -604,8 +616,8 @@ static double cvrp_or_opt_node (cvrp_t *self, solution_t *sol, bool exhaustive) 
             // Removal of customer node
             double dcost_remove =
                 route_remove_node_delta_distance (iter1.route,
-                                                  self->vrp,
-                                                  iter1.idx_node);
+                                                  iter1.idx_node,
+                                                  self->vrp);
             double node_demand = cvrp_node_demand (self, iter1.node_id);
 
             // Try to insert node to another route
@@ -622,9 +634,9 @@ static double cvrp_or_opt_node (cvrp_t *self, solution_t *sol, bool exhaustive) 
 
                 double dcost_insert =
                     route_insert_node_delta_distance (iter2.route,
-                                                      self->vrp,
                                                       iter2.idx_node,
-                                                      iter1.node_id);
+                                                      iter1.node_id,
+                                                      self->vrp);
                 double dcost = dcost_remove + dcost_insert;
                 if (dcost < 0) {
                     // printf ("improved: %.2f\n", -dcost);
@@ -658,8 +670,7 @@ static double cvrp_or_opt_link (cvrp_t *self, solution_t *sol, bool exhaustive) 
 }
 
 
-// Inter-route local search: exchange two nodes of two routes
-// @todo not tested right
+// Inter-route local search: swap two nodes of two routes
 static double cvrp_exchange_nodes (cvrp_t *self,
                                    solution_t *sol, bool exhaustive) {
     double saving = 0;
@@ -678,8 +689,8 @@ static double cvrp_exchange_nodes (cvrp_t *self,
 
             solution_iterator_t iter2 = solution_iter_init (sol);
             while (solution_iter_node (sol, &iter2) != ID_NONE && !improved) {
-                // Ignore same route and depot
-                if (iter1.idx_route == iter2.idx_route ||
+                // start from next route and ignore depot
+                if (iter2.idx_route <= iter1.idx_route ||
                     iter2.node_id == self->nodes[0].id)
                     continue;
 
@@ -694,13 +705,13 @@ static double cvrp_exchange_nodes (cvrp_t *self,
                 // dcost of exchanging iter1.node_id and iter2.node_id
                 double dcost =
                     route_replace_node_delta_distance (iter1.route,
-                                                       self->vrp,
                                                        iter1.idx_node,
-                                                       iter2.node_id) +
+                                                       iter2.node_id,
+                                                       self->vrp) +
                     route_replace_node_delta_distance (iter2.route,
-                                                       self->vrp,
                                                        iter2.idx_node,
-                                                       iter1.node_id);
+                                                       iter1.node_id,
+                                                       self->vrp);
 
 
                 if (dcost < 0) {
@@ -732,6 +743,102 @@ static double cvrp_exchange_nodes (cvrp_t *self,
     // print_info ("exchange saving (end): %.3f\n", saving);
     return saving;
 }
+
+
+// Inter-route local search: 2-opt*
+static double cvrp_2_opt_star (cvrp_t *self, solution_t *sol, bool exhaustive) {
+    double saving = 0;
+    bool improved = true;
+
+    while (improved) {
+        improved = false;
+
+        solution_iterator_t iter1 = solution_iter_init (sol);
+        while (solution_iter_node (sol, &iter1) != ID_NONE && !improved) {
+
+            // Ignore last depot node
+            if (iter1.idx_node == route_size (iter1.route) - 1)
+                continue;
+
+            double route_demand1 = cvrp_route_demand (self, iter1.route);
+            double node_demand1 = cvrp_node_demand (self, iter1.node_id);
+
+            solution_iterator_t iter2 = solution_iter_init (sol);
+            while (solution_iter_node (sol, &iter2) != ID_NONE && !improved) {
+
+                // start from next route
+                if (iter2.idx_route <= iter1.idx_route)
+                    continue;
+
+                if (iter1.node_id == self->nodes[0].id &&
+                    iter2.node_id == self->nodes[0].id)
+                    continue;
+
+                if (iter2.idx_node == route_size (iter2.route) - 1)
+                    continue;
+
+
+                // Feasibility check: capacity of two routes
+                if (cvrp_route_slice_demand (self, iter1.route,
+                                             0,
+                                             iter1.idx_node) +
+                    cvrp_route_slice_demand (self, iter2.route,
+                                             iter2.idx_node + 1,
+                                             route_size (iter2.route) - 1) >
+                    self->capacity)
+                    continue;
+                if (cvrp_route_slice_demand (self, iter2.route,
+                                             0,
+                                             iter2.idx_node) +
+                    cvrp_route_slice_demand (self, iter1.route,
+                                             iter1.idx_node + 1,
+                                             route_size (iter1.route) - 1) >
+                    self->capacity)
+                    continue;
+
+                double dcost =
+                    route_2_opt_star_delta_distance (iter1.route,
+                                                     iter2.route,
+                                                     iter1.idx_node,
+                                                     iter2.idx_node,
+                                                     self->vrp);
+
+                if (dcost < 0) {
+                    // printf ("2-opt* ---------------------------\n");
+                    // route_print (iter1.route);
+                    // printf ("idx_node: %zu, node_id: %zu\n", iter1.idx_node, iter1.node_id);
+                    // route_print (iter2.route);
+                    // printf ("idx_node: %zu, node_id: %zu\n", iter2.idx_node, iter2.node_id);
+
+                    route_2_opt_star (iter1.route, iter2.route,
+                                      iter1.idx_node, iter2.idx_node);
+
+                    // route_print (iter1.route);
+                    // route_print (iter2.route);
+
+                    // Remove route if it is empty (only two depot nodes left)
+                    if (route_size (iter1.route) == 2)
+                        solution_remove_route (sol, iter1.idx_route);
+                    if (route_size (iter2.route) == 2)
+                        solution_remove_route (sol, iter2.idx_route);
+
+                    saving -= dcost;
+                    solution_set_total_distance (
+                        sol,
+                        solution_total_distance (sol) + dcost);
+                    if (!exhaustive) {
+                        // print_info ("2-opt* saving: %.3f\n", saving);
+                        return saving;
+                    }
+                    improved = true;
+                }
+            }
+        }
+    }
+    // print_info ("2-opt* saving (end): %.3f\n", saving);
+    return saving;
+}
+
 
 
 // Intra-route 2-opt
@@ -805,15 +912,6 @@ static double cvrp_post_optimize (cvrp_t *self, solution_t *sol) {
     while (improved) {
         improved = false;
 
-        // Exchange of nodes
-        saving = cvrp_exchange_nodes (self, sol, false);
-        if (saving > 0) {
-            print_info ("exchange saving: %.2f\n", saving);
-            total_saving += saving;
-            improved = true;
-            continue;
-        }
-
         // Or-opt of node
         saving = cvrp_or_opt_node (self, sol, false);
         if (saving > 0) {
@@ -823,6 +921,14 @@ static double cvrp_post_optimize (cvrp_t *self, solution_t *sol) {
             continue;
         }
 
+        // Exchange of nodes
+        saving = cvrp_exchange_nodes (self, sol, false);
+        if (saving > 0) {
+            print_info ("exchange saving: %.2f\n", saving);
+            total_saving += saving;
+            improved = true;
+            continue;
+        }
 
         // intra-route 2-opt
         saving = cvrp_2_opt (self, sol, false);
@@ -832,6 +938,16 @@ static double cvrp_post_optimize (cvrp_t *self, solution_t *sol) {
             improved = true;
             continue;
         }
+
+        // 2-opt*
+        saving = cvrp_2_opt_star (self, sol, false);
+        if (saving > 0) {
+            print_info ("2-opt* saving: %.2f\n", saving);
+            total_saving += saving;
+            improved = true;
+            continue;
+        }
+
     }
 
     print_info ("cal cost after post optimization: %.2f\n",

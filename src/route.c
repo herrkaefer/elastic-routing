@@ -282,7 +282,7 @@ double route_2_opt (route_t *self,
 
 
 double route_remove_node_delta_distance (route_t *self,
-                                         const vrp_t *vrp, size_t idx) {
+                                         size_t idx, const vrp_t *vrp) {
     assert (self);
     assert (vrp);
     size_t size = route_size (self);
@@ -313,7 +313,7 @@ void route_remove_node (route_t *self, size_t idx) {
 
 
 double route_remove_link_delta_distance (route_t *self,
-                                         const vrp_t *vrp, size_t idx) {
+                                         size_t idx, const vrp_t *vrp) {
     assert (self);
     assert (vrp);
     size_t size = route_size (self);
@@ -344,9 +344,9 @@ void route_remove_link (route_t *self, size_t idx) {
 
 
 double route_insert_node_delta_distance (const route_t *self,
-                                         const vrp_t *vrp,
                                          size_t idx,
-                                         size_t node_id) {
+                                         size_t node_id,
+                                         const vrp_t *vrp) {
     assert (self);
     assert (vrp);
     size_t size = route_size (self);
@@ -369,13 +369,22 @@ double route_insert_node_delta_distance (const route_t *self,
 }
 
 
+void route_insert_node (route_t *self, size_t idx, size_t node_id) {
+    assert (self);
+    assert (idx <= route_size (self));
+    listu_insert_at (self, idx, node_id);
+}
+
+
 double route_replace_node_delta_distance (const route_t *self,
-                                          const vrp_t *vrp,
-                                          size_t idx, size_t node_id) {
+                                          size_t idx, size_t node_id,
+                                          const vrp_t *vrp) {
     assert (self);
     assert (vrp);
     size_t size = route_size (self);
     assert (idx <= size);
+    if (node_id == route_at (self, idx))
+        return 0;
 
     double dcost = 0;
     if (idx > 0) { // there is a node before to link with
@@ -398,10 +407,76 @@ double route_replace_node_delta_distance (const route_t *self,
 }
 
 
-void route_insert_node (route_t *self, size_t idx, size_t node_id) {
+double route_2_opt_star_delta_distance (const route_t *self,
+                                        const route_t *route,
+                                        size_t idx1, size_t idx2,
+                                        const vrp_t *vrp) {
     assert (self);
-    assert (idx <= route_size (self));
-    listu_insert_at (self, idx, node_id);
+    assert (route);
+    assert (vrp);
+    size_t size1 = route_size (self);
+    size_t size2 = route_size (route);
+    assert (idx1 < size1);
+    assert (idx2 < size2);
+
+    double dcost = 0;
+
+    // There is node after idx1 of self
+    if (idx1 + 1 < size1) {
+        dcost -= vrp_arc_distance (vrp,
+                                   route_at (self, idx1),
+                                   route_at (self, idx1 + 1));
+        dcost += vrp_arc_distance (vrp,
+                                   route_at (route, idx2),
+                                   route_at (self, idx1 + 1));
+    }
+    // There is node after idx2 of route
+    if (idx2 + 1 < size2) {
+        dcost -= vrp_arc_distance (vrp,
+                                   route_at (route, idx2),
+                                   route_at (route, idx2 + 1));
+        dcost += vrp_arc_distance (vrp,
+                                   route_at (self, idx1),
+                                   route_at (route, idx2 + 1));
+    }
+    return dcost;
+}
+
+
+//@todo need debug
+void route_2_opt_star (route_t *self, route_t *route,
+                       size_t idx1, size_t idx2) {
+    assert (self);
+    assert (route);
+    size_t size1 = route_size (self);
+    size_t size2 = route_size (route);
+    assert (idx1 < size1);
+    assert (idx2 < size2);
+
+    if (idx1 == size1 - 1 && idx2 == size2 - 1)
+        return;
+
+    // Swap common length of tail
+    size_t tmp;
+    while (idx1 < size1 - 1 && idx2 < size2 - 1) {
+        idx1++;
+        idx2++;
+        tmp = route_at (self, idx1);
+        route_set_at (self, idx1, route_at (route, idx2));
+        route_set_at (route, idx2, tmp);
+    }
+
+    // Deal with remaining tail
+    if (idx1 < size1 - 1) {
+        const size_t *array = route_node_array (self);
+        listu_extend_array (route, array + idx1 + 1, size1 - idx1 - 1);
+        listu_remove_slice (self, idx1 + 1, size1 - 1);
+    }
+    else if (idx2 < size2 - 1) {
+        const size_t *array = route_node_array (route);
+        listu_extend_array (self, array + idx2 + 1, size2 - idx2 - 1);
+        listu_remove_slice (route, idx2 + 1, size2 - 1);
+    }
 }
 
 

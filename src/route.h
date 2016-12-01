@@ -104,7 +104,7 @@ double route_2_opt (route_t *self,
 // Distance increment of removing node at specific index.
 // Note that node removal is not actually performed.
 double route_remove_node_delta_distance (route_t *self,
-                                         const vrp_t *vrp, size_t idx);
+                                         size_t idx, const vrp_t *vrp);
 
 // Remove node at specific index.
 // Return increment of total distance.
@@ -114,7 +114,7 @@ void route_remove_node (route_t *self, size_t idx);
 // (first_idx+1).
 // Note that removal is not actually performed.
 double route_remove_link_delta_distance (route_t *self,
-                                         const vrp_t *vrp, size_t first_idx);
+                                         size_t first_idx, const vrp_t *vrp);
 
 // Remove two consecutive nodes at first_idx and (first_idx+1).
 // Return increment of total distance.
@@ -124,16 +124,31 @@ void route_remove_link (route_t *self, size_t first_idx);
 // one at index). If idx == size, append the node at tail.
 // Note that insertion is not actually performed.
 double route_insert_node_delta_distance (const route_t *self,
-                                         const vrp_t *vrp,
-                                         size_t idx, size_t node_id);
-
-double route_replace_node_delta_distance (const route_t *self,
-                                          const vrp_t *vrp,
-                                          size_t idx, size_t node_id);
+                                         size_t idx, size_t node_id,
+                                         const vrp_t *vrp);
 
 // Insert node before the one at index.
 // If idx == size, append the node at tail.
 void route_insert_node (route_t *self, size_t idx, size_t node_id);
+
+// Distance increment of replacing node at index with another node.
+// Note that node replacment is not actually performed.
+double route_replace_node_delta_distance (const route_t *self,
+                                          size_t idx, size_t node_id,
+                                          const vrp_t *vrp);
+
+
+// Distance increment of 2-opt-star operation between two routes.
+// Note that operation is not actually performed.
+double route_2_opt_star_delta_distance (const route_t *self,
+                                        const route_t *route,
+                                        size_t idx1, size_t idx2,
+                                        const vrp_t *vrp);
+
+// 2-opt* operation of two routes. i.e.
+// (+++, idx1, idx1+1, ***) ==> (+++, idx1, idx2+1, ...)
+// (---, idx2, idx2+1, ...) ==> (---, idx2, idx1+1, ***)
+void route_2_opt_star (route_t *self, route_t *route, size_t idx1, size_t idx2);
 
 #ifdef __cplusplus
 }

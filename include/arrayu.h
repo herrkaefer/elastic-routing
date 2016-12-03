@@ -19,6 +19,35 @@ size_t *arrayu_new_range (size_t a, size_t b);
 // Return an array with size (b-a).
 size_t *arrayu_new_shuffle_range (size_t a, size_t b, rng_t *rng);
 
+// Duplicator
+size_t *arrayu_dup (const size_t *self, size_t len);
+
+// Matcher
+bool arrayu_equal (const size_t *self, const size_t *arrayu, size_t len);
+
+// Printer
+void arrayu_print (const size_t *self, size_t len);
+
+// Find value in array.
+// Return the index if found, SIZE_NONE if not found.
+size_t arrayu_find (const size_t *self, size_t len, size_t value);
+
+// Count values in array
+size_t arrayu_count (const size_t *self, size_t len, size_t value);
+
+// Check if value is in array
+bool arrayu_includes (const size_t *self, size_t len, size_t value);
+
+// Reverse array in place
+void arrayu_reverse (size_t *self, size_t len);
+
+// Rorate array by num elements.
+// num > 0: right rotation; num < 0: left rotation.
+void arrayu_rotate (size_t *self, size_t len, int num);
+
+// Swap two items
+void arrayu_swap (size_t *self, size_t idx1, size_t idx2);
+
 // Quick sort
 void arrayu_quick_sort (size_t *self, size_t len, bool ascending);
 
@@ -43,69 +72,6 @@ void arrayu_swap_slices (size_t *self,
 // Levenshtein distance
 size_t arrayu_levenshtein_distance (const size_t *array1, size_t len1,
                                     const size_t *array2, size_t len2);
-
-
-// ----------------------------------------------------------------------------
-// Printer
-inline void arrayu_print (const size_t *self, size_t len) {
-    assert (self);
-    printf ("\narrayu: size: %zu\n", len);
-    printf ("---------------------------------------\n");
-    for (size_t idx = 0; idx < len; idx++)
-        printf ("%zu ", self[idx]);
-    printf ("\n");
-}
-
-
-// Find value in array.
-// Return the index if found, SIZE_NONE if not found.
-inline size_t arrayu_find (const size_t *self, size_t len, size_t value) {
-    assert (self);
-    size_t idx = 0;
-    while ((idx < len) && (self[idx] != value))
-        idx++;
-    return (idx < len) ? idx : SIZE_NONE;
-}
-
-
-// Count values in array
-inline size_t arrayu_count (const size_t *self, size_t len, size_t value) {
-    assert (self);
-    size_t cnt = 0;
-    for (size_t idx = 0; idx < len; idx++) {
-        if (self[idx] == value)
-            cnt++;
-    }
-    return cnt;
-}
-
-
-// Check if value is in array
-inline bool arrayu_includes (const size_t *self, size_t len, size_t value) {
-    assert (self);
-    return arrayu_find (self, len, value) != SIZE_NONE;
-}
-
-
-// Reverse array in place
-inline void arrayu_reverse (size_t *self, size_t len) {
-    assert (self);
-    size_t i = 0, j = len - 1, tmp;
-    while (i < j) {
-        tmp = *(self + i);
-        *(self + (i++)) = *(self + j);
-        *(self + (j--)) = tmp;
-    }
-}
-
-
-// Swap two items
-inline void arrayu_swap (size_t *self, size_t idx1, size_t idx2) {
-    assert (self);
-    size_t tmp = *(self + idx1);
-    *(self + idx1) = *(self + idx2);
-    *(self + idx2) = tmp;
-}
 
 
 #ifdef __cplusplus

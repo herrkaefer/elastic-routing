@@ -23,32 +23,38 @@ extern "C" {
 #define ANSI_COLOR_WHITE   "\x1b[37m"
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
-#ifdef DEBUG
-    #define print_info(...)    {fprintf (stdout, \
-                                ANSI_COLOR_GREEN "INFO: " ANSI_COLOR_RESET \
-                                ANSI_COLOR_CYAN "%s: " ANSI_COLOR_RESET, __func__); \
-                                fprintf (stdout, ##__VA_ARGS__);}
-    #define print_warning(...) {fprintf (stdout, \
-                                ANSI_COLOR_MAGENTA "WARNING: " ANSI_COLOR_RESET \
-                                ANSI_COLOR_CYAN "%s: " ANSI_COLOR_RESET, __func__); \
-                                fprintf (stdout, ##__VA_ARGS__);}
-    #define print_error(...)   {fprintf (stderr, \
-                                ANSI_COLOR_RED "ERROR: " ANSI_COLOR_RESET \
-                                ANSI_COLOR_CYAN "%s: " ANSI_COLOR_RESET, __func__); \
-                                fprintf (stderr, ##__VA_ARGS__);}
-    #define print_debug(...)   {fprintf (stderr, \
-                                ANSI_COLOR_YELLOW \
-                                "\n>>>>>>>> Debug @func: %s @file: %s:%d >>>>>>>>\n" \
-                                ANSI_COLOR_RESET, \
-                                __func__, __FILE__, __LINE__); \
-                                fprintf (stderr, ##__VA_ARGS__);}
+#ifndef NDEBUG
+#define print_info(...) {fprintf (stdout, \
+                        ANSI_COLOR_GREEN "INFO: " ANSI_COLOR_RESET \
+                        ANSI_COLOR_CYAN "%s: " ANSI_COLOR_RESET, __func__); \
+                        fprintf (stdout, ##__VA_ARGS__);}
+#define print_warning(...) {fprintf (stdout, \
+                            ANSI_COLOR_MAGENTA "WARNING: " ANSI_COLOR_RESET \
+                            ANSI_COLOR_CYAN "%s: " ANSI_COLOR_RESET, __func__); \
+                            fprintf (stdout, ##__VA_ARGS__);}
+#define print_error(...) {fprintf (stderr, \
+                          ANSI_COLOR_RED "ERROR: " ANSI_COLOR_RESET \
+                          ANSI_COLOR_CYAN "%s: " ANSI_COLOR_RESET, __func__); \
+                          fprintf (stderr, ##__VA_ARGS__);}
+#define print_debug(...) {fprintf (stderr, \
+                          ANSI_COLOR_YELLOW \
+                          "\n>>>>>>>> Debug @func: %s @file: %s:%d >>>>>>>>\n" \
+                          ANSI_COLOR_RESET, \
+                          __func__, __FILE__, __LINE__); \
+                          fprintf (stderr, ##__VA_ARGS__);}
 #else
-    #define print_info(...)
-    #define print_warning(...)
-    #define print_error(...)
-    #define print_debug(...)
+
+#define print_info(...)
+#define print_warning(...)
+#define print_error(...)
+#define print_debug(...)
+
 #endif
 
+// void print_info (const char *fmt, ...);
+// void print_warning (const char *fmt, ...);
+// void print_error (const char *fmt, ...);
+// void print_debug (const char *fmt, ...);
 
 // ---------------------------------------------------------------------------
 

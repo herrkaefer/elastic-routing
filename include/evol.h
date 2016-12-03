@@ -1,5 +1,5 @@
 /*  =========================================================================
-    evol - evolution framework
+    evol - an evolution algorithm framework
 
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
     =========================================================================
@@ -21,12 +21,10 @@ typedef void *genome_t;
 typedef listx_t *(*evol_heuristic_t) (void *context, size_t max_expected);
 
 // Fitness assessment callback
-typedef double (*evol_fitness_assessor_t) (void *context,
-                                           genome_t genome);
+typedef double (*evol_fitness_assessor_t) (void *context, genome_t genome);
 
 // Feasibility assessment callback
-typedef bool (*evol_feasiblity_assessor_t) (void *context,
-                                            genome_t genome);
+typedef bool (*evol_feasiblity_assessor_t) (void *context, genome_t genome);
 
 // Function of computing distance between individuals
 typedef double (*evol_distance_assessor_t) (void *context,
@@ -46,7 +44,7 @@ typedef listx_t *(*evol_crossover_t) (void *context,
 typedef genome_t (*evol_mutator_t) (void *context, genome_t genome);
 
 // Local improving callback (genome is improved in place)
-typedef void (*evol_local_improver_t) (void *context, genome_t genome);
+typedef void (*evol_educator_t) (void *context, genome_t genome);
 
 // Callback to check whether renewer should be called to update the population.
 // This is mostly due to variation of context
@@ -70,9 +68,6 @@ evol_t *evol_new (void *context);
 
 // Destroy evolution object
 void evol_free (evol_t **self_p);
-
-// Set the context to which individuals are refered (e.g. a model)
-// void evol_set_context (evol_t *self, void *context);
 
 // Set livings group size
 // If this is not set, default value is used.
@@ -128,7 +123,7 @@ void evol_register_crossover (evol_t *self, evol_crossover_t fn);
 void evol_register_mutator (evol_t *self, evol_mutator_t fn);
 
 // Set genome local search function
-void evol_register_local_improver (evol_t *self, evol_local_improver_t fn);
+void evol_register_educator (evol_t *self, evol_educator_t fn);
 
 // Run evolution
 void evol_run (evol_t *self);

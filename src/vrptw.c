@@ -11,13 +11,21 @@
 #define SMALL_NUM_NODES 10
 
 
+// Private node representation
+typedef struct {
+    size_t id; // node ID in roadgraph of generic model
+    double demand;
+    const coord2d_t *coord; // reference of node coords in roadgraph
+    const listu_t *time_windows; // reference of time windows in request
+} s_node_t;
+
+
 struct _vrptw_t {
     vrp_t *vrp; // reference of generic model
-
-    route_t *template; // route template
-    size_t start_node_id;
-    size_t end_node_id;
-
+    double capacity;
+    size_t num_vehicles;
+    size_t num_customers;
+    s_node_t *nodes; // indices: depot: 0; customers: 1, 2, ..., num_customers
     rng_t *rng;
 };
 

@@ -1203,7 +1203,7 @@ void listx_print (const listx_t *self) {
             self->duplicator ? "set" : "none",
             self->comparator ? "set" : "none",
             self->printer    ? "set" : "none");
-    printf ("---------------------------------------------------------------\n");
+    printf ("-----------------------------------------------------------------\n");
     if (self->printer) {
         size_t index = 0;
         s_node_t *node = self->head->next;

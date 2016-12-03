@@ -160,7 +160,7 @@ struct _evol_t {
     listx_t *heuristics; // heuristic funcs
     listx_t *crossovers; // crossover funcs
     listx_t *mutators; // mutation funcs
-    listx_t *local_improvers; // local improvement funcs
+    listx_t *educators; // local improvement funcs
 
     // Parent picking dicings for crossover and mutation
     size_t num_dicings_parent1;
@@ -1522,11 +1522,11 @@ static void evol_mutate (evol_t *self) {
 // Perform local improvers on all children
 static void evol_children_growup (evol_t *self) {
     // print_info ("children growup.\n");
-    // if (listx_size (self->local_improvers) == 0)
+    // if (listx_size (self->educators) == 0)
     //     return;
 
     s_indiv_t *child;
-    evol_local_improver_t local_improver;
+    evol_educator_t local_improver;
 
     // For every child, perform all registered local improvers with probability
     listx_iterator_t iter_c = listx_iter_init (self->children, true);
@@ -1536,8 +1536,8 @@ static void evol_children_growup (evol_t *self) {
             continue;
 
         // implement every local improvers on child (in place)
-        listx_iterator_t iter_li = listx_iter_init (self->local_improvers, true);
-        while ((local_improver = listx_iter (self->local_improvers, &iter_li))
+        listx_iterator_t iter_li = listx_iter_init (self->educators, true);
+        while ((local_improver = listx_iter (self->educators, &iter_li))
                 != NULL)
             local_improver (self->context, child->genome);
 
@@ -1815,11 +1815,11 @@ evol_t *evol_new (void *context) {
     self->renewer             = NULL;
     self->stopper             = NULL;
 
-    self->heuristics      = listx_new ();
+    self->heuristics = listx_new ();
     listx_set_destructor (self->heuristics, (destructor_t) s_heuristic_free);
-    self->crossovers      = listx_new ();
-    self->mutators        = listx_new ();
-    self->local_improvers = listx_new ();
+    self->crossovers = listx_new ();
+    self->mutators   = listx_new ();
+    self->educators  = listx_new ();
 
     self->num_dicings_parent1  = EVOL_DEFAULT_NUM_DICINGS_FOR_PARENT1;
     self->num_dicings_parent2  = EVOL_DEFAULT_NUM_DICINGS_FOR_PARENT2;
@@ -1859,7 +1859,7 @@ void evol_free (evol_t **self_p) {
         listx_free (&self->heuristics);
         listx_free (&self->crossovers);
         listx_free (&self->mutators);
-        listx_free (&self->local_improvers);
+        listx_free (&self->educators);
 
         timer_free (&self->timer);
         timer_free (&self->step_timer);
@@ -1979,10 +1979,10 @@ void evol_register_mutator (evol_t *self, evol_mutator_t fn) {
 }
 
 
-void evol_register_local_improver (evol_t *self, evol_local_improver_t fn) {
+void evol_register_educator (evol_t *self, evol_educator_t fn) {
     assert (self);
     assert (fn);
-    listx_append (self->local_improvers, fn);
+    listx_append (self->educators, fn);
 }
 
 
@@ -2146,7 +2146,7 @@ void evol_test (bool verbose) {
                              true,
                              SIZE_MAX);
     evol_register_crossover (evol, (evol_crossover_t) string_crossover);
-    evol_register_local_improver (evol, (evol_local_improver_t) string_improver);
+    evol_register_educator (evol, (evol_educator_t) string_improver);
     evol_set_renewer (evol,
                       (evol_should_renew_t) string_should_renew,
                       (evol_renewer_t) string_renewer);

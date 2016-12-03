@@ -53,6 +53,101 @@ size_t *arrayu_new_shuffle_range (size_t a, size_t b, rng_t *rng) {
 }
 
 
+size_t *arrayu_dup (const size_t *self, size_t len) {
+    assert (self);
+    assert (len > 0);
+    size_t *copy = (size_t *) malloc (sizeof (size_t) * len);
+    assert (copy);
+    return copy;
+}
+
+
+bool arrayu_equal (const size_t *self, const size_t *arrayu, size_t len) {
+    assert (self);
+    assert (arrayu);
+    if (len == 0)
+        return true;
+    for (size_t idx = 0; idx < len; idx++) {
+        if (self[idx] != arrayu[idx])
+            return false;
+    }
+    return true;
+}
+
+
+void arrayu_print (const size_t *self, size_t len) {
+    assert (self);
+    printf ("\narrayu: size: %zu\n", len);
+    printf ("---------------------------------------\n");
+    for (size_t idx = 0; idx < len; idx++)
+        printf ("%zu ", self[idx]);
+    printf ("\n");
+}
+
+
+size_t arrayu_find (const size_t *self, size_t len, size_t value) {
+    assert (self);
+    size_t idx = 0;
+    while ((idx < len) && (self[idx] != value))
+        idx++;
+    return (idx < len) ? idx : SIZE_NONE;
+}
+
+
+size_t arrayu_count (const size_t *self, size_t len, size_t value) {
+    assert (self);
+    size_t cnt = 0;
+    for (size_t idx = 0; idx < len; idx++) {
+        if (self[idx] == value)
+            cnt++;
+    }
+    return cnt;
+}
+
+
+bool arrayu_includes (const size_t *self, size_t len, size_t value) {
+    assert (self);
+    return arrayu_find (self, len, value) != SIZE_NONE;
+}
+
+
+void arrayu_reverse (size_t *self, size_t len) {
+    assert (self);
+    if (len == 0)
+        return;
+    size_t i = 0, j = len - 1, tmp;
+    while (i < j) {
+        tmp = *(self + i);
+        *(self + (i++)) = *(self + j);
+        *(self + (j--)) = tmp;
+    }
+}
+
+
+void arrayu_rotate (size_t *self, size_t len, int num) {
+    assert (self);
+    if (len == 0)
+        return;
+    num = num % (int) len;
+    if (num == 0)
+        return;
+    if (num < 0)
+        num = (int) len + num;
+    size_t d = (size_t) (num);
+    arrayu_reverse (self, len - d);
+    arrayu_reverse (self + len - d, d);
+    arrayu_reverse (self, len);
+}
+
+
+void arrayu_swap (size_t *self, size_t idx1, size_t idx2) {
+    assert (self);
+    size_t tmp = *(self + idx1);
+    *(self + idx1) = *(self + idx2);
+    *(self + idx2) = tmp;
+}
+
+
 void arrayu_quick_sort (size_t *self, size_t len, bool ascending) {
     assert (self);
     if (len <= 1)
@@ -201,4 +296,5 @@ size_t arrayu_levenshtein_distance (const size_t *array1, size_t len1,
     free (matrix);
     return distance;
 }
+
 

@@ -19,7 +19,7 @@ extern "C" {
 // Note that the vrp model is already validated as an intrinsic VRPTW model.
 vrptw_t *vrptw_new_from (vrp_t *vrp);
 
-// Destroy vrptw object
+// Destructor
 void vrptw_free (vrptw_t **self_p);
 
 // Solve

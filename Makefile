@@ -8,7 +8,7 @@ CC = gcc
 # CFLAGS = -I$(IDIR) -DDEBUG -DWITHSTATS -DWITHLOG -g -Wall -O2
 # CFLAGS = -I$(IDIR) -DDEBUG -g -Wall -O2
 CFLAGS = -I$(IDIR) -g -Wall
-CFLAGS += -DDEBUG -DWITHSTATS
+# CFLAGS += -DWITHSTATS
 CFLAGS += -O3
 CFLAGS += -std=c99
 CFLAGS += -lm
@@ -45,25 +45,26 @@ _MODULES = numeric_ext \
 	       date_ext \
 	       arrayi \
 	       arrayu \
-	       util \
+	       arrayset \
+		   hash \
+		   listu \
+		   listx \
+		   matrixd \
+	       matrixu \
+	       queue \
 	       deps/pcg/entropy \
 	       rng \
 	       timer \
-	       matrixd \
-	       matrixu \
-	       queue \
-	       hash \
-	       arrayset \
-	       coord2d \
-	       listu \
-	       listx \
-	       route \
-	       vrp \
-	       solution \
 	       evol \
+	       coord2d \
+	       route \
+	       solution \
+	       vrp \
+	       util \
 	       tspi \
 	       tsp \
-	       cvrp
+	       cvrp \
+	       # vrptw
 
 
 
@@ -107,6 +108,8 @@ demo: clib
 
 pylib:
 	python py/setup.py build_ext --inplace
+	mv py*.so py/
+	python py/test.py
 
 clean:
-	rm -rf $(TARGETDIR)/* *.dll *.a *so $(ODIR)/* py/*.c
+	rm -rf $(TARGETDIR)/* *.dll *.a py/*so $(ODIR)/* py/*.c

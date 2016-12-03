@@ -18,9 +18,9 @@
 
 #include "classes.h"
 
+
 #define VTYPE size_t // type of data value
 #define VTYPE_NONE SIZE_NONE // none value
-
 #define MATRIX4D_DEFAULT_ORDER 16
 
 

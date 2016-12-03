@@ -306,9 +306,7 @@ solution_t *tsp_solve (tsp_t *self) {
                              factorial (num_free_nodes));
 
     evol_register_crossover (evol, (evol_crossover_t) tsp_ox);
-    evol_register_local_improver (
-                        evol,
-                        (evol_local_improver_t) tsp_local_search_for_evol);
+    evol_register_educator (evol, (evol_educator_t) tsp_local_search_for_evol);
 
     // Run evolution
     evol_run (evol);

@@ -18,9 +18,9 @@
 
 #include "classes.h"
 
+
 #define VTYPE double // type of data value
 #define VTYPE_NONE DOUBLE_NONE // none value
-
 #define MATRIX4D_DEFAULT_ORDER 16
 
 

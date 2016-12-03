@@ -35,9 +35,53 @@ typedef struct _rng_t rng_t;
 typedef struct _timer_t timer_t;
 typedef struct _evol_t evol_t;
 
+// Coordinate systems
+typedef enum {
+    CS_NONE,
+    CS_CARTESIAN2D,
+    CS_POLAR2D,
+    CS_WGS84, // World Geodetic System 1984. See:
+              // https://en.wikipedia.org/wiki/World_Geodetic_System
+    CS_GCJ02 // Mars Coordinates. See:
+       // https://en.wikipedia.org/wiki/Restrictions_on_geographic_data_in_China
+} coord2d_sys_t;
+
+// Generic 2D coordinates representation.
+// Use this struct to represent any 2D point with the above coordinate system.
+// Need to combine with an outside variable to specify its coordinate system.
+// For CS_CARTESIAN2D: v1->x, v2->y
+// For CS_POLAR2D: v1->radius, v2->theta
+// For geodetic system: v1->latitude, v2->longitude
+typedef struct {
+    double v1; // x, or r,     lat
+    double v2; // y, or theta, lng
+} coord2d_t;
+
+typedef listu_t route_t;
+typedef struct _solution_t solution_t;
+
+typedef enum {
+    NT_NONE,
+    NT_DEPOT,
+    NT_CUSTOMER
+} node_type_t;
+
+typedef enum {
+    NR_NONE,
+    NR_SENDER,
+    NR_RECEIVER
+} node_role_t;
+
+typedef struct _vrp_t vrp_t;
+
 
 // Public API headers
 #include "types.h"
+#include "numeric_ext.h"
+#include "string_ext.h"
+#include "date_ext.h"
+#include "arrayi.h"
+#include "arrayu.h"
 #include "arrayset.h"
 #include "hash.h"
 #include "listu.h"
@@ -48,5 +92,9 @@ typedef struct _evol_t evol_t;
 #include "rng.h"
 #include "timer.h"
 #include "evol.h"
+#include "coord2d.h"
+#include "route.h"
+#include "solution.h"
+#include "vrp.h"
 
 #endif

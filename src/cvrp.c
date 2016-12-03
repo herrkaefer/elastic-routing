@@ -12,11 +12,11 @@
 - [x] split giant tour to solution_t
 - [x] intra-route local search for evol
 - [ ] 3-opt local search for post optimization
-- [ ] inter-route local search for post optimization
+- [x] inter-route local search for post optimization
 - [ ] more heuristics:
     - [ ] sweep
     - [ ] petal
-- [ ] small model solver
+- [x] small model solver
 
 Details:
 
@@ -24,16 +24,16 @@ giant tour (gtour): a sequence of customers (node IDs in generic model).
 
 For evolution:
 
-- genome: s_genome_t object in which gtour is for crossover, sol is for
-          local search. sol is got by split the giant tour
+- genome: s_genome_t object which includes a giant tour (gtour) and a solution
+          (sol). gtour is for crossover, sol is for local search. sol is got
+          by split the giant tour.
 - heuristics:
     - parameterized CW
     - sweep giant tours
     - random giant tours
 - crossover: OX of gtour
-- cost of genome: cost of splited giant tour
-- fitness of genome: inverse of cost averaged over arcs
-- distance between genomes:
+- fitness accessor of genome: inverse of cost averaged over arcs
+- distance accessor of genomes: levenshtein distance
 
 */
 
@@ -425,8 +425,8 @@ static listx_t *cvrp_clark_wright (cvrp_t *self, size_t num_expected) {
             s_genome_t *genome = s_genome_new (gtour, sol);
             listx_append (genomes, genome);
             listu_append (hashes, hash);
-            solution_print_internal (sol);
-            route_print (gtour);
+            // solution_print_internal (sol);
+            // route_print (gtour);
         }
         else { // drop duplicate solution
             solution_free (&sol);
@@ -760,9 +760,6 @@ static double cvrp_2_opt_star (cvrp_t *self, solution_t *sol, bool exhaustive) {
             if (iter1.idx_node == route_size (iter1.route) - 1)
                 continue;
 
-            double route_demand1 = cvrp_route_demand (self, iter1.route);
-            double node_demand1 = cvrp_node_demand (self, iter1.node_id);
-
             solution_iterator_t iter2 = solution_iter_init (sol);
             while (solution_iter_node (sol, &iter2) != ID_NONE && !improved) {
 
@@ -776,7 +773,6 @@ static double cvrp_2_opt_star (cvrp_t *self, solution_t *sol, bool exhaustive) {
 
                 if (iter2.idx_node == route_size (iter2.route) - 1)
                     continue;
-
 
                 // Feasibility check: capacity of two routes
                 if (cvrp_route_slice_demand (self, iter1.route,
@@ -838,7 +834,6 @@ static double cvrp_2_opt_star (cvrp_t *self, solution_t *sol, bool exhaustive) {
     // print_info ("2-opt* saving (end): %.3f\n", saving);
     return saving;
 }
-
 
 
 // Intra-route 2-opt
@@ -971,7 +966,8 @@ static int cvrp_compare_genome_cost (s_genome_t *g1, s_genome_t *g2) {
 }
 
 
-// Small model solver: constructive heuristics + local search
+// Small model solver.
+// Select best solution of constructive heuristics, and local search
 static solution_t *cvrp_solve_small_model (cvrp_t *self) {
     print_info ("solve a small model...\n");
 
@@ -984,7 +980,6 @@ static solution_t *cvrp_solve_small_model (cvrp_t *self) {
     listx_set_destructor (genomes, (destructor_t) s_genome_free);
     listx_set_comparator (genomes, (comparator_t) cvrp_compare_genome_cost);
     listx_sort (genomes, true);
-    listx_print (genomes);
     g = listx_first (genomes);
     if (g != NULL && solution_total_distance (g->sol) < min_dist) {
         solution_free (&sol);
@@ -999,7 +994,6 @@ static solution_t *cvrp_solve_small_model (cvrp_t *self) {
     listx_set_destructor (genomes, (destructor_t) s_genome_free);
     listx_set_comparator (genomes, (comparator_t) cvrp_compare_genome_cost);
     listx_sort (genomes, true);
-    listx_print (genomes);
     g = listx_first (genomes);
     if (g != NULL && solution_total_distance (g->sol) < min_dist) {
         solution_free (&sol);
@@ -1129,9 +1123,7 @@ solution_t *cvrp_solve (cvrp_t *self) {
                              factorial (self->num_customers));
 
     evol_register_crossover (evol, (evol_crossover_t) cvrp_crossover);
-    evol_register_local_improver (
-                        evol,
-                        (evol_local_improver_t) cvrp_local_search_for_evol);
+    evol_register_educator (evol, (evol_educator_t) cvrp_local_search_for_evol);
 
     evol_run (evol);
 

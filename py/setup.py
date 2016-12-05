@@ -29,7 +29,7 @@ _src = [
 ]
 _srcdir = "src/"
 src = [_srcdir + s for s in _src]
-src.append("py/pyer.pyx")
+src.append("py/pyvrp.pyx")
 
 # add undef_macros = [ "NDEBUG" ] to undefine NDEBUG when compiling
 ext = Extension(name="pyvrp", sources=src, undef_macros = [ "NDEBUG" ])

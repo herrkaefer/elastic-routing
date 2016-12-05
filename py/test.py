@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
-from pyvrp import VRPModel
+from pyvrp import VRPSolver
 # import random
 
 
-model = VRPModel ()
+solver = VRPSolver()
+solver.test()
 
 print("py: OK")

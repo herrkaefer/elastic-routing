@@ -296,45 +296,36 @@ static int s_cwsaving_compare (const void *a, const void *b) {
 
 
 // Return solution in which nodes are with generic IDs
-static solution_t *cvrp_clark_wright_parallel (cvrp_t *self, double lambda) {
+static solution_t *cvrp_clark_wright_parallel (cvrp_t *self,
+                                               size_t *predecessors,
+                                               size_t *successors,
+                                               double *route_demands,
+                                               s_cwsaving_t *savings,
+                                               double lambda) {
     size_t N = self->num_customers;
 
-    // Initialize with 0
-    size_t *predecessors =
-        (size_t *) calloc (N + 1, sizeof (size_t));
-    assert (predecessors);
-
-    // Initialize with 0
-    size_t *successors =
-        (size_t *) calloc (N + 1, sizeof (size_t));
-    assert (successors);
-
-    double *route_demands =
-        (double *) malloc (sizeof (double) * (N + 1));
-    assert (route_demands);
-    for (size_t i = 1; i <= N; i++)
-        route_demands[i] = self->nodes[i].demand;
-
-    size_t num_savings = N * (N -1);
-    s_cwsaving_t *savings =
-        (s_cwsaving_t *) malloc (sizeof (s_cwsaving_t) * num_savings);
-    assert (savings);
-
-    // Calculate savings
+    // Initialize auxilary variables
     size_t cnt = 0;
     for (size_t i = 1; i <= N; i++) {
-        for (size_t j = 1; j <= N && j != i; j++) {
+        predecessors[i] = 0;
+        successors[i] = 0;
+        route_demands[i] = self->nodes[i].demand;
+        for (size_t j = 1; j <= N; j++) {
+            if (j == i)
+                continue;
             savings[cnt].c1 = i;
             savings[cnt].c2 = j;
             savings[cnt].saving =
                 cvrp_arc_distance_by_idx (self, i, 0) +
                 cvrp_arc_distance_by_idx (self, 0, j) -
-                lambda * cvrp_arc_distance_by_idx (self, i, j);
+                cvrp_arc_distance_by_idx (self, i, j) * lambda;
             cnt++;
         }
     }
 
     // Sort savings in descending order
+    size_t num_savings = N * (N -1);
+    assert (cnt == num_savings);
     qsort (savings, num_savings, sizeof (s_cwsaving_t), s_cwsaving_compare);
 
     // In saving descending order, try to merge two routes at each iteration
@@ -342,12 +333,19 @@ static solution_t *cvrp_clark_wright_parallel (cvrp_t *self, double lambda) {
         size_t c1 = savings[idx_saving].c1;
         size_t c2 = savings[idx_saving].c2;
 
-        // Link c1 -> c2 only when c1 is the last customer of one route and
+        // Check if c1 is the last customer of one route and
         // c2 is the first customer of another route.
         if (successors[c1] != 0 || predecessors[c2] != 0)
             continue;
 
-        // Check new route demand <= capacity
+        // Check if c1 and c2 are already on the same route
+        size_t first_visit = c1;
+        while (predecessors[first_visit] != 0)
+            first_visit = predecessors[first_visit];
+        if (first_visit == c2)
+            continue;
+
+        // Check if new route demand <= capacity
         double new_demand = route_demands[c1] + route_demands[c2];
         if (new_demand > self->capacity)
             continue;
@@ -356,21 +354,16 @@ static solution_t *cvrp_clark_wright_parallel (cvrp_t *self, double lambda) {
         predecessors[c2] = c1;
         successors[c1] = c2;
 
-        // Update route demand at first and last customer of new route
-        size_t predecessor = c1;
-        while (predecessors[predecessor] != 0)
-            predecessor = predecessors[predecessor];
-        route_demands[predecessor] = new_demand;
-
-        size_t successor = c2;
-        while (successors[successor] != 0)
-            successor = successors[successor];
-        route_demands[successor] = new_demand;
+        // Update record of route demand
+        size_t last_visit = c2;
+        while (successors[last_visit] != 0)
+            last_visit = successors[last_visit];
+        route_demands[first_visit] = new_demand;
+        route_demands[last_visit] = new_demand;
     }
 
     // Construct solution from predecessors and successors
     solution_t *sol = solution_new (self->vrp);
-
     for (size_t idx = 1; idx <= N; idx++) {
         if (predecessors[idx] == 0) { // idx is a first customer of route
             route_t *route = route_new (3); // at least 3 nodes in route
@@ -384,25 +377,6 @@ static solution_t *cvrp_clark_wright_parallel (cvrp_t *self, double lambda) {
             solution_append_route (sol, route);
         }
     }
-
-    // route_t *gtour = route_new (N);
-    // assert (gtour);
-
-    // for (size_t idx = 1; idx <= N; idx++) {
-    //     if (predecessors[idx] == 0) { // first customer on route
-    //         size_t successor = idx;
-    //         while (successor != 0) {
-    //             route_append_node (gtour, successor);
-    //             successor = successors[successor];
-    //         }
-    //     }
-    // }
-
-    free (predecessors);
-    free (successors);
-    free (route_demands);
-    free (savings);
-
     return sol;
 }
 
@@ -411,13 +385,31 @@ static solution_t *cvrp_clark_wright_parallel (cvrp_t *self, double lambda) {
 // is_random: false
 // max_expected: 7 (duplicates removed)
 static listx_t *cvrp_clark_wright (cvrp_t *self, size_t num_expected) {
-    assert (num_expected <= 7);
     print_info ("CW starting ... (expected: %zu)\n", num_expected);
+    if (num_expected > 7)
+        num_expected = 7;
+    size_t N = self->num_customers;
     listx_t *genomes = listx_new ();
     listu_t *hashes = listu_new (7);
 
+    size_t *predecessors = (size_t *) malloc (sizeof (size_t) * (N + 1));
+    assert (predecessors);
+    size_t *successors = (size_t *) malloc (sizeof (size_t) * (N + 1));
+    assert (successors);
+    double *route_demands = (double *) malloc (sizeof (double) * (N + 1));
+    assert (route_demands);
+    s_cwsaving_t *savings =
+        (s_cwsaving_t *) malloc (sizeof (s_cwsaving_t) * N * (N -1));
+    assert (savings);
+
     for (double lambda = 0.4; lambda <= 1.0; lambda += 0.1) {
-        solution_t *sol = cvrp_clark_wright_parallel (self, lambda);
+        solution_t *sol = cvrp_clark_wright_parallel (self,
+                                                      predecessors,
+                                                      successors,
+                                                      route_demands,
+                                                      savings,
+                                                      lambda);
+
         route_t *gtour = cvrp_giant_tour_from_solution (self, sol);
         size_t hash = giant_tour_hash (gtour);
         if (!listu_includes (hashes, hash)) {
@@ -425,7 +417,7 @@ static listx_t *cvrp_clark_wright (cvrp_t *self, size_t num_expected) {
             s_genome_t *genome = s_genome_new (gtour, sol);
             listx_append (genomes, genome);
             listu_append (hashes, hash);
-            // solution_print_internal (sol);
+            cvrp_print_solution (self, sol);
             // route_print (gtour);
         }
         else { // drop duplicate solution
@@ -434,8 +426,12 @@ static listx_t *cvrp_clark_wright (cvrp_t *self, size_t num_expected) {
         }
     }
 
-    listu_free (&hashes);
     print_info ("generated: %zu\n", listx_size (genomes));
+    listu_free (&hashes);
+    free (predecessors);
+    free (successors);
+    free (route_demands);
+    free (savings);
     return genomes;
 }
 
@@ -956,7 +952,11 @@ static double cvrp_post_optimize (cvrp_t *self, solution_t *sol) {
 
 static int cvrp_compare_genome_cost (s_genome_t *g1, s_genome_t *g2) {
     assert (g1->sol != NULL && g2->sol != NULL);
-    if (solution_total_distance (g1->sol) < solution_total_distance (g2->sol))
+    // assert (solution_total_distance (g1->sol) > 0);
+    // assert (solution_total_distance (g2->sol) > 0);
+
+    if (solution_total_distance (g1->sol) <
+        solution_total_distance (g2->sol))
         return -1;
     else if (solution_total_distance (g1->sol) >
              solution_total_distance (g2->sol))

@@ -163,7 +163,9 @@ solution_t *solution_dup (const solution_t *self) {
 
 
 void solution_print (const solution_t *self) {
-    assert (self);
+    if (self == NULL)
+        return;
+
     printf ("\nsolution: #routes: %zu, total distance: %.2f\n",
             listx_size (self->routes), self->total_distance);
     printf ("--------------------------------------------------\n");

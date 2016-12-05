@@ -36,7 +36,7 @@ cdef extern from "../src/classes.h":
 
     # Model
     vrp_t *vrp_new ()
-    void vrp_free (vrp_t **obj_p)
+    void vrp_free (vrp_t **self_p)
     void vrp_test (bool verbose)
     void vrp_set_coord_sys (vrp_t *self, coord2d_sys_t coord_sys)
     size_t vrp_add_node (vrp_t *self, const char *ext_id, node_type_t type)
@@ -77,72 +77,76 @@ cdef extern from "../src/classes.h":
 
 
     # Solution
-    solution_t *solution_new ()
-    void solution_free (solution_t **obj_p)
-    solution_t *solution_dup (const solution_t *self)
+    # solution_t *solution_new ()
+    void solution_free (solution_t **self_p)
+    # solution_t *solution_dup (const solution_t *self)
+    void solution_print (const solution_t *self)
 
 
-cdef class VRPModel:
-    cdef vrp_t *model
-    cdef solution_t *sol
+cdef class VRPSolver:
+
+    cdef vrp_t *_model
+    cdef solution_t *_sol
 
     def __init__(self):
-        self.model = vrp_new ()
-        if self.model == NULL:
+        self._model = vrp_new ()
+        if self._model == NULL:
             raise MemoryError("Insuffient memory.")
-        self.sol = NULL
+        self._sol = NULL
 
     def __dealloc__(self):
-        if self.model is not NULL:
-            vrp_free (&self.model)
-        if self.sol is not NULL:
-            solution_free (&self.sol)
+        if self._model is not NULL:
+            vrp_free (&self._model)
+        if self._sol is not NULL:
+            solution_free (&self._sol)
 
     cpdef void test (self):
         vrp_test (True)
 
     cpdef void set_coord_sys (self, coord2d_sys):
-        vrp_set_coord_sys (self.model, coord2d_sys)
+        vrp_set_coord_sys (self._model, coord2d_sys)
 
     cpdef size_t add_node (self, ext_id, node_type_t type):
-        return vrp_add_node (self.model, ext_id, type)
+        return vrp_add_node (self._model, ext_id, type)
 
     cpdef void set_node_coord (self, node_id, coord):
-        vrp_set_node_coord (self.model, node_id, coord)
+        vrp_set_node_coord (self._model, node_id, coord)
 
     cpdef void set_arc_distance (self, from_node_id, to_node_id, distance):
-        vrp_set_arc_distance (self.model, from_node_id, to_node_id, distance)
+        vrp_set_arc_distance (self._model, from_node_id, to_node_id, distance)
 
     cpdef void set_arc_duration (self, from_node_id, to_node_id, duration):
-        vrp_set_arc_duration (self.model, from_node_id, to_node_id, duration)
+        vrp_set_arc_duration (self._model, from_node_id, to_node_id, duration)
 
     cpdef void generate_beeline_distances (self):
-        vrp_generate_beeline_distances (self.model)
+        vrp_generate_beeline_distances (self._model)
 
     cpdef void generate_durations (self, speed):
-        vrp_generate_durations (self.model, speed)
+        vrp_generate_durations (self._model, speed)
 
 
     cpdef size_t add_vehicle (self, ext_id, max_capacity,
                               start_node_id, end_node_id):
-        return vrp_add_vehicle (self.model, ext_id, max_capacity,
+        return vrp_add_vehicle (self._model, ext_id, max_capacity,
                                 start_node_id, end_node_id)
 
     cpdef size_t add_request (self, ext_id, sender, receiver, quantity):
-        return vrp_add_request (self.model,
+        return vrp_add_request (self._model,
                                 ext_id, sender, receiver, quantity)
 
 
 
     cpdef void add_time_window (self, requset_id, node_role, earliest, latest):
-        vrp_add_time_window (self.model,
+        vrp_add_time_window (self._model,
                              requset_id, node_role, earliest, latest)
 
     cpdef void set_service_duration (self, request_id,
                                      sender_or_receiver_id, service_duration):
-        vrp_set_service_duration (self.model, request_id,
+        vrp_set_service_duration (self._model, request_id,
                                   sender_or_receiver_id, service_duration)
 
     cpdef void solve (self):
-        self.sol = vrp_solve (self.model)
+        self._sol = vrp_solve (self._model)
 
+    cpdef void print_solution (self):
+        solution_print (self._sol);

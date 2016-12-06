@@ -21,16 +21,10 @@ cdef extern from "../src/classes.h":
         double v2
     ctypedef _coord2d_t coord2d_t
 
-    ctypedef enum node_type_t:
-        NT_NONE = 0
-        NT_DEPOT = 1
-        NT_CUSTOMER = 2
-
     ctypedef enum node_role_t:
         NR_NONE = 0
         NR_SENDER = 1
         NR_RECEIVER = 2
-
 
     ctypedef struct solution_t
     ctypedef struct vrp_t
@@ -40,7 +34,7 @@ cdef extern from "../src/classes.h":
     void vrp_free (vrp_t **self_p)
     void vrp_test (bool verbose)
     void vrp_set_coord_sys (vrp_t *self, coord2d_sys_t coord_sys)
-    size_t vrp_add_node (vrp_t *self, const char *ext_id, node_type_t type)
+    size_t vrp_add_node (vrp_t *self, const char *ext_id)
     void vrp_set_node_coord (vrp_t *self, size_t node_id, coord2d_t coord)
     void vrp_set_arc_distance (vrp_t *self,
                                size_t from_node_id, size_t to_node_id,
@@ -64,7 +58,7 @@ cdef extern from "../src/classes.h":
                             double quantity)
 
     void vrp_add_time_window (vrp_t *self,
-                              size_t requset_id,
+                              size_t request_id,
                               node_role_t node_role,
                               size_t earliest,
                               size_t latest)
@@ -78,9 +72,7 @@ cdef extern from "../src/classes.h":
 
 
     # Solution
-    # solution_t *solution_new ()
     void solution_free (solution_t **self_p)
-    # solution_t *solution_dup (const solution_t *self)
     void solution_print (const solution_t *self)
 
 
@@ -122,15 +114,8 @@ cdef class VRPSolver:
         vrp_set_coord_sys (self._model, c_sys)
 
 
-    cpdef size_t add_node (self, ext_id, type):
-        if type == 'depot':
-            node_type = NT_DEPOT
-        elif type == 'customer':
-            node_type = NT_CUSTOMER
-        else:
-            print('invalid node type')
-            node_type = NT_NONE
-        return vrp_add_node (self._model, ext_id, node_type)
+    cpdef size_t add_node (self, ext_id):
+        return vrp_add_node (self._model, ext_id)
 
 
     cpdef void set_node_coord (self, node_id, coord):
@@ -156,10 +141,9 @@ cdef class VRPSolver:
         vrp_generate_durations (self._model, speed)
 
 
-    cpdef size_t add_vehicle (self, ext_id, max_capacity,
-                              start_node_id, end_node_id):
+    cpdef size_t add_vehicle (self, ext_id, max_capacity, start_node, end_node):
         return vrp_add_vehicle (self._model, ext_id, max_capacity,
-                                start_node_id, end_node_id)
+                                start_node, end_node)
 
 
     cpdef size_t add_request (self, ext_id, sender, receiver, quantity):
@@ -167,7 +151,7 @@ cdef class VRPSolver:
                                 ext_id, sender, receiver, quantity)
 
 
-    cpdef void add_time_window (self, requset_id, node_role, earliest, latest):
+    cpdef void add_time_window (self, request_id, node_role, earliest, latest):
         if node_role.lower() == 'sender':
             nr = NR_SENDER
         elif node_role.lower() == 'receiver':
@@ -176,7 +160,7 @@ cdef class VRPSolver:
             print("invalid node role")
             return
 
-        vrp_add_time_window (self._model, requset_id, nr, earliest, latest)
+        vrp_add_time_window (self._model, request_id, nr, earliest, latest)
 
 
     cpdef void set_service_duration (self, request_id,

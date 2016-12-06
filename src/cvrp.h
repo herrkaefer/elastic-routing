@@ -13,7 +13,7 @@ extern "C" {
 #endif
 
 // Constructor: create CVRP model from generic VRP model
-cvrp_t *cvrp_new_from (vrp_t *vrp);
+cvrp_t *cvrp_new_from_generic (vrp_t *vrp);
 
 // Destructor
 void cvrp_free (cvrp_t **self_p);

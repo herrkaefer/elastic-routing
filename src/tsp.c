@@ -206,7 +206,7 @@ static solution_t *tsp_solve_small_model (tsp_t *self) {
 
 // ----------------------------------------------------------------------------
 
-tsp_t *tsp_new_from (vrp_t *vrp) {
+tsp_t *tsp_new_from_generic (vrp_t *vrp) {
     assert (vrp);
 
     tsp_t *self = (tsp_t *) malloc (sizeof (tsp_t));
@@ -362,7 +362,7 @@ void tsp_test (bool verbose) {
     char *ext_id = malloc (16);
     for (size_t idx = 0; idx < num_nodes; idx++) {
         sprintf (ext_id, "node-%4zu", idx);
-        size_t nid = vrp_add_node (vrp, ext_id, NT_CUSTOMER);
+        size_t nid = vrp_add_node (vrp, ext_id);
         vrp_set_node_coord (vrp, nid, node_coords[idx]);
 
         sprintf (ext_id, "visit-%4zu", idx);
@@ -375,7 +375,7 @@ void tsp_test (bool verbose) {
     vrp_add_vehicle (vrp, ext_id, DOUBLE_MAX, start_node, end_node);
 
     // Create TSP model from generic model
-    tsp_t *tsp = tsp_new_from (vrp);
+    tsp_t *tsp = tsp_new_from_generic (vrp);
     assert (tsp);
 
     // Solve

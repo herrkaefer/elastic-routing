@@ -37,8 +37,8 @@ static void matrixd_enlarge (matrixd_t *self, size_t new_order_at_least) {
 
     size_t old_order = self->order;
 
-    // Double order until it is larger than new_order_at_least
-    size_t new_order = self->order * 2;
+    // Double matrix order until it is larger than new_order_at_least
+    size_t new_order = old_order;
     while (new_order < new_order_at_least)
         new_order = new_order * 2;
 
@@ -53,7 +53,7 @@ static void matrixd_enlarge (matrixd_t *self, size_t new_order_at_least) {
     for (size_t i = old_order * old_order; i < new_order * new_order; i++)
         self->data[i] = DOUBLE_NONE;
 
-    print_info ("matrixd enlarged to order %zu.\n", self->order);
+    // print_info ("matrixd enlarged to order %zu.\n", self->order);
 }
 
 
@@ -87,7 +87,7 @@ void matrixd_free (matrixd_t **self_p) {
         free (self);
         *self_p = NULL;
     }
-    print_info ("matrixd freed.\n");
+    // print_info ("matrixd freed.\n");
 }
 
 

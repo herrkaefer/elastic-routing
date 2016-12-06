@@ -38,7 +38,7 @@ static void matrixu_enlarge (matrixu_t *self, size_t new_order_at_least) {
     size_t old_order = self->order;
 
     // Double matrix order until it is larger than new_order_at_least
-    size_t new_order = self->order * 2;
+    size_t new_order = old_order;
     while (new_order < new_order_at_least)
         new_order = new_order * 2;
 
@@ -53,7 +53,7 @@ static void matrixu_enlarge (matrixu_t *self, size_t new_order_at_least) {
     for (size_t i = old_order * old_order; i < new_order * new_order; i++)
         self->data[i] = VTYPE_NONE;
 
-    print_info ("matrixu enlarged to order %zu.\n", self->order);
+    // print_info ("matrixu enlarged to order %zu.\n", self->order);
 }
 
 
@@ -87,7 +87,7 @@ void matrixu_free (matrixu_t **self_p) {
         free (self);
         *self_p = NULL;
     }
-    print_info ("matrixu freed.\n");
+    // print_info ("matrixu freed.\n");
 }
 
 

@@ -17,7 +17,7 @@ extern "C" {
 
 // Create VRPTW model from generic VRP model.
 // Note that the vrp model is already validated as an intrinsic VRPTW model.
-vrptw_t *vrptw_new_from (vrp_t *vrp);
+vrptw_t *vrptw_new_from_generic (vrp_t *vrp);
 
 // Destructor
 void vrptw_free (vrptw_t **self_p);

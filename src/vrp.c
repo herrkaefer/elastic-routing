@@ -21,7 +21,7 @@ typedef struct {
     size_t id; // internal id, for fast query
     char ext_id[UUID_STR_LEN]; // external id connecting to outside
 
-    node_type_t type; // NT_DEPOT or NT_CUSTOMER
+    // node_type_t type; // NT_DEPOT or NT_CUSTOMER
     coord2d_t coord; // 2D coordinates
 
     listu_t *pending_request_ids; // associated pending requests
@@ -41,7 +41,6 @@ static s_node_t *s_node_new (const char *ext_id) {
     self->id = ID_NONE;
 
     strcpy (self->ext_id, ext_id);
-    self->type = NT_NONE;
     coord2d_set_none (&self->coord);
 
     self->pending_request_ids = listu_new (1);
@@ -251,13 +250,18 @@ struct _vrp_t {
 
 
     // Auxiliaries
+
     rng_t *rng;
 
+    // Node IDs in roadgraph, sorted ascendingly
     listu_t *node_ids;
-    listu_t *depot_ids;
-    listu_t *customer_ids;
+    // Vehicle IDs, sorted ascendingly
     listu_t *vehicle_ids;
-
+    // IDs of nodes which play a role of sender in request, sorted ascendingly
+    listu_t *sender_ids;
+    // IDs of nodes which play a role of receiver in request, sorted ascendingly
+    listu_t *receiver_ids;
+    // IDs of requests which state is pending, sorted ascendingly
     listu_t *pending_request_ids;
 };
 
@@ -306,10 +310,15 @@ vrp_t *vrp_new (void) {
     // Auxiliaries
     self->rng = rng_new ();
     self->node_ids = listu_new (0);
-    self->depot_ids = listu_new (0);
-    self->customer_ids = listu_new (0);
+    listu_sort (self->node_ids, true);
     self->vehicle_ids = listu_new (0);
+    listu_sort (self->vehicle_ids, true);
+    self->sender_ids = listu_new (0);
+    listu_sort (self->sender_ids, true);
+    self->receiver_ids = listu_new (0);
+    listu_sort (self->receiver_ids, true);
     self->pending_request_ids = listu_new (0);
+    listu_sort (self->pending_request_ids, true);
 
     print_info ("vrp created.\n");
     return self;
@@ -330,9 +339,9 @@ void vrp_free (vrp_t **self_p) {
         // auxiliaries
         rng_free (&self->rng);
         listu_free (&self->node_ids);
-        listu_free (&self->depot_ids);
-        listu_free (&self->customer_ids);
         listu_free (&self->vehicle_ids);
+        listu_free (&self->sender_ids);
+        listu_free (&self->receiver_ids);
         listu_free (&self->pending_request_ids);
 
         free (self);
@@ -575,12 +584,7 @@ vrp_t *vrp_new_from_file (const char *filename) {
         // Add nodes, arc distances, and requests
         for (size_t cnt = 0; cnt < num_nodes; cnt++) {
             sprintf (ext_id, "node-%04zu", cnt + 1);
-            if (demands != NULL) // CVRP
-                node_id = vrp_add_node (self, ext_id,
-                                        (cnt == 0) ? NT_DEPOT : NT_CUSTOMER);
-            else // TSP
-                node_id = vrp_add_node (self, ext_id, NT_CUSTOMER);
-
+            node_id = vrp_add_node (self, ext_id);
             if (coords != NULL)
                 vrp_set_node_coord (self, node_id, coords[cnt]);
 
@@ -649,7 +653,7 @@ void vrp_set_coord_sys (vrp_t *self, coord2d_sys_t coord_sys) {
 }
 
 
-size_t vrp_add_node (vrp_t *self, const char *ext_id, node_type_t type) {
+size_t vrp_add_node (vrp_t *self, const char *ext_id) {
     assert (self);
 
     s_node_t *node = s_node_new (ext_id);
@@ -662,13 +666,8 @@ size_t vrp_add_node (vrp_t *self, const char *ext_id, node_type_t type) {
     }
 
     node->id = id;
-    node->type = type;
-    listu_append (self->node_ids, id);
-    if (type == NT_DEPOT)
-        listu_append (self->depot_ids, id);
-    else if (type == NT_CUSTOMER)
-        listu_append (self->customer_ids, id);
-
+    assert (!listu_includes (self->node_ids, id));
+    listu_insert_sorted (self->node_ids, id);
     return id;
 }
 
@@ -777,14 +776,6 @@ const char *vrp_node_ext_id (vrp_t *self, size_t node_id) {
 }
 
 
-node_type_t vrp_node_type (vrp_t *self, size_t node_id) {
-    assert (self);
-    s_node_t *node = vrp_node (self, node_id);
-    assert (node);
-    return node->type;
-}
-
-
 const coord2d_t *vrp_node_coord (vrp_t *self, size_t node_id) {
     assert (self);
     s_node_t *node = vrp_node (self, node_id);
@@ -806,33 +797,9 @@ size_t vrp_num_nodes (vrp_t *self) {
 }
 
 
-size_t vrp_num_depots (vrp_t *self) {
-    assert (self);
-    return listu_size (self->depot_ids);
-}
-
-
-size_t vrp_num_customers (vrp_t *self) {
-    assert (self);
-    return listu_size (self->customer_ids);
-}
-
-
 const listu_t *vrp_nodes (vrp_t *self) {
     assert (self);
     return self->node_ids;
-}
-
-
-const listu_t *vrp_depots (vrp_t *self) {
-    assert (self);
-    return self->depot_ids;
-}
-
-
-const listu_t *vrp_customers (vrp_t *self) {
-    assert (self);
-    return self->customer_ids;
 }
 
 
@@ -898,7 +865,8 @@ size_t vrp_add_vehicle (vrp_t *self,
     vehicle->start_node_id = start_node_id;
     vehicle->end_node_id = end_node_id;
 
-    listu_append (self->vehicle_ids, id);
+    assert (!listu_includes (self->vehicle_ids, id));
+    listu_insert_sorted (self->vehicle_ids, id);
     return id;
 }
 
@@ -1071,12 +1039,19 @@ size_t vrp_add_request (vrp_t *self,
     request->quantity = quantity;
 
     // Associate nodes with request
-    if (sender != ID_NONE)
+    if (sender != ID_NONE) {
         vrp_associate_node_with_new_request (self, sender, id);
-    if (receiver != ID_NONE)
+        if (!listu_includes (self->sender_ids, sender))
+            listu_insert_sorted (self->sender_ids, sender);
+    }
+    if (receiver != ID_NONE) {
         vrp_associate_node_with_new_request (self, receiver, id);
+        if (!listu_includes (self->receiver_ids, receiver))
+            listu_insert_sorted (self->receiver_ids, receiver);
+    }
 
-    listu_append (self->pending_request_ids, id);
+    assert (!listu_includes (self->pending_request_ids, id));
+    listu_insert_sorted (self->pending_request_ids, id);
     return id;
 }
 
@@ -1144,6 +1119,30 @@ const listu_t *vrp_pending_request_ids (vrp_t *self) {
 }
 
 
+size_t vrp_num_senders (vrp_t *self) {
+    assert (self);
+    return listu_size (self->sender_ids);
+}
+
+
+size_t vrp_num_receivers (vrp_t *self) {
+    assert (self);
+    return listu_size (self->receiver_ids);
+}
+
+
+const listu_t *vrp_senders (vrp_t *self) {
+    assert (self);
+    return self->sender_ids;
+}
+
+
+const listu_t *vrp_receivers (vrp_t *self) {
+    assert (self);
+    return self->receiver_ids;
+}
+
+
 size_t vrp_request_sender (vrp_t *self, size_t request_id) {
     assert (self);
     s_request_t *request = vrp_request (self, request_id);
@@ -1192,6 +1191,7 @@ size_t vrp_earliest_of_time_window (vrp_t *self,
     s_request_t *request = vrp_request (self, request_id);
     assert (request);
     assert (node_role == NR_SENDER || node_role == NR_RECEIVER);
+    assert (tw_idx < vrp_num_time_windows (self, request_id, node_role));
 
     listu_t *tws = (node_role == NR_SENDER) ?
                    request->pickup_time_windows :
@@ -1209,12 +1209,69 @@ size_t vrp_latest_of_time_window (vrp_t *self,
     s_request_t *request = vrp_request (self, request_id);
     assert (request);
     assert (node_role == NR_SENDER || node_role == NR_RECEIVER);
+    assert (tw_idx < vrp_num_time_windows (self, request_id, node_role));
 
     listu_t *tws = (node_role == NR_SENDER) ?
                    request->pickup_time_windows :
                    request->delivery_time_windows;
     assert (tws);
     return listu_get (tws, tw_idx * 2 + 1);
+}
+
+
+size_t vrp_earliest_service_time (vrp_t *self,
+                                  size_t request_id,
+                                  node_role_t node_role) {
+    assert (self);
+    s_request_t *request = vrp_request (self, request_id);
+    assert (request);
+    assert (node_role == NR_SENDER || node_role == NR_RECEIVER);
+
+    listu_t *tws = (node_role == NR_SENDER) ?
+                   request->pickup_time_windows :
+                   request->delivery_time_windows;
+    assert (tws);
+
+    size_t num_tws = vrp_num_time_windows (self, request_id, node_role);
+    if (num_tws == 0)
+        return 0;
+
+    size_t earliest_st = SIZE_MAX;
+    for (size_t idx_tw = 0; idx_tw < num_tws; idx_tw++) {
+        size_t earliest_of_tw =
+            vrp_earliest_of_time_window (self, request_id, node_role, idx_tw);
+        if (earliest_of_tw < earliest_st)
+            earliest_st = earliest_of_tw;
+    }
+    return earliest_st;
+}
+
+
+size_t vrp_latest_service_time (vrp_t *self,
+                                size_t request_id,
+                                node_role_t node_role) {
+    assert (self);
+    s_request_t *request = vrp_request (self, request_id);
+    assert (request);
+    assert (node_role == NR_SENDER || node_role == NR_RECEIVER);
+
+    listu_t *tws = (node_role == NR_SENDER) ?
+                   request->pickup_time_windows :
+                   request->delivery_time_windows;
+    assert (tws);
+
+    size_t num_tws = vrp_num_time_windows (self, request_id, node_role);
+    if (num_tws == 0)
+        return SIZE_MAX;
+
+    size_t latest_st = 0;
+    for (size_t idx_tw = 0; idx_tw < num_tws; idx_tw++) {
+        size_t latest_of_tw =
+            vrp_latest_of_time_window (self, request_id, node_role, idx_tw);
+        if (latest_of_tw > latest_st)
+            latest_st = latest_of_tw;
+    }
+    return latest_st;
 }
 
 
@@ -1544,21 +1601,21 @@ solution_t *vrp_solve (vrp_t *self) {
     solution_t *sol = NULL;
     if (vrp_is_tsp (self, &attr)) {
         print_info ("Submodel detected: TSP\n");
-        tsp_t *model = tsp_new_from (self);
+        tsp_t *model = tsp_new_from_generic (self);
         assert (model);
         sol = tsp_solve (model);
         tsp_free (&model);
     }
     else if (vrp_is_cvrp (self, &attr)) {
         print_info ("Submodel detected: CVRP\n");
-        cvrp_t *model = cvrp_new_from (self);
+        cvrp_t *model = cvrp_new_from_generic (self);
         assert (model);
         sol = cvrp_solve (model);
         cvrp_free (&model);
     }
     else if (vrp_is_vrptw (self, &attr)) {
         print_info ("Submodel detected: VRPTW\n");
-        vrptw_t *model = vrptw_new_from (self);
+        vrptw_t *model = vrptw_new_from_generic (self);
         assert (model);
         sol = vrptw_solve (model);
         vrptw_free (&model);

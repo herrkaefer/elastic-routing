@@ -1027,7 +1027,7 @@ static solution_t *cvrp_solve_small_model (cvrp_t *self) {
 
 // ----------------------------------------------------------------------------
 
-cvrp_t *cvrp_new_from (vrp_t *vrp) {
+cvrp_t *cvrp_new_from_generic (vrp_t *vrp) {
     assert (vrp);
 
     cvrp_t *self = (cvrp_t *) malloc (sizeof (cvrp_t));
@@ -1038,16 +1038,14 @@ cvrp_t *cvrp_new_from (vrp_t *vrp) {
     self->num_vehicles = vrp_num_vehicles (vrp);
 
     size_t one_vehicle = listu_get (vrp_vehicles (vrp), 0);
-    self->capacity = vrp_vehicle_max_capacity (vrp, one_vehicle);
+    self->capacity = vrp_vehicle_capacity (vrp, one_vehicle);
 
     const listu_t *requests = vrp_pending_request_ids (vrp);
     size_t num_requests = listu_size (requests);
     assert (num_requests > 0);
 
-    // Note that number of all customers on roadgraph is used to allocate
-    // self->nodes, which may be larger than need.
     self->nodes =
-        (s_node_t *) malloc (sizeof (s_node_t) * (vrp_num_customers (vrp) + 1));
+        (s_node_t *) malloc (sizeof (s_node_t) * (vrp_num_receivers (vrp) + 1));
     assert (self->nodes);
     self->nodes[0].id = ID_NONE;
     self->num_customers = num_requests;

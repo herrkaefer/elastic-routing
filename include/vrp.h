@@ -37,7 +37,7 @@ void vrp_set_coord_sys (vrp_t *self, coord2d_sys_t coord_sys);
 
 // Add a new node.
 // Return node ID (ID_NONE if node already exists).
-size_t vrp_add_node (vrp_t *self, const char *ext_id, node_type_t type);
+size_t vrp_add_node (vrp_t *self, const char *ext_id);
 
 // Set node coordinate
 void vrp_set_node_coord (vrp_t *self, size_t node_id, coord2d_t coord);
@@ -72,9 +72,6 @@ bool vrp_node_exists (vrp_t *self, size_t node_id);
 // Get external ID of node
 const char *vrp_node_ext_id (vrp_t *self, size_t node_id);
 
-// Get node type
-node_type_t vrp_node_type (vrp_t *self, size_t node_id);
-
 // Get node coordinate
 const coord2d_t *vrp_node_coord (vrp_t *self, size_t node_id);
 
@@ -84,20 +81,8 @@ const listu_t *vrp_node_pending_request_ids (vrp_t *self, size_t node_id);
 // Get number of nodes in roadgraph
 size_t vrp_num_nodes (vrp_t *self);
 
-// Get number of depots in roadgraph
-size_t vrp_num_depots (vrp_t *self);
-
-// Get number of customers in roadgraph
-size_t vrp_num_customers (vrp_t *self);
-
 // Get ID list of nodes in roadgraph
 const listu_t *vrp_nodes (vrp_t *self);
-
-// Get ID list of depots in roadgraph
-const listu_t *vrp_depots (vrp_t *self);
-
-// Get ID list of customers in roadgraph
-const listu_t *vrp_customers (vrp_t *self);
 
 // Get distance between two nodes.
 // The caller must ensure that arc distances are already properly set.
@@ -206,10 +191,22 @@ size_t vrp_num_requests (vrp_t* self);
 // Get pending requests' IDs
 const listu_t *vrp_pending_request_ids (vrp_t *self);
 
-// Get pickup node of request
+// Get number of senders
+size_t vrp_num_senders (vrp_t *self);
+
+// Get number of receivers
+size_t vrp_num_receivers (vrp_t *self);
+
+// Get ID list of senders
+const listu_t *vrp_senders (vrp_t *self);
+
+// Get ID list of receivers
+const listu_t *vrp_receivers (vrp_t *self);
+
+// Get pickup node ID of request
 size_t vrp_request_sender (vrp_t *self, size_t request_id);
 
-// Get delivery node of request
+// Get delivery node ID of request
 size_t vrp_request_receiver (vrp_t *self, size_t request_id);
 
 // Get quantity of request
@@ -232,7 +229,19 @@ size_t vrp_latest_of_time_window (vrp_t *self,
                                   node_role_t node_role,
                                   size_t tw_idx);
 
-// Get service duration of sender or receiver
+// Get earliest service time of node (sender or receiver) of request.
+// i.e. earliest time of all time windows.
+size_t vrp_earliest_service_time (vrp_t *self,
+                                  size_t request_id,
+                                  node_role_t node_role);
+
+// Get latest service time of node (sender or receiver) of request
+size_t vrp_latest_service_time (vrp_t *self,
+                                size_t request_id,
+                                node_role_t node_role);
+
+// Get service duration of sender or receiver.
+// i.e. latest time of all time windows.
 size_t vrp_service_duration (vrp_t *self,
                              size_t request_id,
                              node_role_t node_role);

@@ -61,12 +61,6 @@ typedef listu_t route_t;
 typedef struct _solution_t solution_t;
 
 typedef enum {
-    NT_NONE,
-    NT_DEPOT,
-    NT_CUSTOMER
-} node_type_t;
-
-typedef enum {
     NR_NONE,
     NR_SENDER,
     NR_RECEIVER

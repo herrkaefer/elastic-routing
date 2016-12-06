@@ -24,7 +24,7 @@ extern "C" {
 // Create TSP model from generic VRP model.
 // Note that the VRP model is already validated as an intrinsic TSP model, so
 // here we do not validate the attributes again.
-tsp_t *tsp_new_from (vrp_t *vrp);
+tsp_t *tsp_new_from_generic (vrp_t *vrp);
 
 // Destroy tsp object
 void tsp_free (tsp_t **self_p);

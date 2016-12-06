@@ -25,7 +25,8 @@ _src = [
     "tsp.c",
     "tspi.c",
     "util.c",
-    "vrp.c"
+    "vrp.c",
+    "vrptw.c"
 ]
 _srcdir = "src/"
 src = [_srcdir + s for s in _src]

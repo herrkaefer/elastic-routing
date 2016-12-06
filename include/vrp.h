@@ -193,7 +193,7 @@ void vrp_add_time_window (vrp_t *self,
 // Default: 0.
 void vrp_set_service_duration (vrp_t *self,
                                size_t request_id,
-                               size_t sender_or_receiver_id,
+                               node_role_t node_role,
                                size_t service_duration);
 
 // Query a request by external ID.

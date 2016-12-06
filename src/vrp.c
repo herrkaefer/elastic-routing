@@ -894,6 +894,7 @@ size_t vrp_add_vehicle (vrp_t *self,
 
     vehicle->id = id;
     vehicle->max_capacity = max_capacity;
+    vehicle->capacity = max_capacity;
     vehicle->start_node_id = start_node_id;
     vehicle->end_node_id = end_node_id;
 
@@ -1112,13 +1113,13 @@ void vrp_add_time_window (vrp_t *self,
 
 void vrp_set_service_duration (vrp_t *self,
                                size_t request_id,
-                               size_t node_id,
+                               node_role_t node_role,
                                size_t service_duration) {
     assert (self);
     s_request_t *request = vrp_request (self, request_id);
     assert (request);
-    assert (node_id == request->sender_id || node_id == request->receiver_id);
-    if (node_id == request->sender_id)
+    assert (node_role == NR_SENDER || node_role == NR_RECEIVER);
+    if (node_role == NR_SENDER)
         request->pickup_duration = service_duration;
     else
         request->delivery_duration = service_duration;
@@ -1308,9 +1309,12 @@ static bool vrp_validate_fleet (vrp_t *self) {
 
 // @todo not good, to rewrite or drop !!!
 static bool vrp_validate_requests (vrp_t *self) {
+    size_t num_requests = listu_size (self->pending_request_ids);
+    if (num_requests == 0)
+        return false;
 
     // Check pending requests
-    for (size_t idx = 0; idx < listu_size (self->pending_request_ids); idx++) {
+    for (size_t idx = 0; idx < num_requests; idx++) {
 
         size_t request_id = listu_get (self->pending_request_ids, idx);
         s_request_t *request = vrp_request (self, request_id);
@@ -1319,6 +1323,11 @@ static bool vrp_validate_requests (vrp_t *self) {
             vrp_num_time_windows (self, request_id, NR_SENDER);
         size_t num_dtw =
             vrp_num_time_windows (self, request_id, NR_RECEIVER);
+
+        if ((num_ptw > 0 || num_dtw > 0) && self->durations == NULL) {
+            print_error ("Arc duration of roadgraph is not set.\n");
+            return false;
+        }
 
         if (num_ptw > 0 && num_dtw > 0) {
             size_t earliest_pickup_time =
@@ -1354,175 +1363,209 @@ static bool vrp_validate (vrp_t *self) {
 }
 
 
-// static bool vrp_fleet_is_homogeneous (vrp_t *self);
+typedef struct {
+    bool arc_distances_defined;
+    bool arc_durations_defined;
+
+    bool single_sender;
+    bool single_receiver;
+    bool requests_are_all_pickup_and_delivery;
+    bool requests_are_all_visiting_without_goods;
+    bool time_window_defined;
+
+    bool single_vehicle;
+    bool vehicles_start_at_same_node;
+    bool vehicles_end_at_same_node;
+    bool vehicles_have_same_capacity;
+    bool vehicles_start_at_single_sender; // relevant if single_sender is true
+    bool vehicles_end_at_single_sender; // relevant if single_sender is true
+    bool vehicles_start_at_single_receiver; // relevant if single_receiver is true
+    bool vehicles_end_at_single_receiver; // relevant if single_receiver is true
+} s_attributes_t;
 
 
-// static bool vrp_is_cvrp (vrp_t *self);
+static s_attributes_t vrp_collect_attributes (vrp_t *self) {
+    s_attributes_t attr;
 
+    // Roadgraph
 
-static bool vrp_is_tsp (vrp_t *self) {
-    assert (self);
+    attr.arc_distances_defined = (self->distances != NULL);
+    attr.arc_durations_defined = (self->durations != NULL);
 
-    if (self->distances == NULL)
-        return false;
+    // Requests
 
-    // One vehicle
-    if (vrp_num_vehicles (self) != 1)
-        return false;
+    attr.single_sender = true;
+    attr.single_receiver = true;
+    attr.requests_are_all_pickup_and_delivery = true;
+    attr.requests_are_all_visiting_without_goods = true;
+    attr.time_window_defined = false;
 
-    // Check all requests
-    // for (s_request_t *request = arrayset_first (self->requests);
-    //      request != NULL;
-    //      request = arrayset_next (self->requests)) {
-
-    for (size_t idx = 0; idx < listu_size (self->pending_request_ids); idx++) {
-        size_t request_id = listu_get (self->pending_request_ids, idx);
-        s_request_t *request = vrp_request (self, request_id);
-
-        // Check request type: visiting with zero quantity
-        if (request->type != RT_VISIT || !double_equal (request->quantity, 0))
-            return false;
-        assert (!(request->sender_id == ID_NONE &&
-                  request->receiver_id == ID_NONE));
-
-        // No time window constraints
-        if (request->pickup_time_windows != NULL &&
-            listu_size (request->pickup_time_windows) > 0)
-            return false;
-        if (request->delivery_time_windows != NULL &&
-            listu_size (request->delivery_time_windows) > 0)
-            return false;
-    }
-
-    return true;
-}
-
-
-static bool vrp_is_cvrp (vrp_t *self) {
-    size_t depot_id = ID_NONE;
-
-    if (self->distances == NULL)
-        return false;
-
-    // Check requests
     size_t num_requests = listu_size (self->pending_request_ids);
-    if (num_requests == 0)
-        return false;
+    assert (num_requests > 0);
+
+    size_t single_sender_id = ID_NONE;
+    size_t single_receiver_id = ID_NONE;
 
     for (size_t idx = 0; idx < num_requests; idx++) {
         size_t request_id = listu_get (self->pending_request_ids, idx);
         s_request_t *request = vrp_request (self, request_id);
 
-        // Check request type: PD with quantity > 0
-        if (request->type != RT_PD || double_equal (request->quantity, 0))
-            return false;
+        // request type
+        if (request->type != RT_PD)
+            attr.requests_are_all_pickup_and_delivery = false;
+        if (request->type != RT_VISIT || request->quantity > 0)
+            attr.requests_are_all_visiting_without_goods = false;
 
-        // Check pickup node: depot
-        if (depot_id == ID_NONE)
-            depot_id = request->sender_id;
-        if (depot_id != request->sender_id)
-            return false;
+        // sender and receiver node
+        if (single_sender_id == ID_NONE)
+            single_sender_id = request->sender_id;
+        if (single_sender_id != request->sender_id)
+            attr.single_sender = false;
 
-        // Check delivery node: not depot
-        if (depot_id == request->receiver_id)
-            return false;
+        if (single_receiver_id == ID_NONE)
+            single_receiver_id = request->receiver_id;
+        if (single_receiver_id != request->receiver_id)
+            attr.single_receiver = false;
 
-        // Check time windows: not defined
+        // time windows
         if (vrp_num_time_windows (self, request_id, NR_SENDER) > 0 ||
             vrp_num_time_windows (self, request_id, NR_RECEIVER) > 0)
-            return false;
+            attr.time_window_defined = true;
     }
 
-    // Check vehicles
-    size_t num_vehicles = listu_size (self->vehicle_ids);
-    if (num_vehicles == 0)
-        return false;
+    // Vehicles
 
-    double max_capacity = DOUBLE_NONE;
+    size_t num_vehicles = listu_size (self->vehicle_ids);
+    assert (num_vehicles > 0);
+    assert (num_vehicles == vrp_num_vehicles (self));
+    attr.single_vehicle = (num_vehicles == 1);
+    attr.vehicles_have_same_capacity = true;
+    attr.vehicles_start_at_same_node = true;
+    attr.vehicles_end_at_same_node = true;
+    attr.vehicles_start_at_single_sender = false;
+    attr.vehicles_end_at_single_sender = false;
+    attr.vehicles_start_at_single_receiver = false;
+    attr.vehicles_end_at_single_receiver = false;
+
+    double capacity = DOUBLE_NONE;
+    size_t start_node_id = ID_NONE;
+    size_t end_node_id = ID_NONE;
 
     for (size_t idx = 0; idx < num_vehicles; idx++) {
         size_t vehicle_id = listu_get (self->vehicle_ids, idx);
         s_vehicle_t *vehicle = vrp_vehicle (self, vehicle_id);
 
-        // Check max capacity: equal
-        if (double_is_none (max_capacity))
-            max_capacity = vehicle->max_capacity;
-        if (!double_equal (max_capacity, vehicle->max_capacity))
-            return false;
+        // capacity
+        if (double_is_none (capacity))
+            capacity = vehicle->capacity;
+        if (!double_equal (capacity, vehicle->capacity))
+            attr.vehicles_have_same_capacity = false;
 
-        // Check start and end node: depot or undefined
-        if (vehicle->start_node_id != depot_id &&
-            vehicle->start_node_id != ID_NONE)
-            return false;
-
-        if (vehicle->end_node_id != depot_id &&
-            vehicle->end_node_id != ID_NONE)
-            return false;
+        // start and end node
+        if (start_node_id == ID_NONE && vehicle->start_node_id != ID_NONE)
+            start_node_id = vehicle->start_node_id;
+        if (start_node_id != ID_NONE && vehicle->start_node_id != start_node_id)
+            attr.vehicles_start_at_same_node = false;
+        if (end_node_id == ID_NONE && vehicle->end_node_id != ID_NONE)
+            end_node_id = vehicle->end_node_id;
+        if (end_node_id != ID_NONE && vehicle->end_node_id != end_node_id)
+            attr.vehicles_end_at_same_node = false;
     }
 
-    return true;
+    // for single linehaul depot case
+    if (attr.single_sender) {
+        if (attr.vehicles_start_at_same_node &&
+            (start_node_id == ID_NONE || start_node_id == single_sender_id))
+            attr.vehicles_start_at_single_sender = true;
+        if (attr.vehicles_end_at_same_node && end_node_id == single_sender_id)
+            attr.vehicles_end_at_single_sender = true;
+    }
+
+    // for single backhaul depot case
+    if (attr.single_receiver) {
+        if (attr.vehicles_start_at_same_node &&
+            start_node_id == single_receiver_id)
+            attr.vehicles_start_at_single_receiver = true;
+        if (attr.vehicles_end_at_same_node &&
+            (end_node_id == ID_NONE || end_node_id == single_receiver_id))
+            attr.vehicles_end_at_single_receiver = true;
+    }
+
+    return attr;
 }
 
 
-// @todo not finished
-static bool vrp_is_vrptw (vrp_t *self) {
-    if (vrp_num_vehicles (self) == 1)
-        print_warning ("One vehicle, encessentially TSP\n");
-
-    for (size_t idx = 0; idx < listu_size (self->pending_request_ids); idx++) {
-        size_t request_id = listu_get (self->pending_request_ids, idx);
-        s_request_t *request = vrp_request (self, request_id);
-
-        // Check request type: PD
-        if (request->type != RT_PD || !double_equal (request->quantity, 0))
-            return false;
-        assert (!(request->sender_id == ID_NONE &&
-                  request->receiver_id == ID_NONE));
-
-        // No time window constraints
-        if (request->pickup_time_windows != NULL &&
-            listu_size (request->pickup_time_windows) > 0)
-            return false;
-        if (request->delivery_time_windows != NULL &&
-            listu_size (request->delivery_time_windows) > 0)
-            return false;
-    }
-
-    return true;
+static bool vrp_is_tsp (const vrp_t *self, const s_attributes_t *attr) {
+    if (attr->arc_distances_defined &&
+        attr->single_vehicle &&
+        attr->requests_are_all_visiting_without_goods &&
+        !attr->time_window_defined)
+        return true;
+    return false;
 }
 
+
+static bool vrp_is_cvrp (const vrp_t *self, const s_attributes_t *attr) {
+    if (attr->arc_distances_defined &&
+        attr->requests_are_all_pickup_and_delivery &&
+        !attr->time_window_defined &&
+        attr->single_sender &&
+        attr->vehicles_start_at_single_sender &&
+        attr->vehicles_end_at_single_sender)
+        return true;
+    return false;
+}
+
+
+static bool vrp_is_vrptw (const vrp_t *self, const s_attributes_t *attr) {
+    if (attr->arc_distances_defined &&
+        attr->arc_durations_defined &&
+        attr->requests_are_all_pickup_and_delivery &&
+        attr->time_window_defined &&
+        attr->single_sender &&
+        attr->vehicles_start_at_single_sender &&
+        attr->vehicles_end_at_single_sender)
+        return true;
+    return false;
+}
 
 
 solution_t *vrp_solve (vrp_t *self) {
     assert (self);
 
-    if (!vrp_validate (self))
+    if (!vrp_validate (self)) {
+        print_error ("Model validation failed.\n");
         return NULL;
+    }
 
-    // @todo Shink the roadgraph according to requests?
+    s_attributes_t attr = vrp_collect_attributes (self);
 
-
-    // Submodel inference
-    // @todo improve this process: submodel inference by attributes
-
+    // Dispatch submodel based on attributes
     solution_t *sol = NULL;
-
-    if (vrp_is_tsp (self)) {
+    if (vrp_is_tsp (self, &attr)) {
         print_info ("Submodel detected: TSP\n");
         tsp_t *model = tsp_new_from (self);
         assert (model);
         sol = tsp_solve (model);
         tsp_free (&model);
     }
-    else if (vrp_is_cvrp (self)) {
+    else if (vrp_is_cvrp (self, &attr)) {
         print_info ("Submodel detected: CVRP\n");
         cvrp_t *model = cvrp_new_from (self);
         assert (model);
         sol = cvrp_solve (model);
         cvrp_free (&model);
     }
+    else if (vrp_is_vrptw (self, &attr)) {
+        print_info ("Submodel detected: VRPTW\n");
+        vrptw_t *model = vrptw_new_from (self);
+        assert (model);
+        sol = vrptw_solve (model);
+        vrptw_free (&model);
+    }
     else
         print_error ("Unsupported model. Not solved.\n");
+
     return sol;
 }
 

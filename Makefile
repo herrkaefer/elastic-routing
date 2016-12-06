@@ -64,7 +64,7 @@ _MODULES = numeric_ext \
 	       tspi \
 	       tsp \
 	       cvrp \
-	       # vrptw
+	       vrptw
 
 
 
@@ -109,7 +109,7 @@ demo: clib
 pylib:
 	python py/setup.py build_ext --inplace
 	mv py*.so py/
-	python py/test.py
+	python py/test_benchmark.py
 
 clean:
 	rm -rf $(TARGETDIR)/* *.dll *.a py/*so $(ODIR)/* py/*.c

@@ -4,6 +4,52 @@
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
     =========================================================================
 */
+/*
+Glossary:
+
+- arrival time (at)
+- waiting time (wt)
+- service time (st)
+- service duration (sd)
+- departure time (dt)
+- earlisest of time window (etw_i)
+- latest of time window (ltw_i)
+- earliest service time (est): min {etw_i}
+- latest service time (lst): max {ltw_i}
+
+Relations (single TW):
+
+feasiblity condition: at <= lst
+
+at_k = dt_(k-1) + arc_duration (k-1, k)
+
+wt = max (etw_i - at, 0), where i = argmin {at <= ltw_i}
+
+st = at + wt = max (at, etw_i)
+
+dt = st + sd = at + wt + sd
+
+Illustration of relations (single TW):
+
+case 1: at < etw
+
+ at   st(=etw)   dt
+--|-----|---------|----
+     wt      sd
+
+case 2: etw <= at <= ltw
+
+  etw  at(=st)     dt
+---|-----|---------|----
+       wt=0   sd
+
+
+Equivalent TW of route (single TW):
+
+etw_k' = etw_k
+ltw_k' = min {ltw_k, ltw_(k+1) - t_(k, k+1) - sd_k}
+
+*/
 
 #include "classes.h"
 
@@ -161,6 +207,171 @@ static void vrptw_print_solution (vrptw_t *self, solution_t *sol) {
         printf ("\n");
     }
     printf ("\n");
+}
+
+
+// ----------------------------------------------------------------------------
+// Heuristics: CW adapted for VRPTW
+
+typedef struct {
+    size_t c1;
+    size_t c2;
+    double saving;
+} s_cwsaving_t;
+
+
+// Compare savings used by CW: descending order
+static int s_cwsaving_compare (const void *a, const void *b) {
+    if (((s_cwsaving_t *) a)->saving > ((s_cwsaving_t *) a)->saving)
+        return -1;
+    if (((s_cwsaving_t *) a)->saving < ((s_cwsaving_t *) a)->saving)
+        return 1;
+    return 0;
+}
+
+
+// Return solution in which nodes are with generic IDs
+static solution_t *vrptw_clark_wright_parallel (vrptw_t *self,
+                                                size_t *predecessors,
+                                                size_t *successors,
+                                                double *route_demands,
+                                                s_cwsaving_t *savings,
+                                                double lambda) {
+    size_t N = self->num_customers;
+
+    // Initialize auxilary variables
+    size_t cnt = 0;
+    for (size_t i = 1; i <= N; i++) {
+        predecessors[i] = 0;
+        successors[i] = 0;
+        route_demands[i] = self->nodes[i].demand;
+        for (size_t j = 1; j <= N; j++) {
+            if (j == i)
+                continue;
+            savings[cnt].c1 = i;
+            savings[cnt].c2 = j;
+            savings[cnt].saving =
+                vrptw_arc_distance_by_idx (self, i, 0) +
+                vrptw_arc_distance_by_idx (self, 0, j) -
+                vrptw_arc_distance_by_idx (self, i, j) * lambda;
+            cnt++;
+        }
+    }
+
+    // Sort savings in descending order
+    size_t num_savings = N * (N -1);
+    assert (cnt == num_savings);
+    qsort (savings, num_savings, sizeof (s_cwsaving_t), s_cwsaving_compare);
+
+    // In saving descending order, try to merge two routes at each iteration
+    for (size_t idx_saving = 0; idx_saving < num_savings; idx_saving++) {
+        size_t c1 = savings[idx_saving].c1;
+        size_t c2 = savings[idx_saving].c2;
+
+        // Check if c1 is the last customer of one route and
+        // c2 is the first customer of another route.
+        if (successors[c1] != 0 || predecessors[c2] != 0)
+            continue;
+
+        // Check if c1 and c2 are already on the same route
+        size_t first_visit = c1;
+        while (predecessors[first_visit] != 0)
+            first_visit = predecessors[first_visit];
+        if (first_visit == c2)
+            continue;
+
+        // Check compatibility of capacity
+        double new_demand = route_demands[c1] + route_demands[c2];
+        if (new_demand > self->capacity)
+            continue;
+
+        // Check compatibility of time windows
+         @todo
+
+
+        // Merge two routes by connecting c1 -> c2
+        predecessors[c2] = c1;
+        successors[c1] = c2;
+
+        // Update record of route demand
+        size_t last_visit = c2;
+        while (successors[last_visit] != 0)
+            last_visit = successors[last_visit];
+        route_demands[first_visit] = new_demand;
+        route_demands[last_visit] = new_demand;
+    }
+
+    // Construct solution from predecessors and successors
+    solution_t *sol = solution_new (self->vrp);
+    for (size_t idx = 1; idx <= N; idx++) {
+        if (predecessors[idx] == 0) { // idx is a first customer of route
+            route_t *route = route_new (3); // at least 3 nodes in route
+            route_append_node (route, self->nodes[0].id); // depot
+            size_t successor = idx;
+            while (successor != 0) {
+                route_append_node (route, self->nodes[successor].id);
+                successor = successors[successor];
+            }
+            route_append_node (route, self->nodes[0].id); // depot
+            solution_append_route (sol, route);
+        }
+    }
+    return sol;
+}
+
+
+// Heuristic: Clark-Wright.
+// is_random: false
+// max_expected: 7 (duplicates removed)
+static listx_t *vrptw_clark_wright (vrptw_t *self, size_t num_expected) {
+    print_info ("CW starting ... (expected: %zu)\n", num_expected);
+    if (num_expected > 7)
+        num_expected = 7;
+    size_t N = self->num_customers;
+    listx_t *genomes = listx_new ();
+    listu_t *hashes = listu_new (7);
+
+    size_t *predecessors = (size_t *) malloc (sizeof (size_t) * (N + 1));
+    assert (predecessors);
+    size_t *successors = (size_t *) malloc (sizeof (size_t) * (N + 1));
+    assert (successors);
+    double *route_demands = (double *) malloc (sizeof (double) * (N + 1));
+    assert (route_demands);
+    s_cwsaving_t *savings =
+        (s_cwsaving_t *) malloc (sizeof (s_cwsaving_t) * N * (N -1));
+    assert (savings);
+
+    for (double lambda = 0.4; lambda <= 1.0; lambda += 0.1) {
+        solution_t *sol = vrptw_clark_wright_parallel (self,
+                                                       predecessors,
+                                                       successors,
+                                                       route_demands,
+                                                       savings,
+                                                       lambda);
+
+        route_t *gtour = vrptw_giant_tour_from_solution (self, sol);
+        size_t hash = giant_tour_hash (gtour);
+        if (!listu_includes (hashes, hash)) {
+            solution_cal_set_total_distance (sol, self->vrp);
+            s_genome_t *genome = s_genome_new (gtour, sol);
+            listx_append (genomes, genome);
+            listu_append (hashes, hash);
+            vrptw_print_solution (self, sol);
+            // route_print (gtour);
+        }
+        else { // drop duplicate solution
+            solution_free (&sol);
+            route_free (&gtour);
+        }
+    }
+
+    print_info ("generated: %zu\n", listx_size (genomes));
+    listu_free (&hashes);
+    free (predecessors);
+    free (successors);
+    free (route_demands);
+    free (savings);
+    return genomes;
 }
 
 

@@ -120,6 +120,7 @@ static void s_vehicle_free (s_vehicle_t **self_p) {
 // ---------------------------------------------------------------------------
 // Request
 
+// request state is not deliverately considered yet
 typedef enum {
     RS_PENDING, // added, not planned
     RS_PLANNED, // planned, waiting for execution
@@ -133,19 +134,19 @@ typedef enum {
 } request_state_t;
 
 
-// @todo about request type, specify node type or not?
+// RT_PD: pair-nodes task (quantity >= 0):
+//     pickup at sender and delivery to receiver.
+// RT_VISIT: single-node task (quantity >= 0).
+//     One of sender and receiver is set, and the other is ID_NONE.
+//     sender_id != ID_NONE and quantity > 0:
+//     pickup (goods are always on vehicle after pickup);
+//     receiver_id != ID_NONE and quantity > 0:
+//     delivery (goods are already on vehicle)
+//     quantity == 0: visiting node (sender or receiver) with no goods
 typedef enum {
     RT_NONE,
-    RT_PD, // pickup-and-delivery, two nodes task (quantity >= 0)
-    RT_VISIT, // single node visiting
-              // quantity > 0: pickup (goods are always on vehicle after pickup);
-              // quantity < 0: delivery (goods are already on vehicle);
-              // quantity == 0: visiting
-    // RT_DEPOT2CUSTOMER,
-    // RT_CUSTOMER2DEPOT,
-    // RT_CUSTOMER2CUSTOMER,
-    // RT_VISIT2CUSTOMER,
-    // RT_VISIT2DEPOT,
+    RT_PD,
+    RT_VISIT
 } request_type_t;
 
 
@@ -160,20 +161,19 @@ typedef struct {
     // Task: pickup at sender, deliver at receiver
     size_t sender_id;
     size_t receiver_id;
-    double quantity;
+    double quantity; // >= 0
 
-    // Multiple time windows are supported.
-    // For pickup or delivery, TWs are saved in respective list.
-    // The value is unsigned int which represents the number of time units since
-    // a common reference point.
-    // The number of TW is size/2. The earliest time for TW_i is at index 2*i,
-    // and the latest time for TW_i is at index (2*i+1).
+    // Note that time windows and service durations are associated with
+    // request rather than node, which is more natural in practice.
+    // Multiple time windows are supported and sorted in ascending order:
+    // (etw1, ltw1, etw2, ltw2, ...)
+    // The value represents number of time units since a common reference point.
     listu_t *pickup_time_windows;
     listu_t *delivery_time_windows;
 
-    // service duration
-    size_t pickup_duration; // service time for pickup. e.g. min
-    size_t delivery_duration; // service time for delivery. e.g. min
+    // Service duration
+    size_t pickup_duration; // service duration for pickup (num of time units)
+    size_t delivery_duration; // service duration for delivery (num of time units)
 
     // Solution related
     // vehicle attached to. One request is only attached to one vehicle.
@@ -189,9 +189,7 @@ static s_request_t *s_request_new (const char *ext_id) {
     assert (self);
 
     self->id = ID_NONE;
-
     strcpy (self->ext_id, ext_id);
-
     self->type = RT_NONE;
     self->state = RS_PENDING;
 
@@ -199,8 +197,12 @@ static s_request_t *s_request_new (const char *ext_id) {
     self->receiver_id = ID_NONE;
     self->quantity = 0;
 
-    self->pickup_time_windows = NULL;
-    self->delivery_time_windows = NULL;
+    self->pickup_time_windows = listu_new (2);
+    assert (self->pickup_time_windows);
+    listu_sort (self->pickup_time_windows, true);
+    self->delivery_time_windows = listu_new (2);
+    assert (self->delivery_time_windows);
+    listu_sort (self->delivery_time_windows, true);
 
     self->pickup_duration = 0;
     self->delivery_duration = 0;
@@ -215,11 +217,8 @@ static void s_request_free (s_request_t **self_p) {
     assert (self_p);
     if (*self_p) {
         s_request_t *self = *self_p;
-        if (self->pickup_time_windows != NULL)
-            listu_free (&self->pickup_time_windows);
-        if (self->delivery_time_windows != NULL)
-            listu_free (&self->delivery_time_windows);
-
+        listu_free (&self->pickup_time_windows);
+        listu_free (&self->delivery_time_windows);
         free (self);
         *self_p = NULL;
     }
@@ -1056,7 +1055,7 @@ size_t vrp_add_request (vrp_t *self,
 }
 
 
-void vrp_add_time_window (vrp_t *self,
+int vrp_add_time_window (vrp_t *self,
                           size_t request_id,
                           node_role_t node_role,
                           size_t earliest,
@@ -1067,22 +1066,19 @@ void vrp_add_time_window (vrp_t *self,
     assert (request);
     assert (node_role == NR_SENDER || node_role == NR_RECEIVER);
 
-    if (node_role == NR_SENDER) {
-        if (request->pickup_time_windows == NULL) {
-            request->pickup_time_windows = listu_new (2);
-            assert (request->pickup_time_windows);
-        }
-        listu_append (request->pickup_time_windows, earliest);
-        listu_append (request->pickup_time_windows, latest);
+    listu_t *tws = (node_role == NR_SENDER) ?
+                   request->pickup_time_windows :
+                   request->delivery_time_windows;
+
+    size_t idx_e = listu_insert_sorted (tws, earliest);
+    size_t idx_l = listu_insert_sorted (tws, latest);
+    if (idx_e % 2 != 0 || (idx_e + 1 != idx_l)) {
+        listu_remove_at (tws, idx_l);
+        listu_remove_at (tws, idx_e);
+        return -1;
     }
-    else {
-        if (request->delivery_time_windows == NULL) {
-            request->delivery_time_windows = listu_new (2);
-            assert (request->delivery_time_windows);
-        }
-        listu_append (request->delivery_time_windows, earliest);
-        listu_append (request->delivery_time_windows, latest);
-    }
+
+    return 0;
 }
 
 
@@ -1174,12 +1170,10 @@ size_t vrp_num_time_windows (vrp_t *self,
     s_request_t *request = vrp_request (self, request_id);
     assert (request);
     assert (node_role == NR_SENDER || node_role == NR_RECEIVER);
-    if (node_role == NR_SENDER &&
-        request->pickup_time_windows != NULL)
-        return listu_size (request->pickup_time_windows) / 2;
-    else if (request->delivery_time_windows != NULL)
-        return listu_size (request->delivery_time_windows) / 2;
-    return 0;
+    listu_t *tws = (node_role == NR_SENDER) ?
+                   request->pickup_time_windows :
+                   request->delivery_time_windows;
+    return (tws != NULL) ? listu_size (tws) / 2 : 0;
 }
 
 
@@ -1286,6 +1280,27 @@ size_t vrp_service_duration (vrp_t *self,
     return (node_role == NR_SENDER) ?
            request->pickup_duration :
            request->delivery_duration;
+}
+
+
+bool vrp_time_windows_are_equal (vrp_t *self,
+                                 size_t request_id1, node_role_t node_role1,
+                                 size_t request_id2, node_role_t node_role2) {
+    assert (self);
+    s_request_t *request1 = vrp_request (self, request_id1);
+    assert (request1);
+    assert (node_role1 == NR_SENDER || node_role1 == NR_RECEIVER);
+    s_request_t *request2 = vrp_request (self, request_id2);
+    assert (request2);
+    assert (node_role2 == NR_SENDER || node_role2 == NR_RECEIVER);
+
+    listu_t *tws1 = (node_role1 == NR_SENDER) ?
+                    request1->pickup_time_windows :
+                    request1->delivery_time_windows;
+    listu_t *tws2 = (node_role2 == NR_SENDER) ?
+                    request2->pickup_time_windows :
+                    request2->delivery_time_windows;
+    return listu_equal (tws1, tws2);
 }
 
 
@@ -1428,7 +1443,9 @@ typedef struct {
     bool single_receiver;
     bool requests_are_all_pickup_and_delivery;
     bool requests_are_all_visiting_without_goods;
-    bool time_window_defined;
+    bool time_windows_defined;
+    bool time_windows_are_same_for_single_sender; // relevant if single_sender is true
+    bool time_windows_are_same_for_single_receiver; // relevant if single_receiver is true
 
     bool single_vehicle;
     bool vehicles_start_at_same_node;
@@ -1455,16 +1472,21 @@ static s_attributes_t vrp_collect_attributes (vrp_t *self) {
     attr.single_receiver = true;
     attr.requests_are_all_pickup_and_delivery = true;
     attr.requests_are_all_visiting_without_goods = true;
-    attr.time_window_defined = false;
+    attr.time_windows_defined = false;
+    attr.time_windows_are_same_for_single_sender = true;
+    attr.time_windows_are_same_for_single_receiver = true;
 
     size_t num_requests = listu_size (self->pending_request_ids);
     assert (num_requests > 0);
 
     size_t single_sender_id = ID_NONE;
     size_t single_receiver_id = ID_NONE;
+    size_t first_request_id = ID_NONE;
 
     for (size_t idx = 0; idx < num_requests; idx++) {
         size_t request_id = listu_get (self->pending_request_ids, idx);
+        if (first_request_id == ID_NONE)
+            first_request_id = request_id;
         s_request_t *request = vrp_request (self, request_id);
 
         // request type
@@ -1487,7 +1509,25 @@ static s_attributes_t vrp_collect_attributes (vrp_t *self) {
         // time windows
         if (vrp_num_time_windows (self, request_id, NR_SENDER) > 0 ||
             vrp_num_time_windows (self, request_id, NR_RECEIVER) > 0)
-            attr.time_window_defined = true;
+            attr.time_windows_defined = true;
+
+        if (attr.single_sender &&
+            attr.time_windows_defined &&
+            request_id != first_request_id) {
+            if (!vrp_time_windows_are_equal (self,
+                                             first_request_id, NR_SENDER,
+                                             request_id, NR_SENDER))
+                attr.time_windows_are_same_for_single_sender = false;
+        }
+
+        if (attr.single_receiver &&
+            attr.time_windows_defined &&
+            request_id != first_request_id) {
+            if (!vrp_time_windows_are_equal (self,
+                                             first_request_id, NR_RECEIVER,
+                                             request_id, NR_RECEIVER))
+                attr.time_windows_are_same_for_single_receiver = false;
+        }
     }
 
     // Vehicles
@@ -1556,7 +1596,7 @@ static bool vrp_is_tsp (const vrp_t *self, const s_attributes_t *attr) {
     if (attr->arc_distances_defined &&
         attr->single_vehicle &&
         attr->requests_are_all_visiting_without_goods &&
-        !attr->time_window_defined)
+        !attr->time_windows_defined)
         return true;
     return false;
 }
@@ -1565,7 +1605,7 @@ static bool vrp_is_tsp (const vrp_t *self, const s_attributes_t *attr) {
 static bool vrp_is_cvrp (const vrp_t *self, const s_attributes_t *attr) {
     if (attr->arc_distances_defined &&
         attr->requests_are_all_pickup_and_delivery &&
-        !attr->time_window_defined &&
+        !attr->time_windows_defined &&
         attr->single_sender &&
         attr->vehicles_start_at_single_sender &&
         attr->vehicles_end_at_single_sender)
@@ -1578,7 +1618,7 @@ static bool vrp_is_vrptw (const vrp_t *self, const s_attributes_t *attr) {
     if (attr->arc_distances_defined &&
         attr->arc_durations_defined &&
         attr->requests_are_all_pickup_and_delivery &&
-        attr->time_window_defined &&
+        attr->time_windows_defined &&
         attr->single_sender &&
         attr->vehicles_start_at_single_sender &&
         attr->vehicles_end_at_single_sender)

@@ -691,10 +691,14 @@ static double cvrp_exchange_nodes (cvrp_t *self,
                     continue;
 
                 // Feasibility check: capacity of two routes
-                if (route_demand1 + cvrp_node_demand (self, iter2.node_id) >
+                double node_demand2 = cvrp_node_demand (self, iter2.node_id);
+                if (route_demand1 - node_demand1 + node_demand2 >
                     self->capacity)
                     continue;
-                if (cvrp_route_demand (self, iter1.route) +  node_demand1 >
+
+                if (cvrp_route_demand (self, iter2.route) -
+                    node_demand2 +
+                    node_demand1 >
                     self->capacity)
                     continue;
 
@@ -779,6 +783,7 @@ static double cvrp_2_opt_star (cvrp_t *self, solution_t *sol, bool exhaustive) {
                                              route_size (iter2.route) - 1) >
                     self->capacity)
                     continue;
+
                 if (cvrp_route_slice_demand (self, iter2.route,
                                              0,
                                              iter2.idx_node) +

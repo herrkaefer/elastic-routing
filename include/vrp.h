@@ -165,14 +165,16 @@ size_t vrp_add_request (vrp_t *self,
                         double quantity);
 
 // Add time window for sender or receiver of request.
-// Multiple time windows can be added by calling this one by one.
+// Return 0 for success, -1 for failure.
+// Multiple time windows can be added by calling this one by one. But they
+// should be non-overlapping time intervals.
 // Time is represented by an non-negative int number which means number of time
 // units since a common reference point.
-void vrp_add_time_window (vrp_t *self,
-                          size_t requset_id,
-                          node_role_t node_role,
-                          size_t earliest,
-                          size_t latest);
+int vrp_add_time_window (vrp_t *self,
+                         size_t requset_id,
+                         node_role_t node_role,
+                         size_t earliest,
+                         size_t latest);
 
 // Set service duration for sender or receiver of request.
 // Default: 0.
@@ -246,6 +248,10 @@ size_t vrp_service_duration (vrp_t *self,
                              size_t request_id,
                              node_role_t node_role);
 
+// Check if pickup or delivery time windows are equal for two requests
+bool vrp_time_windows_are_equal (vrp_t *self,
+                                 size_t request_id1, node_role_t node_role1,
+                                 size_t request_id2, node_role_t node_role2);
 
 // ---------------------------------------------------------------------------
 // Solve

@@ -57,11 +57,11 @@ cdef extern from "../src/classes.h":
                             size_t receiver,
                             double quantity)
 
-    void vrp_add_time_window (vrp_t *self,
-                              size_t request_id,
-                              node_role_t node_role,
-                              size_t earliest,
-                              size_t latest)
+    int vrp_add_time_window (vrp_t *self,
+                             size_t request_id,
+                             node_role_t node_role,
+                             size_t earliest,
+                             size_t latest)
 
     void vrp_set_service_duration (vrp_t *self,
                                    size_t request_id,
@@ -137,8 +137,13 @@ cdef class VRPSolver:
         vrp_generate_beeline_distances (self._model)
 
 
-    cpdef void generate_durations (self, speed):
-        vrp_generate_durations (self._model, speed)
+    cpdef int generate_durations (self, speed):
+        if (speed > 0)
+            vrp_generate_durations (self._model, speed)
+            return 0
+        else
+            printf ("speed should be positive")
+            return -1
 
 
     cpdef size_t add_vehicle (self, ext_id, max_capacity, start_node, end_node):
@@ -151,7 +156,7 @@ cdef class VRPSolver:
                                 ext_id, sender, receiver, quantity)
 
 
-    cpdef void add_time_window (self, request_id, node_role, earliest, latest):
+    cpdef int add_time_window (self, request_id, node_role, earliest, latest):
         if node_role.lower() == 'sender':
             nr = NR_SENDER
         elif node_role.lower() == 'receiver':
@@ -160,24 +165,26 @@ cdef class VRPSolver:
             print("invalid node role")
             return
 
-        vrp_add_time_window (self._model, request_id, nr, earliest, latest)
+        return vrp_add_time_window (self._model,
+                                    request_id, nr, earliest, latest)
 
 
-    cpdef void set_service_duration (self, request_id,
-                                     node_role, service_duration):
+    cpdef int set_service_duration (self, request_id,
+                                    node_role, service_duration):
         if node_role.lower() == 'sender':
             nr = NR_SENDER
         elif node_role.lower() == 'receiver':
             nr = NR_RECEIVER
         else:
             print("invalid node role")
-            return
+            return -1
 
         vrp_set_service_duration (self._model, request_id, nr, service_duration)
 
 
-    cpdef void solve (self):
+    cpdef int solve (self):
         self._sol = vrp_solve (self._model)
+        return self_sol is not NULL
 
 
     cpdef void print_solution (self):

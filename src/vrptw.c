@@ -109,6 +109,15 @@ static void s_genome_free (s_genome_t **self_p) {
 
 
 // ----------------------------------------------------------------------------
+// Auxiliary structure for saving TW infos
+// @todo
+typedef struct {
+    ...
+
+} s_tw_infos;
+
+
+// ----------------------------------------------------------------------------
 // Helpers
 
 static double vrptw_arc_distance_by_idx (vrptw_t *self,
@@ -190,6 +199,7 @@ static size_t giant_tour_hash (route_t *gtour) {
 }
 
 
+// @todo add TW check
 static bool vrptw_solution_is_feasible (vrptw_t *self, solution_t *sol) {
     for (size_t idx = 0; idx < solution_num_routes (sol); idx++) {
         route_t *route = solution_route (sol, idx);
@@ -203,6 +213,7 @@ static bool vrptw_solution_is_feasible (vrptw_t *self, solution_t *sol) {
 }
 
 
+// @todo add TW infos
 static void vrptw_print_solution (vrptw_t *self, solution_t *sol) {
     printf ("\nVRPTW solution: #routes: %zu, total distance: %.2f (capacity: %.2f)\n",
             solution_num_routes (sol), solution_total_distance (sol), self->capacity);

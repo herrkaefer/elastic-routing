@@ -766,7 +766,7 @@ static double cvrp_exchange_nodes (cvrp_t *self,
 }
 
 
-// Local search: inter-route 2-opt*
+// Local search: inter-route 2-opt* (exchange tails of two routes)
 static double cvrp_2_opt_star (cvrp_t *self, solution_t *sol, bool exhaustive) {
     double saving = 0;
     bool improved = true;
@@ -815,11 +815,11 @@ static double cvrp_2_opt_star (cvrp_t *self, solution_t *sol, bool exhaustive) {
                     continue;
 
                 double dcost =
-                    route_2_opt_star_delta_distance (iter1.route,
-                                                     iter2.route,
-                                                     iter1.idx_node,
-                                                     iter2.idx_node,
-                                                     self->vrp);
+                    route_exchange_tails_delta_distance (iter1.route,
+                                                         iter2.route,
+                                                         iter1.idx_node,
+                                                         iter2.idx_node,
+                                                         self->vrp);
 
                 if (dcost < 0) {
                     // printf ("2-opt* ---------------------------\n");
@@ -828,8 +828,8 @@ static double cvrp_2_opt_star (cvrp_t *self, solution_t *sol, bool exhaustive) {
                     // route_print (iter2.route);
                     // printf ("idx_node: %zu, node_id: %zu\n", iter2.idx_node, iter2.node_id);
 
-                    route_2_opt_star (iter1.route, iter2.route,
-                                      iter1.idx_node, iter2.idx_node);
+                    route_exchange_tails (iter1.route, iter2.route,
+                                          iter1.idx_node, iter2.idx_node);
 
                     // route_print (iter1.route);
                     // route_print (iter2.route);

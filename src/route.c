@@ -138,32 +138,82 @@ double route_reverse_delta_distance (const route_t *self,
     if (i == j)
         return 0;
 
-    double dcost = 0;
+    double ddist = 0;
 
     // Bug fixed: i or j may be the end.
     if (i > 0)
-        dcost = dcost +
+        ddist = ddist +
             vrp_arc_distance (vrp, route_at (self, i - 1), route_at (self, j)) -
             vrp_arc_distance (vrp, route_at (self, i - 1), route_at (self, i));
 
     if (j < len - 1)
-        dcost = dcost +
+        ddist = ddist +
             vrp_arc_distance (vrp, route_at (self, i), route_at (self, j + 1)) -
             vrp_arc_distance (vrp, route_at (self, j), route_at (self, j + 1));
 
     for (size_t k = i; k < j; k++) {
-        dcost = dcost +
+        ddist = ddist +
           vrp_arc_distance (vrp, route_at (self, k + 1), route_at (self, k)) -
           vrp_arc_distance (vrp, route_at (self, k), route_at (self, k + 1));
     }
 
-    return dcost;
+    return ddist;
 }
 
 
 void route_reverse (route_t *self, size_t i, size_t j) {
     assert (self);
     listu_reverse_slice (self, i, j);
+}
+
+
+double route_swap_slices_delata_distance (const route_t *self,
+                                        size_t i, size_t j,
+                                        size_t u, size_t v,
+                                        const vrp_t *vrp) {
+    assert (self);
+    assert (vrp);
+    assert (i <= j);
+    assert (j < u);
+    assert (u <= v);
+    size_t size = route_size (self);
+    assert (v < size);
+
+    size_t node_i = route_at (self, i);
+    size_t node_j = route_at (self, j);
+    size_t node_u = route_at (self, u);
+    size_t node_v = route_at (self, v);
+    double ddist = 0;
+
+    if (i > 0) {
+        size_t node_i_pred = route_at (self, i - 1);
+        ddist = ddist -
+                vrp_arc_distance (vrp, node_i_pred, node_i) +
+                vrp_arc_distance (vrp, node_i_pred, node_u);
+    }
+
+    if (v + 1 < size) {
+        size_t node_v_succ = route_at (self, v + 1);
+        ddist = ddist -
+                vrp_arc_distance (vrp, v, node_v_succ) +
+                vrp_arc_distance (vrp, j, node_v_succ);
+    }
+
+    if (j + 1 < u) {
+        size_t node_j_succ = route_at (self, j + 1);
+        size_t node_u_pred = route_at (self, u - 1);
+        ddist = ddist -
+                vrp_arc_distance (vrp, node_j, node_j_succ) -
+                vrp_arc_distance (vrp, node_u_pred, node_u) +
+                vrp_arc_distance (vrp, node_v, node_j_succ) +
+                vrp_arc_distance (vrp, node_u_pred, node_i);
+    }
+    else // j directly links with u
+        ddist = ddist -
+                vrp_arc_distance (vrp, node_j, node_u) +
+                vrp_arc_distance (vrp, node_v, node_i);
+
+    return ddist;
 }
 
 
@@ -180,20 +230,20 @@ double route_remove_node_delta_distance (route_t *self,
     size_t size = route_size (self);
     assert (idx < size);
 
-    double dcost = 0;
+    double ddist = 0;
     if (idx > 0) // there is a predecessor to unlink with
-        dcost -= vrp_arc_distance (vrp,
+        ddist -= vrp_arc_distance (vrp,
                                     route_at (self, idx - 1),
                                     route_at (self, idx));
     if (idx + 1 < size) // there is a successor to unlink with
-        dcost -= vrp_arc_distance (vrp,
+        ddist -= vrp_arc_distance (vrp,
                                     route_at (self, idx),
                                     route_at (self, idx + 1));
     if (idx > 0 && idx + 1 < size) // link predesessor with successor
-        dcost += vrp_arc_distance (vrp,
+        ddist += vrp_arc_distance (vrp,
                                     route_at (self, idx - 1),
                                     route_at (self, idx + 1));
-    return dcost;
+    return ddist;
 }
 
 
@@ -211,20 +261,20 @@ double route_remove_link_delta_distance (route_t *self,
     size_t size = route_size (self);
     assert (idx + 1 < size);
 
-    double dcost = 0;
+    double ddist = 0;
     if (idx > 0) // there is a predecessor to unlink with
-        dcost -= vrp_arc_distance (vrp,
+        ddist -= vrp_arc_distance (vrp,
                                    route_at (self, idx - 1),
                                    route_at (self, idx));
     if (idx + 2 < size) // there is a successor to unlink with
-        dcost -= vrp_arc_distance (vrp,
+        ddist -= vrp_arc_distance (vrp,
                                    route_at (self, idx + 1),
                                    route_at (self, idx + 2));
     if (idx > 0 && idx + 2 < size) // link predesessor with successor
-        dcost += vrp_arc_distance (vrp,
+        ddist += vrp_arc_distance (vrp,
                                    route_at (self, idx - 1),
                                    route_at (self, idx + 2));
-    return dcost;
+    return ddist;
 }
 
 
@@ -244,20 +294,20 @@ double route_insert_node_delta_distance (const route_t *self,
     size_t size = route_size (self);
     assert (idx <= size);
 
-    double dcost = 0;
+    double ddist = 0;
     if (idx > 0) // there is a node before to link with
-        dcost += vrp_arc_distance (vrp,
+        ddist += vrp_arc_distance (vrp,
                                    route_at (self, idx - 1),
                                    node_id);
     if (idx < size) // there is a node after to link with
-        dcost += vrp_arc_distance (vrp,
+        ddist += vrp_arc_distance (vrp,
                                    node_id,
                                    route_at (self, idx));
     if (idx > 0 && idx < size) // there is a link before to remove
-        dcost -= vrp_arc_distance (vrp,
+        ddist -= vrp_arc_distance (vrp,
                                    route_at (self, idx - 1),
                                    route_at (self, idx));
-    return dcost;
+    return ddist;
 }
 
 
@@ -334,10 +384,10 @@ void route_exchange_nodes (route_t *self, route_t *route,
 }
 
 
-double route_2_opt_star_delta_distance (const route_t *self,
-                                        const route_t *route,
-                                        size_t idx1, size_t idx2,
-                                        const vrp_t *vrp) {
+double route_exchange_tails_delta_distance (const route_t *self,
+                                            const route_t *route,
+                                            size_t idx1, size_t idx2,
+                                            const vrp_t *vrp) {
     assert (self);
     assert (route);
     assert (self != route);
@@ -347,32 +397,34 @@ double route_2_opt_star_delta_distance (const route_t *self,
     assert (idx1 < size1);
     assert (idx2 < size2);
 
-    double dcost = 0;
+    double ddist = 0;
 
     // There is node after idx1 of self
-    if (idx1 + 1 < size1) {
-        dcost -= vrp_arc_distance (vrp,
-                                   route_at (self, idx1),
-                                   route_at (self, idx1 + 1));
-        dcost += vrp_arc_distance (vrp,
-                                   route_at (route, idx2),
-                                   route_at (self, idx1 + 1));
-    }
+    if (idx1 + 1 < size1)
+        ddist = ddist -
+                vrp_arc_distance (vrp,
+                                  route_at (self, idx1),
+                                  route_at (self, idx1 + 1)) +
+                vrp_arc_distance (vrp,
+                                  route_at (route, idx2),
+                                  route_at (self, idx1 + 1));
+
     // There is node after idx2 of route
-    if (idx2 + 1 < size2) {
-        dcost -= vrp_arc_distance (vrp,
-                                   route_at (route, idx2),
-                                   route_at (route, idx2 + 1));
-        dcost += vrp_arc_distance (vrp,
-                                   route_at (self, idx1),
-                                   route_at (route, idx2 + 1));
-    }
-    return dcost;
+    if (idx2 + 1 < size2)
+        ddist = ddist -
+                vrp_arc_distance (vrp,
+                                  route_at (route, idx2),
+                                  route_at (route, idx2 + 1)) +
+                vrp_arc_distance (vrp,
+                                  route_at (self, idx1),
+                                  route_at (route, idx2 + 1));
+
+    return ddist;
 }
 
 
-void route_2_opt_star (route_t *self, route_t *route,
-                       size_t idx1, size_t idx2) {
+void route_exchange_tails (route_t *self, route_t *route,
+                           size_t idx1, size_t idx2) {
     assert (self);
     assert (route);
     assert (self != route);
@@ -478,41 +530,41 @@ void route_ox (route_t *route1, route_t *route2,
 }
 
 
-double route_2_opt (route_t *self,
-                    const vrp_t *vrp,
-                    size_t idx_begin, size_t idx_end,
-                    bool exhaustive) {
-    assert (self);
-    assert (vrp);
-    assert (idx_begin <= idx_end);
-    assert (idx_end < route_size (self));
+// double route_2_opt (route_t *self,
+//                     const vrp_t *vrp,
+//                     size_t idx_begin, size_t idx_end,
+//                     bool exhaustive) {
+//     assert (self);
+//     assert (vrp);
+//     assert (idx_begin <= idx_end);
+//     assert (idx_end < route_size (self));
 
-    if (idx_begin == idx_end)
-        return 0;
+//     if (idx_begin == idx_end)
+//         return 0;
 
-    double total_delta_cost = 0, delta_cost;
-    bool improved = true;
+//     double total_delta_cost = 0, delta_cost;
+//     bool improved = true;
 
-    while (improved) {
-        improved = false;
-        for (size_t i = idx_begin; i < idx_end && !improved; i++) {
-            for (size_t j = i + 1; j <= idx_end && !improved; j++) {
-                delta_cost = route_reverse_delta_distance (self, i, j, vrp);
-                if (delta_cost < 0) {
-                    route_reverse (self, i, j);
-                    total_delta_cost += delta_cost;
-                    // For non-exhaustive mode, stop searching
-                    if (!exhaustive)
-                        return total_delta_cost;
-                    // For exhaustive mode, set improved to start searching over
-                    improved = true;
-                }
-            }
-        }
-    }
+//     while (improved) {
+//         improved = false;
+//         for (size_t i = idx_begin; i < idx_end && !improved; i++) {
+//             for (size_t j = i + 1; j <= idx_end && !improved; j++) {
+//                 delta_cost = route_reverse_delta_distance (self, i, j, vrp);
+//                 if (delta_cost < 0) {
+//                     route_reverse (self, i, j);
+//                     total_delta_cost += delta_cost;
+//                     // For non-exhaustive mode, stop searching
+//                     if (!exhaustive)
+//                         return total_delta_cost;
+//                     // For exhaustive mode, set improved to start searching over
+//                     improved = true;
+//                 }
+//             }
+//         }
+//     }
 
-    return total_delta_cost;
-}
+//     return total_delta_cost;
+// }
 
 
 void route_test (bool verbose) {

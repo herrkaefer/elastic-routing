@@ -71,35 +71,24 @@ void route_shuffle (route_t *self,
 // Cyclic shift of nodes
 void route_rotate (route_t *self, int num);
 
-// Reverse (flip) route slice.
+// Distance increment of route reverse operation.
+// Note that flip operation is not actually performed.
+// Require: i <= j
+double route_reverse_delta_distance (const route_t *self,
+                                     size_t i, size_t j,
+                                     const vrp_t *vrp);
+
+// Reverse route slice [i, j].
 // (..., i, i+1, -->, j, ...) =>
 // (..., j, j-1, -->, i, ...)
-void route_flip (route_t *self, size_t i, size_t j);
+// Require: i <= j
+void route_reverse (route_t *self, size_t i, size_t j);
 
 // Swap two nonoverlapping route segments (direction unchanged), i.e.
 // (..., i --> j, ..., u --> v, ...) =>
 // (..., u --> v, ..., i --> j, ...)
 // Require: i <= j < u <=v
-void route_swap (route_t *self, size_t i, size_t j, size_t u, size_t v);
-
-// OX: ordered crossover.
-// Crossover is performed on common slice [idx_begin, idx_end].
-// r1 and r2 are replaced with two children respectively.
-void route_ox (route_t *r1, route_t *r2,
-               size_t idx_begin, size_t idx_end,
-               rng_t *rng);
-
-// 2-opt local search on route slice.
-// Only route distance is concerned. No constraint (such as time window or
-// sequence) is taken into account.
-// If exhaustive is set true, exhaustive searching will stop when no improvement
-// is possible in neighborhood. If exhaustive is set false, searching will stop
-// whenever the first improvement is achieved.
-// Return increment of total distance (non-negative).
-double route_2_opt (route_t *self,
-                    const vrp_t *vrp,
-                    size_t idx_begin, size_t idx_end,
-                    bool exhaustive);
+void route_swap_slices (route_t *self, size_t i, size_t j, size_t u, size_t v);
 
 // Distance increment of removing node at specific index.
 // Note that node removal is not actually performed.
@@ -120,7 +109,7 @@ double route_remove_link_delta_distance (route_t *self,
 // Return increment of total distance.
 void route_remove_link (route_t *self, size_t first_idx);
 
-// Distance increment of insert node at specific index (before the original
+// Distance increment of inserting node at specific index (before the original
 // one at index). If idx == size, append the node at tail.
 // Note that insertion is not actually performed.
 double route_insert_node_delta_distance (const route_t *self,
@@ -131,24 +120,47 @@ double route_insert_node_delta_distance (const route_t *self,
 // If idx == size, append the node at tail.
 void route_insert_node (route_t *self, size_t idx, size_t node_id);
 
-// Distance increment of replacing node at index with another node.
-// Note that node replacment is not actually performed.
-double route_replace_node_delta_distance (const route_t *self,
-                                          size_t idx, size_t node_id,
-                                          const vrp_t *vrp);
+// Distance increment of exchanging two nodes of two different routes.
+// Note that exchange operation is not actually performed.
+double route_exchange_nodes_delta_distance (const route_t *self,
+                                            const route_t *route,
+                                            size_t idx1, size_t idx2,
+                                            const vrp_t *vrp);
 
+// Exchange two nodes of two different routes.
+void route_exchange_nodes (route_t *self, route_t *route,
+                           size_t idx1, size_t idx2);
 
-// Distance increment of 2-opt-star operation between two routes.
+// Distance increment of 2-opt* operation between two routes.
 // Note that operation is not actually performed.
 double route_2_opt_star_delta_distance (const route_t *self,
                                         const route_t *route,
                                         size_t idx1, size_t idx2,
                                         const vrp_t *vrp);
 
-// 2-opt* operation of two routes. i.e.
-// (+++, idx1, idx1+1, ***) ==> (+++, idx1, idx2+1, ...)
-// (---, idx2, idx2+1, ...) ==> (---, idx2, idx1+1, ***)
+// 2-opt* operation of two routes. i.e. swap tails of routes
+// (+++, idx1, ***) ==> (+++, idx1, ...)
+// (---, idx2, ...) ==> (---, idx2, ***)
 void route_2_opt_star (route_t *self, route_t *route, size_t idx1, size_t idx2);
+
+// OX: ordered crossover of two routes.
+// Crossover is performed on common slice [idx_begin, idx_end].
+// r1 and r2 are replaced with two children respectively.
+void route_ox (route_t *r1, route_t *r2,
+               size_t idx_begin, size_t idx_end,
+               rng_t *rng);
+
+// 2-opt local search on route slice.
+// Only route distance is concerned. No constraint (such as time window or
+// sequence) is taken into account.
+// If exhaustive is set true, exhaustive searching will stop when no improvement
+// is possible in neighborhood. If exhaustive is set false, searching will stop
+// whenever the first improvement is achieved.
+// Return increment of total distance (non-negative).
+// double route_2_opt (route_t *self,
+//                     const vrp_t *vrp,
+//                     size_t idx_begin, size_t idx_end,
+//                     bool exhaustive);
 
 #ifdef __cplusplus
 }

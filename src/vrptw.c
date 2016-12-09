@@ -190,6 +190,19 @@ static size_t giant_tour_hash (route_t *gtour) {
 }
 
 
+static bool vrptw_solution_is_feasible (vrptw_t *self, solution_t *sol) {
+    for (size_t idx = 0; idx < solution_num_routes (sol); idx++) {
+        route_t *route = solution_route (sol, idx);
+        // capacity
+        if (vrptw_route_demand (self, route) > self->capacity)
+            return false;
+        // time windows
+        // ...
+    }
+    return true;
+}
+
+
 static void vrptw_print_solution (vrptw_t *self, solution_t *sol) {
     printf ("\nVRPTW solution: #routes: %zu, total distance: %.2f (capacity: %.2f)\n",
             solution_num_routes (sol), solution_total_distance (sol), self->capacity);
@@ -286,7 +299,7 @@ static solution_t *vrptw_clark_wright_parallel (vrptw_t *self,
             continue;
 
         // Check compatibility of time windows
-         @todo
+         // @todo
 
 
         // Merge two routes by connecting c1 -> c2

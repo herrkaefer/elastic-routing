@@ -164,6 +164,16 @@ static size_t giant_tour_hash (route_t *gtour) {
 }
 
 
+static bool cvrp_solution_is_feasible (cvrp_t *self, solution_t *sol) {
+    for (size_t idx = 0; idx < solution_num_routes (sol); idx++) {
+        route_t *route = solution_route (sol, idx);
+        if (cvrp_route_demand (self, route) > self->capacity)
+            return false;
+    }
+    return true;
+}
+
+
 static void cvrp_print_solution (cvrp_t *self, solution_t *sol) {
     printf ("\nCVRP solution: #routes: %zu, total distance: %.2f (capacity: %.2f)\n",
             solution_num_routes (sol), solution_total_distance (sol), self->capacity);
@@ -596,7 +606,7 @@ static listx_t *cvrp_crossover (cvrp_t *self, s_genome_t *g1, s_genome_t *g2) {
 // ----------------------------------------------------------------------------
 // Local search
 
-// Inter-route or-opt of node: relocate one node to another route
+// Local search: inter-route or-opt of node: relocate one node to another route
 static double cvrp_or_opt_node (cvrp_t *self, solution_t *sol, bool exhaustive) {
     double saving = 0;
     bool improved = true;
@@ -659,14 +669,14 @@ static double cvrp_or_opt_node (cvrp_t *self, solution_t *sol, bool exhaustive) 
 }
 
 
-// Inter-route or-opt of two consecutive nodes
+// Local search: inter-route or-opt of two consecutive nodes
 // @todo not implemented
 static double cvrp_or_opt_link (cvrp_t *self, solution_t *sol, bool exhaustive) {
     return 0;
 }
 
 
-// Inter-route local search: swap two nodes of two routes
+// Local search: inter-route exchange: swap two nodes of two routes
 static double cvrp_exchange_nodes (cvrp_t *self,
                                    solution_t *sol, bool exhaustive) {
     double saving = 0;
@@ -680,8 +690,8 @@ static double cvrp_exchange_nodes (cvrp_t *self,
             if (iter1.node_id == self->nodes[0].id) // ignore depot
                 continue;
 
-            double route_demand1 = cvrp_route_demand (self, iter1.route);
-            double node_demand1 = cvrp_node_demand (self, iter1.node_id);
+            double route1_demand = cvrp_route_demand (self, iter1.route);
+            double node1_demand = cvrp_node_demand (self, iter1.node_id);
 
             solution_iterator_t iter2 = solution_iter_init (sol);
             while (solution_iter_node (sol, &iter2) != ID_NONE && !improved) {
@@ -691,27 +701,37 @@ static double cvrp_exchange_nodes (cvrp_t *self,
                     continue;
 
                 // Feasibility check: capacity of two routes
-                double node_demand2 = cvrp_node_demand (self, iter2.node_id);
-                if (route_demand1 - node_demand1 + node_demand2 >
+                double node2_demand = cvrp_node_demand (self, iter2.node_id);
+                if (route1_demand - node1_demand + node2_demand >
+                    self->capacity)
+                    continue;
+                if (cvrp_route_demand (self, iter2.route) -
+                    node2_demand + node1_demand >
                     self->capacity)
                     continue;
 
-                if (cvrp_route_demand (self, iter2.route) -
-                    node_demand2 +
-                    node_demand1 >
-                    self->capacity)
-                    continue;
+                // assert (route_at (iter1.route, iter1.idx_node) == iter1.node_id);
+                // assert (route_at (iter2.route, iter2.idx_node) == iter2.node_id);
 
                 // dcost of exchanging iter1.node_id and iter2.node_id
                 double dcost =
-                    route_replace_node_delta_distance (iter1.route,
-                                                       iter1.idx_node,
-                                                       iter2.node_id,
-                                                       self->vrp) +
-                    route_replace_node_delta_distance (iter2.route,
-                                                       iter2.idx_node,
-                                                       iter1.node_id,
-                                                       self->vrp);
+                    route_exchange_nodes_delta_distance (iter1.route,
+                                                         iter2.route,
+                                                         iter1.idx_node,
+                                                         iter2.idx_node,
+                                                         self->vrp);
+                // double dcost_old =
+                //     route_replace_node_delta_distance (iter1.route,
+                //                                        iter1.idx_node,
+                //                                        iter2.node_id,
+                //                                        self->vrp) +
+                //     route_replace_node_delta_distance (iter2.route,
+                //                                        iter2.idx_node,
+                //                                        iter1.node_id,
+                //                                        self->vrp);
+
+                // printf ("dcost: %.3f, dcost_old: %.3f\n", dcost,dcost_old);
+                // assert (double_equal (dcost, dcost_old));
 
 
                 if (dcost < 0) {
@@ -721,16 +741,17 @@ static double cvrp_exchange_nodes (cvrp_t *self,
                     // route_print (iter2.route);
                     // printf ("idx_node: %zu, node_id: %zu\n", iter2.idx_node, iter2.node_id);
 
-                    route_set_at (iter1.route, iter1.idx_node, iter2.node_id);
-                    route_set_at (iter2.route, iter2.idx_node, iter1.node_id);
+                    route_exchange_nodes (iter1.route, iter2.route,
+                                          iter1.idx_node, iter2.idx_node);
+
+                    // route_set_at (iter1.route, iter1.idx_node, iter2.node_id);
+                    // route_set_at (iter2.route, iter2.idx_node, iter1.node_id);
 
                     // route_print (iter1.route);
                     // route_print (iter2.route);
 
                     saving -= dcost;
-                    solution_set_total_distance (
-                        sol,
-                        solution_total_distance (sol) + dcost);
+                    solution_increase_total_distance (sol, dcost);
                     if (!exhaustive) {
                         // print_info ("exchange saving: %.3f\n", saving);
                         return saving;
@@ -745,7 +766,7 @@ static double cvrp_exchange_nodes (cvrp_t *self,
 }
 
 
-// Inter-route local search: 2-opt*
+// Local search: inter-route 2-opt*
 static double cvrp_2_opt_star (cvrp_t *self, solution_t *sol, bool exhaustive) {
     double saving = 0;
     bool improved = true;
@@ -837,33 +858,38 @@ static double cvrp_2_opt_star (cvrp_t *self, solution_t *sol, bool exhaustive) {
 }
 
 
-// Intra-route 2-opt
+// Local search: intra-route 2-opt
 static double cvrp_2_opt (cvrp_t *self, solution_t *sol, bool exhaustive) {
-    double saving = 0;
+    double saving = 0, ddist;
     bool improved = true;
     size_t num_routes = solution_num_routes (sol);
 
     while (improved) {
         improved = false;
+
+        // For each route in solution
         for (size_t idx = 0; idx < num_routes && !improved; idx++) {
             route_t *route = solution_route (sol, idx);
-            assert (route_size (route) >= 2);
-            double dcost =
-                route_2_opt (route, self->vrp, 1, route_size (route) - 2, false);
-            if (dcost < 0) {
-                saving -= dcost;
-                solution_set_total_distance (
-                    sol,
-                    solution_total_distance (sol) + dcost);
-                if (!exhaustive) {
-                    // print_info ("2-opt saving: %.2f\n", saving);
-                    return saving;
+            size_t size = route_size (route);
+            assert (size >= 2);
+
+            // For each possible route sile
+            for (size_t i = 1; i < size - 2 && !improved; i++) {
+                for (size_t j = i + 1; j <= size - 2 && !improved; j++) {
+                    ddist =
+                        route_reverse_delta_distance (route, i, j, self->vrp);
+                    if (ddist < 0) {
+                        route_reverse (route, i, j);
+                        saving -= ddist;
+                        solution_increase_total_distance (sol, ddist);
+                        if (!exhaustive)
+                            return saving;
+                        improved = true;
+                    }
                 }
-                improved = true;
             }
         }
     }
-    // print_info ("2-opt saving: %.2f\n", saving);
     return saving;
 }
 
@@ -894,7 +920,7 @@ static void cvrp_local_search_for_evol (cvrp_t *self, s_genome_t *g) {
 }
 
 
-// Post optimization.
+// Post optimization by local search.
 // Return saving.
 static double cvrp_post_optimize (cvrp_t *self, solution_t *sol) {
     double cost_before = solution_total_distance (sol);
@@ -907,6 +933,8 @@ static double cvrp_post_optimize (cvrp_t *self, solution_t *sol) {
 
     while (improved) {
         improved = false;
+
+        assert (cvrp_solution_is_feasible (self, sol));
 
         // Or-opt of node
         saving = cvrp_or_opt_node (self, sol, false);
@@ -943,7 +971,6 @@ static double cvrp_post_optimize (cvrp_t *self, solution_t *sol) {
             improved = true;
             continue;
         }
-
     }
 
     print_info ("cal cost after post optimization: %.2f\n",

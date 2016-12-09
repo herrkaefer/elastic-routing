@@ -8,14 +8,6 @@
 #include "classes.h"
 
 
-// struct _solution_iterator_t {
-//     listx_iterator_t routes_iter;
-//     // void *route_handle;
-//     size_t idx_node; // index of node on current route
-//     size_t node_id;
-// };
-
-
 struct _solution_t {
     vrp_t *vrp; // Problem reference. Solution does not own it.
     listx_t *routes; // list of route_t objects
@@ -40,8 +32,6 @@ solution_t *solution_new (vrp_t *vrp) {
 
     self->vehicles = NULL;
     self->total_distance = DOUBLE_NONE;
-
-    // print_info ("solution created.\n");
     return self;
 }
 
@@ -51,14 +41,11 @@ void solution_free (solution_t **self_p) {
     assert (self_p);
     if (*self_p) {
         solution_t *self = *self_p;
-
         listx_free (&self->routes);
         listu_free (&self->vehicles);
-
         free (self);
         *self_p = NULL;
     }
-    // print_info ("solution freed.\n");
 }
 
 
@@ -120,7 +107,7 @@ void solution_set_total_distance (solution_t *self, double distance) {
 }
 
 
-double solution_cal_set_total_distance (solution_t *self, vrp_t *vrp) {
+double solution_cal_set_total_distance (solution_t *self, const vrp_t *vrp) {
     assert (self);
     assert (vrp);
     double total_dist = 0;
@@ -131,7 +118,7 @@ double solution_cal_set_total_distance (solution_t *self, vrp_t *vrp) {
 }
 
 
-double solution_cal_total_distance (solution_t *self, vrp_t *vrp) {
+double solution_cal_total_distance (const solution_t *self, const vrp_t *vrp) {
     assert (self);
     assert (vrp);
     double total_dist = 0;
@@ -139,6 +126,13 @@ double solution_cal_total_distance (solution_t *self, vrp_t *vrp) {
         total_dist += route_total_distance (solution_route (self, idx), vrp);
     // self->total_distance = total_dist;
     return total_dist;
+}
+
+
+void solution_increase_total_distance (solution_t *self, double delta_distance) {
+    assert (self);
+    assert (!double_is_none (self->total_distance));
+    self->total_distance += delta_distance;
 }
 
 

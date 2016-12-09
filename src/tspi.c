@@ -40,12 +40,12 @@ static double tspi_route_cost (tspi_t *self, route_t *route) {
 }
 
 
-// Cost increment for route_flip operation.
+// Cost increment for route_reverse operation.
 // Flip of route slice [i, j]
 // (0, ..., i-1, i, i+1, ..., j-1, j, j+1, ..., route_length-1) =>
 // (0, ..., i-1, j, j-1, ..., i+1, i, j+1, ..., route_length-1)
-static double tspi_route_flip_delta_cost (tspi_t *self,
-                                          route_t *route, int i, int j) {
+static double tspi_route_reverse_delta_cost (tspi_t *self,
+                                             route_t *route, int i, int j) {
     double dcost =
         tspi_cost (self, route_at (route, i - 1), route_at (route, j)) +
         tspi_cost (self, route_at (route, i), route_at (route, j + 1)) -
@@ -81,10 +81,10 @@ static double tspi_2_opt (tspi_t *self, route_t *route) {
         improved = false;
         for (i = idx_begin; i < idx_end; i++) {
             for (j = i + 1; j <= idx_end; j++) {
-                delta_cost = tspi_route_flip_delta_cost (self, route, i, j);
+                delta_cost = tspi_route_reverse_delta_cost (self, route, i, j);
                 if (delta_cost < -DOUBLE_THRESHOLD) {
                     // print_info ("dcost: %.2f\n", delta_cost);
-                    route_flip (route, i, j);
+                    route_reverse (route, i, j);
                     total_delta_cost += delta_cost;
                     improved = true;
                 }

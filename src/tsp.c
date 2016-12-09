@@ -8,14 +8,16 @@
 #include "classes.h"
 
 
-#define SMALL_NUM_NODES 10
+#define SMALL_NUM_NODES 60
 
 
 struct _tsp_t {
     vrp_t *vrp; // reference of generic model
     route_t *template; // route template
-    size_t start_node;
-    size_t end_node;
+    size_t start_node; // first node is fixed if specified
+    size_t end_node; // last node is fixed if specified
+    size_t unfixed_begin; // fist index of unfixed route slice
+    size_t unfixed_end; // last index of unfixed route slice
     rng_t *rng;
 };
 
@@ -60,11 +62,7 @@ static listx_t *tsp_sweep (tsp_t *self, size_t max_expected) {
     listx_t *list = listx_new ();
 
     size_t route_len = route_size (self->template);
-    size_t idx_begin = (self->start_node != ID_NONE) ? 1 : 0;
-    size_t idx_end = (self->end_node != ID_NONE) ?
-                     (route_len - 2) :
-                     (route_len - 1);
-    size_t num_nodes_to_sort = idx_end - idx_begin + 1;
+    size_t num_nodes_to_sort = self->unfixed_begin - self->unfixed_end + 1;
 
     // Get polar coordinates of nodes to sort
     coord2d_t *polars =
@@ -76,7 +74,7 @@ static listx_t *tsp_sweep (tsp_t *self, size_t max_expected) {
                            NULL;
 
     size_t cnt = 0;
-    for (size_t idx = idx_begin; idx <= idx_end; idx++) {
+    for (size_t idx = self->unfixed_begin; idx <= self->unfixed_end; idx++) {
         size_t node_id = route_at (self->template, idx);
         polars[cnt] = coord2d_to_polar (vrp_node_coord (self->vrp, node_id),
                                         ref,
@@ -111,17 +109,11 @@ static listx_t *tsp_sweep (tsp_t *self, size_t max_expected) {
 static listx_t *tsp_random_permutation (tsp_t *self, size_t max_expected) {
     listx_t *list = listx_new ();
 
-    size_t route_len = route_size (self->template);
-    size_t shuffle_begin = (self->start_node != ID_NONE) ? 1 : 0;
-    size_t shuffle_end =
-        (self->end_node != ID_NONE) ? (route_len - 2) : (route_len - 1);
-    assert (shuffle_begin <= shuffle_end);
-
     // Duplate template and shuffle
     for (size_t cnt = 0; cnt < max_expected; cnt++) {
         route_t *route = route_dup (self->template);
         assert (route);
-        route_shuffle (route, shuffle_begin, shuffle_end, self->rng);
+        route_shuffle (route, self->unfixed_begin, self->unfixed_end, self->rng);
         listx_append (list, route);
     }
 
@@ -135,10 +127,7 @@ static listx_t *tsp_ox (tsp_t *self, route_t *route1, route_t *route2) {
     route_t *r1 = route_dup (route1);
     route_t *r2 = route_dup (route2);
 
-    size_t idx_begin = self->start_node != ID_NONE ? 1 : 0;
-    size_t idx_end = route_size (route1) -
-                     ((self->end_node != ID_NONE) ? 2 : 1);
-    route_ox (r1, r2, idx_begin, idx_end, self->rng);
+    route_ox (r1, r2, self->unfixed_begin, self->unfixed_end, self->rng);
 
     listx_t *list = listx_new ();
     listx_append (list, r1);
@@ -147,25 +136,41 @@ static listx_t *tsp_ox (tsp_t *self, route_t *route1, route_t *route2) {
 }
 
 
-// Local searcher for evol: 2-opt returned after first improvement
+// Local search: 2-opt
+static double tsp_2_opt (tsp_t *self, route_t *route, bool exhaustive) {
+    double saving = 0, ddist;
+    bool improved = true;
+
+    while (improved) {
+        improved = false;
+        // For each possible route sile
+        for (size_t i = self->unfixed_begin; i < self->unfixed_end && !improved; i++) {
+            for (size_t j = i + 1; j <= self->unfixed_end && !improved; j++) {
+                ddist =
+                    route_reverse_delta_distance (route, i, j, self->vrp);
+                if (ddist < 0) {
+                    route_reverse (route, i, j);
+                    saving -= ddist;
+                    if (!exhaustive)
+                        return saving;
+                    improved = true;
+                }
+            }
+        }
+    }
+    return saving;
+}
+
+
+// Local searcher for evolution: non-exhaustive 2-opt
 static void tsp_local_search_for_evol (tsp_t *self, route_t *route) {
-    // print_info ("tsp 2-opt start.\n");
-    size_t idx_begin = (self->start_node != ID_NONE) ? 1 : 0;
-    size_t idx_end = route_size (route) -
-                     ((self->end_node != ID_NONE) ? 2 : 1);
-    // print_info ("idx_begin: %zu, idx_end: %zu\n", idx_begin, idx_end);
-    route_2_opt (route, self->vrp, idx_begin, idx_end, false);
+    tsp_2_opt (self, route, false);
 }
 
 
 // Post optimization: exhaustive 2-opt
 static double tsp_post_optimize (tsp_t *self, route_t *route) {
-    // print_info ("tsp 2-opt start.\n");
-    size_t idx_begin = (self->start_node != ID_NONE) ? 1 : 0;
-    size_t idx_end = route_size (route) -
-                     ((self->end_node != ID_NONE) ? 2 : 1);
-    // print_info ("idx_begin: %zu, idx_end: %zu\n", idx_begin, idx_end);
-    return -1 * route_2_opt (route, self->vrp, idx_begin, idx_end, true);
+    return tsp_2_opt (self, route, true);
 }
 
 
@@ -249,12 +254,17 @@ tsp_t *tsp_new_from_generic (vrp_t *vrp) {
         !listu_includes (self->template, self->end_node))
         listu_append (self->template, self->end_node);
 
+    self->unfixed_begin = (self->start_node != ID_NONE) ? 1 : 0;
+    self->unfixed_end = route_size (self->template) -
+                        ((self->end_node != ID_NONE) ? 2 : 1);
+    assert (self->unfixed_begin <= self->unfixed_end);
+
     print_info ("tsp derived from generic VRP model.\n");
     print_info ("route template: #nodes: %zu, %s trip, start: %s, end: %s\n",
                 tsp_num_nodes (self),
                 tsp_is_round_trip (self) ? "round" : "one-way",
-                (self->start_node != ID_NONE) ? "y" : "n",
-                (self->end_node != ID_NONE) ? "y" : "n");
+                (self->start_node != ID_NONE) ? "set" : "none",
+                (self->end_node != ID_NONE) ? "set" : "none");
     route_print (self->template);
 
     self->rng = rng_new ();

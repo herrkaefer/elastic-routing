@@ -28,8 +28,8 @@ all_tests [] = {
     // { "route", route_test },
     // { "solution", solution_test },
     // { "tspi", tspi_test },
-    // { "tsp", tsp_test },
-    { "cvrp", cvrp_test },
+    { "tsp", tsp_test },
+    // { "cvrp", cvrp_test },
     // { "vrptw", vrptw_test },
     // { "vrp", vrp_test },
 // #endif // WITH_DRAFTS

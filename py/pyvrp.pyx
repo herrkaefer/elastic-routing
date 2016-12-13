@@ -156,7 +156,7 @@ cdef class VRPSolver:
                                 ext_id, sender, receiver, quantity)
 
 
-    cpdef int add_time_window (self, request_id, node_role, earliest, latest):
+    cpdef void add_time_window (self, request_id, node_role, earliest, latest):
         if node_role.lower() == 'sender':
             nr = NR_SENDER
         elif node_role.lower() == 'receiver':
@@ -165,11 +165,11 @@ cdef class VRPSolver:
             print("invalid node role")
             return
 
-        return vrp_add_time_window (self._model,
-                                    request_id, nr, earliest, latest)
+        vrp_add_time_window (self._model,
+                             request_id, nr, earliest, latest)
 
 
-    cpdef int set_service_duration (self, request_id,
+    cpdef void set_service_duration (self, request_id,
                                     node_role, service_duration):
         if node_role.lower() == 'sender':
             nr = NR_SENDER
@@ -182,9 +182,8 @@ cdef class VRPSolver:
         vrp_set_service_duration (self._model, request_id, nr, service_duration)
 
 
-    cpdef int solve (self):
+    cpdef void solve (self):
         self._sol = vrp_solve (self._model)
-        return self_sol is not NULL
 
 
     cpdef void print_solution (self):

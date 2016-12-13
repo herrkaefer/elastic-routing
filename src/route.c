@@ -100,15 +100,16 @@ void route_swap_nodes (route_t *self, size_t idx1, size_t idx2) {
 }
 
 
-double route_total_distance (const route_t *self, const vrp_t *vrp) {
+double route_total_distance (const route_t *self,
+                             const void *context,
+                             arc_distance_t dist_fn) {
     assert (self);
-    assert (vrp);
     size_t len = route_size (self);
     double total_dist = 0;
     for (size_t idx = 0; idx < len - 1; idx++)
-        total_dist += vrp_arc_distance (vrp,
-                                        route_at (self, idx),
-                                        route_at (self, idx + 1));
+        total_dist += dist_fn (context,
+                               route_at (self, idx),
+                               route_at (self, idx + 1));
     return total_dist;
 }
 
@@ -128,9 +129,9 @@ void route_rotate (route_t *self, int num) {
 
 double route_reverse_delta_distance (const route_t *self,
                                      size_t i, size_t j,
-                                     const vrp_t *vrp) {
+                                     const void *context,
+                                     arc_distance_t dist_fn) {
     assert (self);
-    assert (vrp);
     assert (i <= j);
     size_t len = route_size (self);
     assert (j < len);
@@ -143,18 +144,18 @@ double route_reverse_delta_distance (const route_t *self,
     // Bug fixed: i or j may be the end.
     if (i > 0)
         ddist = ddist +
-            vrp_arc_distance (vrp, route_at (self, i - 1), route_at (self, j)) -
-            vrp_arc_distance (vrp, route_at (self, i - 1), route_at (self, i));
+            dist_fn (context, route_at (self, i - 1), route_at (self, j)) -
+            dist_fn (context, route_at (self, i - 1), route_at (self, i));
 
     if (j < len - 1)
         ddist = ddist +
-            vrp_arc_distance (vrp, route_at (self, i), route_at (self, j + 1)) -
-            vrp_arc_distance (vrp, route_at (self, j), route_at (self, j + 1));
+            dist_fn (context, route_at (self, i), route_at (self, j + 1)) -
+            dist_fn (context, route_at (self, j), route_at (self, j + 1));
 
     for (size_t k = i; k < j; k++) {
         ddist = ddist +
-          vrp_arc_distance (vrp, route_at (self, k + 1), route_at (self, k)) -
-          vrp_arc_distance (vrp, route_at (self, k), route_at (self, k + 1));
+          dist_fn (context, route_at (self, k + 1), route_at (self, k)) -
+          dist_fn (context, route_at (self, k), route_at (self, k + 1));
     }
 
     return ddist;
@@ -170,9 +171,9 @@ void route_reverse (route_t *self, size_t i, size_t j) {
 double route_swap_slices_delata_distance (const route_t *self,
                                         size_t i, size_t j,
                                         size_t u, size_t v,
-                                        const vrp_t *vrp) {
+                                        const void *context,
+                                        arc_distance_t dist_fn) {
     assert (self);
-    assert (vrp);
     assert (i <= j);
     assert (j < u);
     assert (u <= v);
@@ -188,30 +189,30 @@ double route_swap_slices_delata_distance (const route_t *self,
     if (i > 0) {
         size_t node_i_pred = route_at (self, i - 1);
         ddist = ddist -
-                vrp_arc_distance (vrp, node_i_pred, node_i) +
-                vrp_arc_distance (vrp, node_i_pred, node_u);
+                dist_fn (context, node_i_pred, node_i) +
+                dist_fn (context, node_i_pred, node_u);
     }
 
     if (v + 1 < size) {
         size_t node_v_succ = route_at (self, v + 1);
         ddist = ddist -
-                vrp_arc_distance (vrp, v, node_v_succ) +
-                vrp_arc_distance (vrp, j, node_v_succ);
+                dist_fn (context, v, node_v_succ) +
+                dist_fn (context, j, node_v_succ);
     }
 
     if (j + 1 < u) {
         size_t node_j_succ = route_at (self, j + 1);
         size_t node_u_pred = route_at (self, u - 1);
         ddist = ddist -
-                vrp_arc_distance (vrp, node_j, node_j_succ) -
-                vrp_arc_distance (vrp, node_u_pred, node_u) +
-                vrp_arc_distance (vrp, node_v, node_j_succ) +
-                vrp_arc_distance (vrp, node_u_pred, node_i);
+                dist_fn (context, node_j, node_j_succ) -
+                dist_fn (context, node_u_pred, node_u) +
+                dist_fn (context, node_v, node_j_succ) +
+                dist_fn (context, node_u_pred, node_i);
     }
     else // j directly links with u
         ddist = ddist -
-                vrp_arc_distance (vrp, node_j, node_u) +
-                vrp_arc_distance (vrp, node_v, node_i);
+                dist_fn (context, node_j, node_u) +
+                dist_fn (context, node_v, node_i);
 
     return ddist;
 }
@@ -224,25 +225,26 @@ void route_swap_slices (route_t *self, size_t i, size_t j, size_t u, size_t v) {
 
 
 double route_remove_node_delta_distance (route_t *self,
-                                         size_t idx, const vrp_t *vrp) {
+                                         size_t idx,
+                                         const void *context,
+                                         arc_distance_t dist_fn) {
     assert (self);
-    assert (vrp);
     size_t size = route_size (self);
     assert (idx < size);
 
     double ddist = 0;
     if (idx > 0) // there is a predecessor to unlink with
-        ddist -= vrp_arc_distance (vrp,
-                                    route_at (self, idx - 1),
-                                    route_at (self, idx));
+        ddist -= dist_fn (context,
+                          route_at (self, idx - 1),
+                          route_at (self, idx));
     if (idx + 1 < size) // there is a successor to unlink with
-        ddist -= vrp_arc_distance (vrp,
-                                    route_at (self, idx),
-                                    route_at (self, idx + 1));
+        ddist -= dist_fn (context,
+                          route_at (self, idx),
+                          route_at (self, idx + 1));
     if (idx > 0 && idx + 1 < size) // link predesessor with successor
-        ddist += vrp_arc_distance (vrp,
-                                    route_at (self, idx - 1),
-                                    route_at (self, idx + 1));
+        ddist += dist_fn (context,
+                          route_at (self, idx - 1),
+                          route_at (self, idx + 1));
     return ddist;
 }
 
@@ -255,25 +257,26 @@ void route_remove_node (route_t *self, size_t idx) {
 
 
 double route_remove_link_delta_distance (route_t *self,
-                                         size_t idx, const vrp_t *vrp) {
+                                         size_t idx,
+                                         const void *context,
+                                         arc_distance_t dist_fn) {
     assert (self);
-    assert (vrp);
     size_t size = route_size (self);
     assert (idx + 1 < size);
 
     double ddist = 0;
     if (idx > 0) // there is a predecessor to unlink with
-        ddist -= vrp_arc_distance (vrp,
-                                   route_at (self, idx - 1),
-                                   route_at (self, idx));
+        ddist -= dist_fn (context,
+                          route_at (self, idx - 1),
+                          route_at (self, idx));
     if (idx + 2 < size) // there is a successor to unlink with
-        ddist -= vrp_arc_distance (vrp,
-                                   route_at (self, idx + 1),
-                                   route_at (self, idx + 2));
+        ddist -= dist_fn (context,
+                          route_at (self, idx + 1),
+                          route_at (self, idx + 2));
     if (idx > 0 && idx + 2 < size) // link predesessor with successor
-        ddist += vrp_arc_distance (vrp,
-                                   route_at (self, idx - 1),
-                                   route_at (self, idx + 2));
+        ddist += dist_fn (context,
+                          route_at (self, idx - 1),
+                          route_at (self, idx + 2));
     return ddist;
 }
 
@@ -288,25 +291,20 @@ void route_remove_link (route_t *self, size_t idx) {
 double route_insert_node_delta_distance (const route_t *self,
                                          size_t idx,
                                          size_t node_id,
-                                         const vrp_t *vrp) {
+                                         const void *context,
+                                         arc_distance_t dist_fn) {
     assert (self);
-    assert (vrp);
     size_t size = route_size (self);
     assert (idx <= size);
 
     double ddist = 0;
     if (idx > 0) // there is a node before to link with
-        ddist += vrp_arc_distance (vrp,
-                                   route_at (self, idx - 1),
-                                   node_id);
+        ddist += dist_fn (context, route_at (self, idx - 1), node_id);
     if (idx < size) // there is a node after to link with
-        ddist += vrp_arc_distance (vrp,
-                                   node_id,
-                                   route_at (self, idx));
+        ddist += dist_fn (context, node_id, route_at (self, idx));
     if (idx > 0 && idx < size) // there is a link before to remove
-        ddist -= vrp_arc_distance (vrp,
-                                   route_at (self, idx - 1),
-                                   route_at (self, idx));
+        ddist -=
+            dist_fn (context, route_at (self, idx - 1), route_at (self, idx));
     return ddist;
 }
 
@@ -321,7 +319,8 @@ void route_insert_node (route_t *self, size_t idx, size_t node_id) {
 // Distance increment of replacing node at index with new node
 static double route_replace_node_delta_distance (const route_t *self,
                                                  size_t idx, size_t new_node,
-                                                 const vrp_t *vrp) {
+                                                 const void *context,
+                                                 arc_distance_t dist_fn) {
     size_t size = route_size (self);
     size_t old_node = route_at (self, idx);
     if (new_node == old_node)
@@ -330,13 +329,13 @@ static double route_replace_node_delta_distance (const route_t *self,
     double ddist = 0;
     if (idx > 0) { // there is a predecessor
         size_t predecessor = route_at (self, idx - 1);
-        ddist -= vrp_arc_distance (vrp, predecessor, old_node);
-        ddist += vrp_arc_distance (vrp, predecessor, new_node);
+        ddist -= dist_fn (context, predecessor, old_node);
+        ddist += dist_fn (context, predecessor, new_node);
     }
     if (idx + 1 < size) { // there is successor
         size_t successor = route_at (self, idx + 1);
-        ddist -= vrp_arc_distance (vrp, old_node, successor);
-        ddist += vrp_arc_distance (vrp, new_node, successor);
+        ddist -= dist_fn (context, old_node, successor);
+        ddist += dist_fn (context, new_node, successor);
     }
     return ddist;
 }
@@ -345,11 +344,11 @@ static double route_replace_node_delta_distance (const route_t *self,
 double route_exchange_nodes_delta_distance (const route_t *self,
                                             const route_t *route,
                                             size_t idx1, size_t idx2,
-                                            const vrp_t *vrp) {
+                                            const void *context,
+                                            arc_distance_t dist_fn) {
     assert (self);
     assert (route);
     assert (self != route);
-    assert (vrp);
     assert (idx1 < route_size (self));
     assert (idx2 < route_size (route));
 
@@ -357,11 +356,13 @@ double route_exchange_nodes_delta_distance (const route_t *self,
         route_replace_node_delta_distance (self,
                                            idx1,
                                            route_at (route, idx2),
-                                           vrp) +
+                                           context,
+                                           dist_fn) +
         route_replace_node_delta_distance (route,
                                            idx2,
                                            route_at (self, idx1),
-                                           vrp);
+                                           context,
+                                           dist_fn);
 }
 
 
@@ -387,11 +388,11 @@ void route_exchange_nodes (route_t *self, route_t *route,
 double route_exchange_tails_delta_distance (const route_t *self,
                                             const route_t *route,
                                             size_t idx1, size_t idx2,
-                                            const vrp_t *vrp) {
+                                            const void *context,
+                                            arc_distance_t dist_fn) {
     assert (self);
     assert (route);
     assert (self != route);
-    assert (vrp);
     size_t size1 = route_size (self);
     size_t size2 = route_size (route);
     assert (idx1 < size1);
@@ -402,22 +403,22 @@ double route_exchange_tails_delta_distance (const route_t *self,
     // There is node after idx1 of self
     if (idx1 + 1 < size1)
         ddist = ddist -
-                vrp_arc_distance (vrp,
-                                  route_at (self, idx1),
-                                  route_at (self, idx1 + 1)) +
-                vrp_arc_distance (vrp,
-                                  route_at (route, idx2),
-                                  route_at (self, idx1 + 1));
+                dist_fn (context,
+                         route_at (self, idx1),
+                         route_at (self, idx1 + 1)) +
+                dist_fn (context,
+                         route_at (route, idx2),
+                         route_at (self, idx1 + 1));
 
     // There is node after idx2 of route
     if (idx2 + 1 < size2)
         ddist = ddist -
-                vrp_arc_distance (vrp,
-                                  route_at (route, idx2),
-                                  route_at (route, idx2 + 1)) +
-                vrp_arc_distance (vrp,
-                                  route_at (self, idx1),
-                                  route_at (route, idx2 + 1));
+                dist_fn (context,
+                         route_at (route, idx2),
+                         route_at (route, idx2 + 1)) +
+                dist_fn (context,
+                         route_at (self, idx1),
+                         route_at (route, idx2 + 1));
 
     return ddist;
 }
@@ -461,8 +462,7 @@ void route_exchange_tails (route_t *self, route_t *route,
 
 
 void route_ox (route_t *route1, route_t *route2,
-               size_t start, size_t end,
-               rng_t *rng) {
+               size_t start, size_t end, rng_t *rng) {
     assert (route1);
     assert (route2);
     assert(start <= end);

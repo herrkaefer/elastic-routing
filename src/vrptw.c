@@ -62,7 +62,7 @@ typedef struct {
     size_t id; // node ID in roadgraph of generic model
     double demand;
     const coord2d_t *coord; // reference of node coords in roadgraph
-    // const listu_t *time_windows; // reference of time windows in request
+    const listu_t *time_windows; // reference of time windows in request
 } s_node_t;
 
 
@@ -82,6 +82,10 @@ struct _vrptw_t {
 typedef struct {
     route_t *gtour; // giant tour: a sequence of customers: 1 ~ N
     solution_t *sol; // splited giant tour
+
+    // auxiliaries
+
+
 } s_genome_t;
 
 
@@ -110,11 +114,21 @@ static void s_genome_free (s_genome_t **self_p) {
 
 // ----------------------------------------------------------------------------
 // Auxiliary structure for saving TW infos
-// @todo
+// @todo a companion of solution, use predecessor/ successor structure?
 typedef struct {
-    ...
 
-} s_tw_infos;
+
+} s_twinfos_t;
+
+
+// Create TW infos from a solution
+s_twinfos_t *s_twinfos_new (solution_t *sol) {
+    return NULL;
+}
+
+void s_twinfos_free (s_twinfos_t **self_p) {
+
+}
 
 
 // ----------------------------------------------------------------------------
@@ -224,7 +238,9 @@ static void vrptw_print_solution (vrptw_t *self, solution_t *sol) {
         size_t route_len = route_size (route);
         printf ("route #%3zu (#nodes: %3zu, distance: %6.2f, demand: %6.2f):",
                 idx_r, route_len,
-                route_total_distance (route, self->vrp),
+                route_total_distance (route,
+                                      self->vrp,
+                                      (arc_distance_t) vrp_arc_distance),
                 vrptw_route_demand (self, route));
         for (size_t idx_n = 0; idx_n < route_len; idx_n++)
             printf (" %zu", route_at (route, idx_n));
@@ -376,7 +392,9 @@ static listx_t *vrptw_clark_wright (vrptw_t *self, size_t num_expected) {
         route_t *gtour = vrptw_giant_tour_from_solution (self, sol);
         size_t hash = giant_tour_hash (gtour);
         if (!listu_includes (hashes, hash)) {
-            solution_cal_set_total_distance (sol, self->vrp);
+            solution_cal_set_total_distance (sol,
+                                             self->vrp,
+                                             (arc_distance_t) vrp_arc_distance);
             s_genome_t *genome = s_genome_new (gtour, sol);
             listx_append (genomes, genome);
             listu_append (hashes, hash);

@@ -21,7 +21,7 @@ typedef struct {
 } solution_iterator_t;
 
 // Constructor
-solution_t *solution_new (vrp_t *vrp);
+solution_t *solution_new ();
 
 // Destructor
 void solution_free (solution_t **self_p);
@@ -57,10 +57,14 @@ route_t *solution_route (const solution_t *self, size_t route_idx);
 void solution_set_total_distance (solution_t *self, double distance);
 
 // Calculate and set total distance
-double solution_cal_set_total_distance (solution_t *self, const vrp_t *vrp);
+double solution_cal_set_total_distance (solution_t *self,
+                                        const void *context,
+                                        arc_distance_t dist_fn);
 
 // Calculate total distance (do not set)
-double solution_cal_total_distance (const solution_t *self, const vrp_t *vrp);
+double solution_cal_total_distance (const solution_t *self,
+                                    const void *context,
+                                    arc_distance_t dist_fn);
 
 // Increase total distance by given value (for development)
 void solution_increase_total_distance (solution_t *self, double delta_distance);
@@ -71,11 +75,13 @@ double solution_total_distance (const solution_t *self);
 // Duplicator
 solution_t *solution_dup (const solution_t *self);
 
-// Printer (display external node ID)
+// Printer
 void solution_print (const solution_t *self);
 
-// Printer (display internal node ID)
-void solution_print_internal (const solution_t *self);
+// Printer (display external node ID)
+void solution_print_external (const solution_t *self,
+                              const void *context,
+                              arc_distance_t dist_fn);
 
 // Create an iterator
 solution_iterator_t solution_iter_init (const solution_t *self);

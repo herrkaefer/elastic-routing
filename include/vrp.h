@@ -70,7 +70,7 @@ size_t vrp_query_node (vrp_t *self, const char *node_ext_id);
 bool vrp_node_exists (vrp_t *self, size_t node_id);
 
 // Get external ID of node
-const char *vrp_node_ext_id (vrp_t *self, size_t node_id);
+const char *vrp_node_ext_id (const vrp_t *self, size_t node_id);
 
 // Get node coordinate
 const coord2d_t *vrp_node_coord (vrp_t *self, size_t node_id);

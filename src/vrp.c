@@ -639,7 +639,7 @@ vrp_t *vrp_new_from_file (const char *filename) {
 
 
 // Get node by id
-static s_node_t *vrp_node (vrp_t *self, size_t node_id) {
+static s_node_t *vrp_node (const vrp_t *self, size_t node_id) {
     s_node_t *node = (s_node_t *) arrayset_data (self->nodes, node_id);
     return node;
 }
@@ -767,7 +767,7 @@ bool vrp_node_exists (vrp_t *self, size_t node_id) {
 }
 
 
-const char *vrp_node_ext_id (vrp_t *self, size_t node_id) {
+const char *vrp_node_ext_id (const vrp_t *self, size_t node_id) {
     assert (self);
     s_node_t *node = vrp_node (self, node_id);
     assert (node != NULL);
@@ -1684,7 +1684,7 @@ void vrp_test (bool verbose) {
 
     solution_t *sol = vrp_solve (vrp);
     if (sol != NULL)
-        solution_print_internal (sol);
+        solution_print (sol);
 
     vrp_free (&vrp);
     print_info ("OK\n");

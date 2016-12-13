@@ -9,7 +9,7 @@
 
 
 struct _solution_t {
-    vrp_t *vrp; // Problem reference. Solution does not own it.
+    // vrp_t *vrp; // Problem reference. Solution does not own it.
     listx_t *routes; // list of route_t objects
     listu_t *vehicles; // list of vehicles cooresponding to routes
 
@@ -20,11 +20,11 @@ struct _solution_t {
 
 
 // Create a new solution object
-solution_t *solution_new (vrp_t *vrp) {
+solution_t *solution_new () {
     solution_t *self = (solution_t *) malloc (sizeof (solution_t));
     assert (self);
 
-    self->vrp = vrp;
+    // self->vrp = vrp;
 
     self->routes = listx_new ();
     assert (self->routes);
@@ -107,23 +107,29 @@ void solution_set_total_distance (solution_t *self, double distance) {
 }
 
 
-double solution_cal_set_total_distance (solution_t *self, const vrp_t *vrp) {
+double solution_cal_set_total_distance (solution_t *self,
+                                        const void *context,
+                                        arc_distance_t dist_fn) {
     assert (self);
-    assert (vrp);
     double total_dist = 0;
     for (size_t idx = 0; idx < solution_num_routes (self); idx++)
-        total_dist += route_total_distance (solution_route (self, idx), vrp);
+        total_dist +=
+            route_total_distance (solution_route (self, idx),
+                                  context, dist_fn);
     self->total_distance = total_dist;
     return total_dist;
 }
 
 
-double solution_cal_total_distance (const solution_t *self, const vrp_t *vrp) {
+double solution_cal_total_distance (const solution_t *self,
+                                    const void *context,
+                                    arc_distance_t dist_fn) {
     assert (self);
-    assert (vrp);
     double total_dist = 0;
     for (size_t idx = 0; idx < solution_num_routes (self); idx++)
-        total_dist += route_total_distance (solution_route (self, idx), vrp);
+        total_dist += route_total_distance (solution_route (self, idx),
+                                            context,
+                                            dist_fn);
     // self->total_distance = total_dist;
     return total_dist;
 }
@@ -144,7 +150,8 @@ double solution_total_distance (const solution_t *self) {
 
 solution_t *solution_dup (const solution_t *self) {
     assert (self);
-    solution_t *copy = solution_new (self->vrp);
+    // solution_t *copy = solution_new (self->vrp);
+    solution_t *copy = solution_new ();
     for (size_t idx = 0; idx < solution_num_routes (self); idx++)
         solution_append_route (copy,
                                route_dup (listx_item_at (self->routes, idx)));
@@ -156,29 +163,26 @@ solution_t *solution_dup (const solution_t *self) {
 }
 
 
+// void solution_print_external (const solution_t *self,
+//                               const vrp_t *vrp) {
+//     if (self == NULL || vrp == NULL)
+//         return;
+
+//     printf ("\nsolution: #routes: %zu, total distance: %.2f\n",
+//             listx_size (self->routes), self->total_distance);
+//     printf ("--------------------------------------------------\n");
+//     for (size_t idx_r = 0; idx_r < listx_size (self->routes); idx_r++) {
+//         route_t *route = listx_item_at (self->routes, idx_r);
+//         size_t route_len = route_size (route);
+//         printf ("route #%zu (#nodes: %zu):", idx_r, route_len);
+//         for (size_t idx_n = 0; idx_n < route_len; idx_n++)
+//             printf (" %s", vrp_node_ext_id (vrp, route_at (route, idx_n)));
+//         printf ("\n");
+//     }
+// }
+
+
 void solution_print (const solution_t *self) {
-    if (self == NULL)
-        return;
-
-    printf ("\nsolution: #routes: %zu, total distance: %.2f\n",
-            listx_size (self->routes), self->total_distance);
-    printf ("--------------------------------------------------\n");
-    for (size_t idx_r = 0; idx_r < listx_size (self->routes); idx_r++) {
-        route_t *route = listx_item_at (self->routes, idx_r);
-        size_t route_len = route_size (route);
-        printf ("route #%zu (#nodes: %zu):", idx_r, route_len);
-        for (size_t idx_n = 0; idx_n < route_len; idx_n++) {
-            if (self->vrp != NULL)
-                printf (" %s", vrp_node_ext_id (self->vrp, route_at (route, idx_n)));
-            else
-                printf (" %zu", route_at (route, idx_n));
-        }
-        printf ("\n");
-    }
-}
-
-
-void solution_print_internal (const solution_t *self) {
     assert (self);
     printf ("\nsolution: #routes: %zu, total distance: %.2f\n",
             listx_size (self->routes), self->total_distance);
@@ -267,7 +271,7 @@ void solution_test (bool verbose) {
     print_info (" * solution: \n");
 
     rng_t *rng = rng_new ();
-    solution_t *sol = solution_new (NULL);
+    solution_t *sol = solution_new ();
     size_t num_routes = 1000;
     for (size_t idx = 0; idx < num_routes; idx++) {
         route_t *route = route_new_range (rng_random_int (rng, 1, 100),

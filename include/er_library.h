@@ -66,13 +66,13 @@ typedef enum {
     NR_RECEIVER
 } node_role_t;
 
-typedef double (*arc_distance_t) (const void *model,
-                                  size_t from_node_id,
-                                  size_t to_node_id);
+typedef double (*vrp_arc_distance_t) (const void *model,
+                                      size_t from_node_id,
+                                      size_t to_node_id);
 
-typedef size_t (*arc_duration_t) (const void *model,
-                                  size_t from_node_id,
-                                  size_t to_node_id);
+typedef size_t (*vrp_arc_duration_t) (const void *model,
+                                      size_t from_node_id,
+                                      size_t to_node_id);
 
 typedef struct _vrp_t vrp_t;
 

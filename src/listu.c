@@ -222,6 +222,13 @@ void listu_append (listu_t *self, size_t value) {
 }
 
 
+size_t listu_last (const listu_t *self) {
+    assert (self);
+    size_t size = listu_size (self);
+    return (size > 0) ? listu_get (self, size - 1) : SIZE_NONE;
+}
+
+
 size_t listu_pop_last (listu_t *self) {
     assert (self);
     size_t size = listu_size (self);

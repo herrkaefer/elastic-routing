@@ -138,11 +138,11 @@ cdef class VRPSolver:
 
 
     cpdef int generate_durations (self, speed):
-        if (speed > 0)
+        if speed > 0:
             vrp_generate_durations (self._model, speed)
             return 0
-        else
-            printf ("speed should be positive")
+        else:
+            print ("speed should be positive")
             return -1
 
 
@@ -176,8 +176,8 @@ cdef class VRPSolver:
         elif node_role.lower() == 'receiver':
             nr = NR_RECEIVER
         else:
-            print("invalid node role")
-            return -1
+            print ("invalid node role")
+            return
 
         vrp_set_service_duration (self._model, request_id, nr, service_duration)
 
@@ -187,6 +187,9 @@ cdef class VRPSolver:
 
 
     cpdef void print_solution (self):
-        solution_print (self._sol);
+        if self._sol is not NULL:
+            solution_print (self._sol)
+        else:
+            print ("solution does not exist.")
 
 

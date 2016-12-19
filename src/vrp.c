@@ -1225,19 +1225,8 @@ size_t vrp_earliest_service_time (vrp_t *self,
                    request->pickup_time_windows :
                    request->delivery_time_windows;
     assert (tws);
-
-    size_t num_tws = vrp_num_time_windows (self, request_id, node_role);
-    if (num_tws == 0)
-        return 0;
-
-    size_t earliest_st = SIZE_MAX;
-    for (size_t idx_tw = 0; idx_tw < num_tws; idx_tw++) {
-        size_t earliest_of_tw =
-            vrp_earliest_of_time_window (self, request_id, node_role, idx_tw);
-        if (earliest_of_tw < earliest_st)
-            earliest_st = earliest_of_tw;
-    }
-    return earliest_st;
+    assert (listu_is_sorted_ascending (tws));
+    return (listu_size (tws) > 0) ? listu_get (tws, 0) : 0;
 }
 
 
@@ -1253,19 +1242,9 @@ size_t vrp_latest_service_time (vrp_t *self,
                    request->pickup_time_windows :
                    request->delivery_time_windows;
     assert (tws);
-
-    size_t num_tws = vrp_num_time_windows (self, request_id, node_role);
-    if (num_tws == 0)
-        return SIZE_MAX;
-
-    size_t latest_st = 0;
-    for (size_t idx_tw = 0; idx_tw < num_tws; idx_tw++) {
-        size_t latest_of_tw =
-            vrp_latest_of_time_window (self, request_id, node_role, idx_tw);
-        if (latest_of_tw > latest_st)
-            latest_st = latest_of_tw;
-    }
-    return latest_st;
+    assert (listu_is_sorted_ascending (tws));
+    size_t size = listu_size (tws);
+    return (size > 0) ? listu_get (tws, size - 1) : SIZE_MAX;
 }
 
 
@@ -1280,6 +1259,20 @@ size_t vrp_service_duration (vrp_t *self,
     return (node_role == NR_SENDER) ?
            request->pickup_duration :
            request->delivery_duration;
+}
+
+
+const listu_t *vrp_time_windows (vrp_t *self,
+                                 size_t request_id,
+                                 node_role_t node_role) {
+    assert (self);
+    s_request_t *request = vrp_request (self, request_id);
+    assert (request);
+    assert (node_role == NR_SENDER || node_role == NR_RECEIVER);
+
+    return (node_role == NR_SENDER) ?
+           request->pickup_time_windows :
+           request->delivery_time_windows;
 }
 
 

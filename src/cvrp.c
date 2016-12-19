@@ -35,6 +35,11 @@ For evolution:
 - fitness accessor of genome: inverse of cost averaged over arcs
 - distance accessor of genomes: levenshtein distance
 
+Notes:
+
+In this implemetation, nodes in route and solution are directly represented by
+generic IDs (i.e. ID in the generic model).
+
 */
 
 #include "classes.h"
@@ -93,9 +98,26 @@ static void s_genome_free (s_genome_t **self_p) {
 }
 
 
+static int s_genome_compare_cost (s_genome_t *g1, s_genome_t *g2) {
+    assert (g1->sol != NULL && g2->sol != NULL);
+    // assert (solution_total_distance (g1->sol) > 0);
+    // assert (solution_total_distance (g2->sol) > 0);
+
+    if (solution_total_distance (g1->sol) <
+        solution_total_distance (g2->sol))
+        return -1;
+    else if (solution_total_distance (g1->sol) >
+             solution_total_distance (g2->sol))
+        return 1;
+    else
+        return 0;
+}
+
+
 // ----------------------------------------------------------------------------
 // Helpers
 
+// Get arc distance by index in self->nodes
 static double cvrp_arc_distance_by_idx (cvrp_t *self,
                                         size_t idx1, size_t idx2) {
     return vrp_arc_distance (self->vrp,
@@ -118,7 +140,7 @@ static double cvrp_node_demand (cvrp_t *self, size_t node_id) {
 }
 
 
-// Sum of demand of nodes on a route
+// Get sum of demand of nodes on a route
 static double cvrp_route_demand (cvrp_t *self, route_t *route) {
     double demand = 0;
     for (size_t idx = 0; idx < route_size (route); idx++)
@@ -127,7 +149,15 @@ static double cvrp_route_demand (cvrp_t *self, route_t *route) {
 }
 
 
-// Sum of node demands on route slice [idx_from, idx_to]
+// Get total distance of route
+static double cvrp_route_distance (cvrp_t *self, route_t *route) {
+    return route_total_distance (route,
+                                 self->vrp,
+                                 (vrp_arc_distance_t) vrp_arc_distance);
+}
+
+
+// Get sum of node demands in route slice [idx_from, idx_to]
 static double cvrp_route_slice_demand (cvrp_t *self, route_t *route,
                                        size_t idx_from, size_t idx_to) {
     assert (idx_from <= idx_to);
@@ -164,6 +194,8 @@ static size_t giant_tour_hash (route_t *gtour) {
 }
 
 
+// Check if solution is feasible CVRP solution.
+// Only route demand is verified.
 static bool cvrp_solution_is_feasible (cvrp_t *self, solution_t *sol) {
     for (size_t idx = 0; idx < solution_num_routes (sol); idx++) {
         route_t *route = solution_route (sol, idx);
@@ -176,17 +208,16 @@ static bool cvrp_solution_is_feasible (cvrp_t *self, solution_t *sol) {
 
 static void cvrp_print_solution (cvrp_t *self, solution_t *sol) {
     printf ("\nCVRP solution: #routes: %zu, total distance: %.2f (capacity: %.2f)\n",
-            solution_num_routes (sol), solution_total_distance (sol), self->capacity);
+            solution_num_routes (sol),
+            solution_total_distance (sol),
+            self->capacity);
     printf ("--------------------------------------------------------------------\n");
-
     for (size_t idx_r = 0; idx_r < solution_num_routes (sol); idx_r++) {
         route_t *route = solution_route (sol, idx_r);
         size_t route_len = route_size (route);
         printf ("route #%3zu (#nodes: %3zu, distance: %6.2f, demand: %6.2f):",
                 idx_r, route_len,
-                route_total_distance (route,
-                                      self->vrp,
-                                      (arc_distance_t) vrp_arc_distance),
+                cvrp_route_distance (self, route),
                 cvrp_route_demand (self, route));
         for (size_t idx_n = 0; idx_n < route_len; idx_n++)
             printf (" %zu", route_at (route, idx_n));
@@ -427,7 +458,7 @@ static listx_t *cvrp_clark_wright (cvrp_t *self, size_t num_expected) {
         if (!listu_includes (hashes, hash)) {
             solution_cal_set_total_distance (sol,
                                              self->vrp,
-                                             (arc_distance_t) vrp_arc_distance);
+                                             (vrp_arc_distance_t) vrp_arc_distance);
             s_genome_t *genome = s_genome_new (gtour, sol);
             listx_append (genomes, genome);
             listu_append (hashes, hash);
@@ -628,7 +659,7 @@ static double cvrp_or_opt_node (cvrp_t *self, solution_t *sol, bool exhaustive) 
                 route_remove_node_delta_distance (iter1.route,
                                                   iter1.idx_node,
                                                   self->vrp,
-                                                  (arc_distance_t) vrp_arc_distance);
+                                                  (vrp_arc_distance_t) vrp_arc_distance);
             double node_demand = cvrp_node_demand (self, iter1.node_id);
 
             // Try to insert node to another route
@@ -648,7 +679,7 @@ static double cvrp_or_opt_node (cvrp_t *self, solution_t *sol, bool exhaustive) 
                                                       iter2.idx_node,
                                                       iter1.node_id,
                                                       self->vrp,
-                                                      (arc_distance_t) vrp_arc_distance);
+                                                      (vrp_arc_distance_t) vrp_arc_distance);
                 double dcost = dcost_remove + dcost_insert;
                 if (dcost < 0) {
                     // printf ("improved: %.2f\n", -dcost);
@@ -726,7 +757,7 @@ static double cvrp_exchange_nodes (cvrp_t *self,
                                                          iter1.idx_node,
                                                          iter2.idx_node,
                                                          self->vrp,
-                                                         (arc_distance_t) vrp_arc_distance);
+                                                         (vrp_arc_distance_t) vrp_arc_distance);
                 // double dcost_old =
                 //     route_replace_node_delta_distance (iter1.route,
                 //                                        iter1.idx_node,
@@ -827,7 +858,7 @@ static double cvrp_2_opt_star (cvrp_t *self, solution_t *sol, bool exhaustive) {
                                                          iter1.idx_node,
                                                          iter2.idx_node,
                                                          self->vrp,
-                                                         (arc_distance_t) vrp_arc_distance);
+                                                         (vrp_arc_distance_t) vrp_arc_distance);
 
                 if (dcost < 0) {
                     // printf ("2-opt* ---------------------------\n");
@@ -886,7 +917,7 @@ static double cvrp_2_opt (cvrp_t *self, solution_t *sol, bool exhaustive) {
                 for (size_t j = i + 1; j <= size - 2 && !improved; j++) {
                     ddist =
                         route_reverse_delta_distance (route, i, j, self->vrp,
-                                                      (arc_distance_t) vrp_arc_distance);
+                                                      (vrp_arc_distance_t) vrp_arc_distance);
                     if (ddist < 0) {
                         route_reverse (route, i, j);
                         saving -= ddist;
@@ -940,7 +971,7 @@ static double cvrp_post_optimize (cvrp_t *self, solution_t *sol) {
     print_info ("cal cost before post optimization: %.2f\n",
                 solution_cal_total_distance (sol,
                                              self->vrp,
-                                             (arc_distance_t) vrp_arc_distance));
+                                             (vrp_arc_distance_t) vrp_arc_distance));
 
     while (improved) {
         improved = false;
@@ -987,27 +1018,11 @@ static double cvrp_post_optimize (cvrp_t *self, solution_t *sol) {
     print_info ("cal cost after post optimization: %.2f\n",
                 solution_cal_total_distance (sol,
                                              self->vrp,
-                                             (arc_distance_t) vrp_arc_distance));
+                                             (vrp_arc_distance_t) vrp_arc_distance));
     print_info ("post-optimization improvement: %.3f%% (%.2f -> %.2f)\n",
                 total_saving / cost_before * 100,
                 cost_before, solution_total_distance (sol));
     return saving;
-}
-
-
-static int cvrp_compare_genome_cost (s_genome_t *g1, s_genome_t *g2) {
-    assert (g1->sol != NULL && g2->sol != NULL);
-    // assert (solution_total_distance (g1->sol) > 0);
-    // assert (solution_total_distance (g2->sol) > 0);
-
-    if (solution_total_distance (g1->sol) <
-        solution_total_distance (g2->sol))
-        return -1;
-    else if (solution_total_distance (g1->sol) >
-             solution_total_distance (g2->sol))
-        return 1;
-    else
-        return 0;
 }
 
 
@@ -1023,7 +1038,7 @@ static solution_t *cvrp_solve_small_model (cvrp_t *self) {
 
     genomes = cvrp_clark_wright (self, 7);
     listx_set_destructor (genomes, (destructor_t) s_genome_free);
-    listx_set_comparator (genomes, (comparator_t) cvrp_compare_genome_cost);
+    listx_set_comparator (genomes, (comparator_t) s_genome_compare_cost);
     listx_sort (genomes, true);
     g = listx_first (genomes);
     if (g != NULL && solution_total_distance (g->sol) < min_dist) {
@@ -1037,7 +1052,7 @@ static solution_t *cvrp_solve_small_model (cvrp_t *self) {
     while ((g = (s_genome_t *) listx_iter (genomes, &iter)) != NULL)
         g->sol = cvrp_split (self, g->gtour);
     listx_set_destructor (genomes, (destructor_t) s_genome_free);
-    listx_set_comparator (genomes, (comparator_t) cvrp_compare_genome_cost);
+    listx_set_comparator (genomes, (comparator_t) s_genome_compare_cost);
     listx_sort (genomes, true);
     g = listx_first (genomes);
     if (g != NULL && solution_total_distance (g->sol) < min_dist) {
@@ -1051,7 +1066,7 @@ static solution_t *cvrp_solve_small_model (cvrp_t *self) {
         while ((g = (s_genome_t *) listx_iter (genomes, &iter)) != NULL)
             g->sol = cvrp_split (self, g->gtour);
         listx_set_destructor (genomes, (destructor_t) s_genome_free);
-        listx_set_comparator (genomes, (comparator_t) cvrp_compare_genome_cost);
+        listx_set_comparator (genomes, (comparator_t) s_genome_compare_cost);
         listx_sort (genomes, true);
         g = listx_first (genomes);
         if (g != NULL && solution_total_distance (g->sol) < min_dist) {
@@ -1187,8 +1202,6 @@ solution_t *cvrp_solve (cvrp_t *self) {
 
 void cvrp_test (bool verbose) {
     print_info ("* cvrp: \n");
-
-    // 1. problem derived from generic model
 
     char filename[] =
         "benchmark/cvrp/A-n32-k5.vrp";

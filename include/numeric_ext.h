@@ -21,11 +21,11 @@ extern "C" {
 
 #define SIZE_NONE SIZE_MAX
 
-#define ID_NONE   SIZE_NONE
+#define ID_NONE SIZE_NONE
 
-#define DOUBLE_MAX       DBL_MAX
-#define DOUBLE_MIN       DBL_MIN
-#define DOUBLE_NONE      NAN
+#define DOUBLE_MAX DBL_MAX
+#define DOUBLE_MIN DBL_MIN
+#define DOUBLE_NONE NAN
 #define DOUBLE_THRESHOLD (2*DBL_MIN)
 
 #define double_is_none(a) (isnan (a))
@@ -41,6 +41,9 @@ inline int int_compare (const int *a, const int *b) {
     return (*a - *b);
 }
 
+#define max2(a, b) ((a) > (b) ? (a) : (b))
+#define min2(a, b) ((a) < (b) ? (a) : (b))
+#define max3(a, b, c) ((a) > (b) ? ((a) > (c) ? (a) : (c)) : ((b) > (c) ? (b) : (c)))
 #define min3(a, b, c) ((a) < (b) ? ((a) < (c) ? (a) : (c)) : ((b) < (c) ? (b) : (c)))
 
 // Factorial for small numbers (tested <= 65)

@@ -59,12 +59,12 @@ void solution_set_total_distance (solution_t *self, double distance);
 // Calculate and set total distance
 double solution_cal_set_total_distance (solution_t *self,
                                         const void *context,
-                                        arc_distance_t dist_fn);
+                                        vrp_arc_distance_t dist_fn);
 
 // Calculate total distance (do not set)
 double solution_cal_total_distance (const solution_t *self,
                                     const void *context,
-                                    arc_distance_t dist_fn);
+                                    vrp_arc_distance_t dist_fn);
 
 // Increase total distance by given value (for development)
 void solution_increase_total_distance (solution_t *self, double delta_distance);
@@ -81,13 +81,13 @@ void solution_print (const solution_t *self);
 // Printer (display external node ID)
 void solution_print_external (const solution_t *self,
                               const void *context,
-                              arc_distance_t dist_fn);
+                              vrp_arc_distance_t dist_fn);
 
 // Create an iterator
 solution_iterator_t solution_iter_init (const solution_t *self);
 
 // Get next route by iterator
-void *solution_iter_route (const solution_t *self, solution_iterator_t *iter);
+// void *solution_iter_route (const solution_t *self, solution_iterator_t *iter);
 
 // Iterate to next node
 size_t solution_iter_node (const solution_t *self, solution_iterator_t *iter);

@@ -41,7 +41,7 @@ static size_t tsp_num_nodes (tsp_t *self) {
 // Evolution fitness callback: inverse of average cost over arcs
 static double tsp_fitness (tsp_t *self, route_t *route) {
     double dist = route_total_distance (route, self->vrp,
-                                        (arc_distance_t) vrp_arc_distance);
+                                        (vrp_arc_distance_t) vrp_arc_distance);
     return (dist > 0) ?
            (route_size (route) - 1) / dist :
            0.0;
@@ -148,7 +148,7 @@ static double tsp_2_opt (tsp_t *self, route_t *route, bool exhaustive) {
                 ddist =
                     route_reverse_delta_distance (route, i, j,
                                                   self->vrp,
-                                                  (arc_distance_t) vrp_arc_distance);
+                                                  (vrp_arc_distance_t) vrp_arc_distance);
                 if (ddist < 0) {
                     route_reverse (route, i, j);
                     saving -= ddist;
@@ -200,13 +200,13 @@ static solution_t *tsp_solve_small_model (tsp_t *self) {
     double route_cost =
         route_total_distance (route,
                               self->vrp,
-                              (arc_distance_t) vrp_arc_distance);
+                              (vrp_arc_distance_t) vrp_arc_distance);
     print_info ("route cost before local search: %.2f\n", route_cost);
     double saving = tsp_post_optimize (self, route);
     double improvement = saving / route_cost;
     route_cost = route_total_distance (route,
                                        self->vrp,
-                                       (arc_distance_t) vrp_arc_distance);
+                                       (vrp_arc_distance_t) vrp_arc_distance);
     print_info ("route cost after local search: %.2f (%+.2f%% improved)\n",
                 route_cost, improvement * 100);
 
@@ -337,7 +337,7 @@ solution_t *tsp_solve (tsp_t *self) {
     double route_cost =
         route_total_distance (route,
                               self->vrp,
-                              (arc_distance_t) vrp_arc_distance);
+                              (vrp_arc_distance_t) vrp_arc_distance);
     print_info ("route cost after evol: %.2f\n", route_cost);
 
     // Post optimization
@@ -345,7 +345,7 @@ solution_t *tsp_solve (tsp_t *self) {
     double improvement = -delta_cost / route_cost;
     route_cost = route_total_distance (route,
                                        self->vrp,
-                                       (arc_distance_t) vrp_arc_distance);
+                                       (vrp_arc_distance_t) vrp_arc_distance);
     print_info ("route cost after post-optimization: %.2f\n", route_cost);
     print_info ("post-optimization improved: %.2f%%\n", improvement * 100);
 
@@ -425,7 +425,7 @@ void tsp_test (bool verbose) {
     printf ("#vehicles: %zu\n", vrp_num_vehicles (vrp));
 
     sol = vrp_solve (vrp);
-    solution_cal_set_total_distance (sol, vrp, (arc_distance_t) vrp_arc_distance);
+    solution_cal_set_total_distance (sol, vrp, (vrp_arc_distance_t) vrp_arc_distance);
     solution_print (sol);
 
     vrp_free (&vrp);

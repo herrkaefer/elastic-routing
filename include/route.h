@@ -64,7 +64,7 @@ void route_swap_nodes (route_t *self, size_t idx1, size_t idx2);
 // Route total distance
 double route_total_distance (const route_t *self,
                              const void *context,
-                             arc_distance_t dist_fn);
+                             vrp_arc_distance_t dist_fn);
 
 // Shuffle route slice [idx_begin, idx_end] in place.
 // Set rng to use your random number generator, or NULL to use an inner one.
@@ -78,10 +78,12 @@ void route_rotate (route_t *self, int num);
 // Distance increment of route reverse operation.
 // Note that flip operation is not actually performed.
 // Require: i <= j
+// context is used by dist_fn for computing distance between nodes (same for
+// other functions) in this module.
 double route_reverse_delta_distance (const route_t *self,
                                      size_t i, size_t j,
                                      const void *context,
-                                     arc_distance_t dist_fn);
+                                     vrp_arc_distance_t dist_fn);
 
 // Reverse route slice [i, j].
 // (..., i, i+1, -->, j, ...) =>
@@ -92,10 +94,10 @@ void route_reverse (route_t *self, size_t i, size_t j);
 // Distance increment of swapping slices operation.
 // Note that operation is not actually performed.
 double route_swap_slices_delata_distance (const route_t *self,
-                                        size_t i, size_t j,
-                                        size_t u, size_t v,
-                                        const void *context,
-                                        arc_distance_t dist_fn);
+                                          size_t i, size_t j,
+                                          size_t u, size_t v,
+                                          const void *context,
+                                          vrp_arc_distance_t dist_fn);
 
 // Swap two nonoverlapping route segments (direction unchanged), i.e.
 // (..., i --> j, ..., u --> v, ...) =>
@@ -106,8 +108,9 @@ void route_swap_slices (route_t *self, size_t i, size_t j, size_t u, size_t v);
 // Distance increment of removing node at specific index.
 // Note that node removal is not actually performed.
 double route_remove_node_delta_distance (route_t *self,
-                                         size_t idx, const void *context,
-                                         arc_distance_t dist_fn);
+                                         size_t idx,
+                                         const void *context,
+                                         vrp_arc_distance_t dist_fn);
 
 // Remove node at specific index.
 // Return increment of total distance.
@@ -119,7 +122,7 @@ void route_remove_node (route_t *self, size_t idx);
 double route_remove_link_delta_distance (route_t *self,
                                          size_t first_idx,
                                          const void *context,
-                                         arc_distance_t dist_fn);
+                                         vrp_arc_distance_t dist_fn);
 
 // Remove two consecutive nodes at first_idx and (first_idx+1).
 // Return increment of total distance.
@@ -131,7 +134,7 @@ void route_remove_link (route_t *self, size_t first_idx);
 double route_insert_node_delta_distance (const route_t *self,
                                          size_t idx, size_t node_id,
                                          const void *context,
-                                         arc_distance_t dist_fn);
+                                         vrp_arc_distance_t dist_fn);
 
 // Insert node before the one at index.
 // If idx == size, append the node at tail.
@@ -143,7 +146,7 @@ double route_exchange_nodes_delta_distance (const route_t *self,
                                             const route_t *route,
                                             size_t idx1, size_t idx2,
                                             const void *context,
-                                            arc_distance_t dist_fn);
+                                            vrp_arc_distance_t dist_fn);
 
 // Exchange two nodes of two different routes.
 void route_exchange_nodes (route_t *self, route_t *route,
@@ -155,7 +158,7 @@ double route_exchange_tails_delta_distance (const route_t *self,
                                             const route_t *route,
                                             size_t idx1, size_t idx2,
                                             const void *context,
-                                            arc_distance_t dist_fn);
+                                            vrp_arc_distance_t dist_fn);
 
 // 2-opt* operation of two routes. i.e. swap tails of routes
 // (+++, idx1, ***) ==> (+++, idx1, ...)

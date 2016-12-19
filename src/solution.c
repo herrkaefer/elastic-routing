@@ -109,13 +109,12 @@ void solution_set_total_distance (solution_t *self, double distance) {
 
 double solution_cal_set_total_distance (solution_t *self,
                                         const void *context,
-                                        arc_distance_t dist_fn) {
+                                        vrp_arc_distance_t dist_fn) {
     assert (self);
     double total_dist = 0;
     for (size_t idx = 0; idx < solution_num_routes (self); idx++)
-        total_dist +=
-            route_total_distance (solution_route (self, idx),
-                                  context, dist_fn);
+        total_dist += route_total_distance (solution_route (self, idx),
+                                            context, dist_fn);
     self->total_distance = total_dist;
     return total_dist;
 }
@@ -123,7 +122,7 @@ double solution_cal_set_total_distance (solution_t *self,
 
 double solution_cal_total_distance (const solution_t *self,
                                     const void *context,
-                                    arc_distance_t dist_fn) {
+                                    vrp_arc_distance_t dist_fn) {
     assert (self);
     double total_dist = 0;
     for (size_t idx = 0; idx < solution_num_routes (self); idx++)

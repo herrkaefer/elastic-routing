@@ -248,6 +248,12 @@ size_t vrp_service_duration (vrp_t *self,
                              size_t request_id,
                              node_role_t node_role);
 
+// Get time windows list representation (read only).
+// Format of list: (earliest_tw1, latest_tw1, earliest_tw2, latest_tw2, ...)
+const listu_t *vrp_time_windows (vrp_t *self,
+                                 size_t request_id,
+                                 node_role_t node_role);
+
 // Check if pickup or delivery time windows are equal for two requests
 bool vrp_time_windows_are_equal (vrp_t *self,
                                  size_t request_id1, node_role_t node_role1,

@@ -43,6 +43,9 @@ void listu_prepend (listu_t *self, size_t value);
 // Append value to the end
 void listu_append (listu_t *self, size_t value);
 
+// Get last value
+size_t listu_last (const listu_t *self);
+
 // Remove and return value at the end
 size_t listu_pop_last (listu_t *self);
 

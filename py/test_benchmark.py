@@ -90,6 +90,6 @@ if __name__ == '__main__':
     solver = create_vrptw_solver_from_benchmark (filename)
     print ("solver created.")
     solver.solve ()
-
+    solver.print_solution ()
 
 

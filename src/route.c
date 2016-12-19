@@ -102,7 +102,7 @@ void route_swap_nodes (route_t *self, size_t idx1, size_t idx2) {
 
 double route_total_distance (const route_t *self,
                              const void *context,
-                             arc_distance_t dist_fn) {
+                             vrp_arc_distance_t dist_fn) {
     assert (self);
     size_t len = route_size (self);
     double total_dist = 0;
@@ -130,7 +130,7 @@ void route_rotate (route_t *self, int num) {
 double route_reverse_delta_distance (const route_t *self,
                                      size_t i, size_t j,
                                      const void *context,
-                                     arc_distance_t dist_fn) {
+                                     vrp_arc_distance_t dist_fn) {
     assert (self);
     assert (i <= j);
     size_t len = route_size (self);
@@ -172,7 +172,7 @@ double route_swap_slices_delata_distance (const route_t *self,
                                         size_t i, size_t j,
                                         size_t u, size_t v,
                                         const void *context,
-                                        arc_distance_t dist_fn) {
+                                        vrp_arc_distance_t dist_fn) {
     assert (self);
     assert (i <= j);
     assert (j < u);
@@ -227,7 +227,7 @@ void route_swap_slices (route_t *self, size_t i, size_t j, size_t u, size_t v) {
 double route_remove_node_delta_distance (route_t *self,
                                          size_t idx,
                                          const void *context,
-                                         arc_distance_t dist_fn) {
+                                         vrp_arc_distance_t dist_fn) {
     assert (self);
     size_t size = route_size (self);
     assert (idx < size);
@@ -259,7 +259,7 @@ void route_remove_node (route_t *self, size_t idx) {
 double route_remove_link_delta_distance (route_t *self,
                                          size_t idx,
                                          const void *context,
-                                         arc_distance_t dist_fn) {
+                                         vrp_arc_distance_t dist_fn) {
     assert (self);
     size_t size = route_size (self);
     assert (idx + 1 < size);
@@ -292,7 +292,7 @@ double route_insert_node_delta_distance (const route_t *self,
                                          size_t idx,
                                          size_t node_id,
                                          const void *context,
-                                         arc_distance_t dist_fn) {
+                                         vrp_arc_distance_t dist_fn) {
     assert (self);
     size_t size = route_size (self);
     assert (idx <= size);
@@ -320,7 +320,7 @@ void route_insert_node (route_t *self, size_t idx, size_t node_id) {
 static double route_replace_node_delta_distance (const route_t *self,
                                                  size_t idx, size_t new_node,
                                                  const void *context,
-                                                 arc_distance_t dist_fn) {
+                                                 vrp_arc_distance_t dist_fn) {
     size_t size = route_size (self);
     size_t old_node = route_at (self, idx);
     if (new_node == old_node)
@@ -345,7 +345,7 @@ double route_exchange_nodes_delta_distance (const route_t *self,
                                             const route_t *route,
                                             size_t idx1, size_t idx2,
                                             const void *context,
-                                            arc_distance_t dist_fn) {
+                                            vrp_arc_distance_t dist_fn) {
     assert (self);
     assert (route);
     assert (self != route);
@@ -389,7 +389,7 @@ double route_exchange_tails_delta_distance (const route_t *self,
                                             const route_t *route,
                                             size_t idx1, size_t idx2,
                                             const void *context,
-                                            arc_distance_t dist_fn) {
+                                            vrp_arc_distance_t dist_fn) {
     assert (self);
     assert (route);
     assert (self != route);

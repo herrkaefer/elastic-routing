@@ -194,9 +194,9 @@ static bool listx_node_is_sorted_with_next (const listx_t *self,
 // Quick sort of list
 // This implementation will preserve bindings between items and their handles.
 static void listx_quick_sort (listx_t *self,
-                               s_node_t *first_node,
-                               s_node_t *last_node,
-                               bool ascending) {
+                              s_node_t *first_node,
+                              s_node_t *last_node,
+                              bool ascending) {
 
     if (first_node == last_node || first_node == last_node->next)
         return;

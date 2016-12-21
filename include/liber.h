@@ -76,9 +76,17 @@ typedef size_t (*vrp_arc_duration_t) (const void *model,
 
 typedef struct _vrp_t vrp_t;
 
+// Common function types
+typedef size_t (*hashfunc_t) (const void *obj);
+typedef void (*destructor_t) (void **obj_p);
+typedef int (*comparator_t) (const void *obj1, const void *obj2);
+typedef bool (*matcher_t) (const void *obj1, const void *obj2);
+typedef void *(*duplicator_t) (const void *obj);
+typedef void (*copier_t) (void *dest, const void *src);
+typedef void (*printer_t) (const void *obj);
+
 
 // Public API headers
-#include "types.h"
 #include "numeric_ext.h"
 #include "string_ext.h"
 #include "date_ext.h"

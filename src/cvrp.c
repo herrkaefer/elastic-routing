@@ -45,7 +45,7 @@ generic IDs (i.e. ID in the generic model).
 #include "classes.h"
 
 
-#define SMALL_NUM_NODES 40
+#define SMALL_NUM_NODES 30
 
 
 // Private node representation
@@ -64,54 +64,6 @@ struct _cvrp_t {
     s_node_t *nodes; // indices: depot: 0; customers: 1, 2, ..., num_customers
     rng_t *rng;
 };
-
-
-// ----------------------------------------------------------------------------
-// Genome for evolution
-
-typedef struct {
-    route_t *gtour; // giant tour: a sequence of customers: 1 ~ N
-    solution_t *sol; // splited giant tour
-} s_genome_t;
-
-
-// Create genome by setting at least one of gtour or sol
-static s_genome_t *s_genome_new (route_t *gtour, solution_t *sol) {
-    assert (gtour != NULL || sol != NULL);
-    s_genome_t *self = (s_genome_t *) malloc (sizeof (s_genome_t));
-    assert (self);
-    self->gtour = gtour;
-    self->sol = sol;
-    return self;
-}
-
-
-static void s_genome_free (s_genome_t **self_p) {
-    assert (self_p);
-    if (*self_p) {
-        s_genome_t *self = *self_p;
-        route_free (&self->gtour);
-        solution_free (&self->sol);
-        free (self);
-        *self_p = NULL;
-    }
-}
-
-
-static int s_genome_compare_cost (s_genome_t *g1, s_genome_t *g2) {
-    assert (g1->sol != NULL && g2->sol != NULL);
-    // assert (solution_total_distance (g1->sol) > 0);
-    // assert (solution_total_distance (g2->sol) > 0);
-
-    if (solution_total_distance (g1->sol) <
-        solution_total_distance (g2->sol))
-        return -1;
-    else if (solution_total_distance (g1->sol) >
-             solution_total_distance (g2->sol))
-        return 1;
-    else
-        return 0;
-}
 
 
 // ----------------------------------------------------------------------------
@@ -319,6 +271,67 @@ static solution_t *cvrp_split (cvrp_t *self, route_t *gtour) {
 
 
 // ----------------------------------------------------------------------------
+// Genome for evolution
+
+typedef struct {
+    route_t *gtour; // giant tour: a sequence of customers: 1 ~ N
+    solution_t *sol; // splited giant tour
+} s_genome_t;
+
+
+// Create genome by setting at least one of gtour or sol.
+// Return genome with both gtour and sol set, and total distance of sol set.
+static s_genome_t *cvrp_new_genome (cvrp_t *self,
+                                    route_t *gtour, solution_t *sol) {
+    assert (gtour != NULL || sol != NULL);
+    s_genome_t *genome = (s_genome_t *) malloc (sizeof (s_genome_t));
+    assert (genome);
+    genome->gtour = gtour;
+    genome->sol = sol;
+
+    if (genome->gtour == NULL)
+        genome->gtour = cvrp_giant_tour_from_solution (self, sol);
+    if (genome->sol == NULL)
+        genome->sol = cvrp_split (self, gtour);
+    assert (genome->gtour);
+    assert (genome->sol);
+    if (double_is_none (solution_total_distance (genome->sol)))
+        solution_cal_set_total_distance (genome->sol,
+                                         self->vrp,
+                                         (vrp_arc_distance_t) vrp_arc_distance);
+    return genome;
+}
+
+
+static void s_genome_free (s_genome_t **self_p) {
+    assert (self_p);
+    if (*self_p) {
+        s_genome_t *self = *self_p;
+        route_free (&self->gtour);
+        solution_free (&self->sol);
+        free (self);
+        *self_p = NULL;
+    }
+}
+
+
+static int s_genome_compare_cost (s_genome_t *g1, s_genome_t *g2) {
+    assert (g1->sol != NULL && g2->sol != NULL);
+    // assert (solution_total_distance (g1->sol) > 0);
+    // assert (solution_total_distance (g2->sol) > 0);
+
+    if (solution_total_distance (g1->sol) <
+        solution_total_distance (g2->sol))
+        return -1;
+    else if (solution_total_distance (g1->sol) >
+             solution_total_distance (g2->sol))
+        return 1;
+    else
+        return 0;
+}
+
+
+// ----------------------------------------------------------------------------
 // Heuristics: CW
 
 typedef struct {
@@ -328,11 +341,20 @@ typedef struct {
 } s_cwsaving_t;
 
 
-// Compare savings used by CW: descending order
-static int s_cwsaving_compare (const void *a, const void *b) {
-    if (((s_cwsaving_t *) a)->saving > ((s_cwsaving_t *) a)->saving)
+// // Compare savings used by CW: descending order
+// static int s_cwsaving_compare (const void *a, const void *b) {
+//     if (((s_cwsaving_t *) a)->saving > ((s_cwsaving_t *) a)->saving)
+//         return -1;
+//     if (((s_cwsaving_t *) a)->saving < ((s_cwsaving_t *) a)->saving)
+//         return 1;
+//     return 0;
+// }
+
+// Comparator: compare savings used by CW in descending order
+static int s_cwsaving_compare (const s_cwsaving_t *s1, const s_cwsaving_t *s2) {
+    if (s1->saving > s2->saving)
         return -1;
-    if (((s_cwsaving_t *) a)->saving < ((s_cwsaving_t *) a)->saving)
+    if (s1->saving < s2->saving)
         return 1;
     return 0;
 }
@@ -369,7 +391,8 @@ static solution_t *cvrp_clark_wright_parallel (cvrp_t *self,
     // Sort savings in descending order
     size_t num_savings = N * (N -1);
     assert (cnt == num_savings);
-    qsort (savings, num_savings, sizeof (s_cwsaving_t), s_cwsaving_compare);
+    qsort (savings, num_savings, sizeof (s_cwsaving_t),
+           (comparator_t) s_cwsaving_compare);
 
     // In saving descending order, try to merge two routes at each iteration
     for (size_t idx_saving = 0; idx_saving < num_savings; idx_saving++) {
@@ -456,10 +479,10 @@ static listx_t *cvrp_clark_wright (cvrp_t *self, size_t num_expected) {
         route_t *gtour = cvrp_giant_tour_from_solution (self, sol);
         size_t hash = giant_tour_hash (gtour);
         if (!listu_includes (hashes, hash)) {
-            solution_cal_set_total_distance (sol,
-                                             self->vrp,
-                                             (vrp_arc_distance_t) vrp_arc_distance);
-            s_genome_t *genome = s_genome_new (gtour, sol);
+            // solution_cal_set_total_distance (sol,
+            //                                  self->vrp,
+            //                                  (vrp_arc_distance_t) vrp_arc_distance);
+            s_genome_t *genome = cvrp_new_genome (self, gtour, sol);
             listx_append (genomes, genome);
             listu_append (hashes, hash);
             cvrp_print_solution (self, sol);
@@ -492,21 +515,27 @@ static listx_t *cvrp_sweep_giant_tours (cvrp_t *self, size_t num_expected) {
         num_expected = N;
 
     listx_t *genomes = listx_new ();
+    if (coord2d_is_none (self->nodes[0].coord)) {
+        print_info ("Coordinates of nodes are not available.\n");
+        return genomes;
+    }
 
     // Create giant tour template: nodes permutated in angle ascending order
-    coord2d_t *polars =
-        (coord2d_t *) malloc (sizeof (coord2d_t) * N);
+    coord2d_t *polars = (coord2d_t *) malloc (sizeof (coord2d_t) * N);
     assert (polars);
     for (size_t idx = 0; idx < N; idx++) {
-        polars[idx] =
-            coord2d_to_polar (self->nodes[idx+1].coord,
-                              self->nodes[0].coord,
-                              vrp_coord_sys (self->vrp));
-        polars[idx].v1 = (double) (idx + 1); // overwrite v1 with customer index
+        if (coord2d_is_none (self->nodes[idx+1].coord)) {
+            print_info ("Coordinates of nodes are not available.\n");
+            free (polars);
+            return genomes;
+        }
+        polars[idx] = coord2d_to_polar (self->nodes[idx+1].coord,
+                                        self->nodes[0].coord,
+                                        vrp_coord_sys (self->vrp));
+        // Overwrite v1 with customer node ID
+        polars[idx].v1 = (double) (self->nodes[idx+1].id);
     }
-    qsort (polars,
-           N,
-           sizeof (coord2d_t),
+    qsort (polars, N, sizeof (coord2d_t),
            (comparator_t) coord2d_compare_polar_angle);
 
     route_t *gtour_template = route_new (N);
@@ -526,7 +555,7 @@ static listx_t *cvrp_sweep_giant_tours (cvrp_t *self, size_t num_expected) {
 
         size_t hash = giant_tour_hash (gtour);
         if (!listu_includes (hashes, hash)) {
-            listx_append (genomes, s_genome_new (gtour, NULL));
+            listx_append (genomes, cvrp_new_genome (self, gtour, NULL));
             listu_append (hashes, hash);
 
             // for develop: to show the cost
@@ -569,7 +598,7 @@ static listx_t *cvrp_random_giant_tours (cvrp_t *self, size_t num_expected) {
         route_shuffle (gtour, 0, self->num_customers - 1, self->rng);
         size_t hash = giant_tour_hash (gtour);
         if (!listu_includes (hashes, hash)) {
-            listx_append (genomes, s_genome_new (gtour, NULL));
+            listx_append (genomes, cvrp_new_genome (self, gtour, NULL));
             listu_append (hashes, hash);
         }
         else
@@ -595,7 +624,7 @@ static listx_t *cvrp_random_giant_tours (cvrp_t *self, size_t num_expected) {
 
 //         route_t *gtour = cvrp_random_giant_tour (self);
 
-//         listx_append (genomes, s_genome_new (gtour, NULL));
+//         listx_append (genomes, cvrp_new_genome (self, gtour, NULL));
 //     }
 //     return genomes;
 // }
@@ -608,11 +637,11 @@ static listx_t *cvrp_random_giant_tours (cvrp_t *self, size_t num_expected) {
 static double cvrp_genome_fitness (cvrp_t *self, s_genome_t *genome) {
     // If genome->sol does not exists, split the giant tour and save solution
     // in genome with cost in it.
-    if (genome->sol == NULL)
-        genome->sol = cvrp_split (self, genome->gtour);
+    // if (genome->sol == NULL)
+    //     genome->sol = cvrp_split (self, genome->gtour);
     assert (genome->sol != NULL);
     double cost = solution_total_distance (genome->sol);
-    assert (cost >= 0);
+    assert (!double_is_none (cost) && cost >= 0);
     return (cost > 0) ? ((self->num_customers + 1) / cost) : 0;
 }
 
@@ -632,8 +661,8 @@ static listx_t *cvrp_crossover (cvrp_t *self, s_genome_t *g1, s_genome_t *g2) {
     route_t *r2 = route_dup (g2->gtour);
     route_ox (r1, r2, 0, self->num_customers-1, self->rng);
     listx_t *children = listx_new ();
-    listx_append (children, s_genome_new (r1, NULL));
-    listx_append (children, s_genome_new (r2, NULL));
+    listx_append (children, cvrp_new_genome (self, r1, NULL));
+    listx_append (children, cvrp_new_genome (self, r2, NULL));
     return children;
 }
 
@@ -968,17 +997,18 @@ static double cvrp_post_optimize (cvrp_t *self, solution_t *sol) {
     bool improved = true;
     double saving;
 
-    print_info ("cal cost before post optimization: %.2f\n",
-                solution_cal_total_distance (sol,
-                                             self->vrp,
-                                             (vrp_arc_distance_t) vrp_arc_distance));
+    print_info (
+        "cal cost before post optimization: %.2f\n",
+        solution_cal_total_distance (sol,
+                                     self->vrp,
+                                     (vrp_arc_distance_t) vrp_arc_distance));
 
     while (improved) {
         improved = false;
 
         assert (cvrp_solution_is_feasible (self, sol));
 
-        // Or-opt of node
+        // inter-route or-opt of node
         saving = cvrp_or_opt_node (self, sol, false);
         if (saving > 0) {
             print_info ("or-opt saving: %.2f\n", saving);
@@ -987,7 +1017,7 @@ static double cvrp_post_optimize (cvrp_t *self, solution_t *sol) {
             continue;
         }
 
-        // Exchange of nodes
+        // inter-route exchange of nodes
         saving = cvrp_exchange_nodes (self, sol, false);
         if (saving > 0) {
             print_info ("exchange saving: %.2f\n", saving);
@@ -1005,7 +1035,7 @@ static double cvrp_post_optimize (cvrp_t *self, solution_t *sol) {
             continue;
         }
 
-        // 2-opt*
+        // inter-route 2-opt*
         saving = cvrp_2_opt_star (self, sol, false);
         if (saving > 0) {
             print_info ("2-opt* saving: %.2f\n", saving);
@@ -1044,6 +1074,7 @@ static solution_t *cvrp_solve_small_model (cvrp_t *self) {
     if (g != NULL && solution_total_distance (g->sol) < min_dist) {
         solution_free (&sol);
         sol = solution_dup (g->sol);
+        min_dist = solution_total_distance (g->sol);
     }
     listx_free (&genomes);
 
@@ -1058,6 +1089,7 @@ static solution_t *cvrp_solve_small_model (cvrp_t *self) {
     if (g != NULL && solution_total_distance (g->sol) < min_dist) {
         solution_free (&sol);
         sol = solution_dup (g->sol);
+        min_dist = solution_total_distance (g->sol);
     }
     listx_free (&genomes);
 
@@ -1072,6 +1104,7 @@ static solution_t *cvrp_solve_small_model (cvrp_t *self) {
         if (g != NULL && solution_total_distance (g->sol) < min_dist) {
             solution_free (&sol);
             sol = solution_dup (g->sol);
+            min_dist = solution_total_distance (g->sol);
         }
         listx_free (&genomes);
     }

@@ -1,107 +1,61 @@
-IDIR = /usr/local/include
+IDIR = -I/usr/local/include -I../libbbc/include
 ODIR = build
 SRCDIR = src
 DEMODIR = demo
 TARGETDIR = bin
 
 CC = gcc
-# CFLAGS = -I$(IDIR) -DDEBUG -DWITHSTATS -DWITHLOG -g -Wall -O2
-# CFLAGS = -I$(IDIR) -DDEBUG -g -Wall -O2
-CFLAGS = -I$(IDIR) -g -Wall
+CFLAGS = $(IDIR) -g -Wall
 # CFLAGS += -DWITHSTATS
 CFLAGS += -O3
 CFLAGS += -std=c99
-CFLAGS += -lm
 
 # LDIR = -L./lib3rd/libyaml
 # LIBS = -lyaml
-LDIR = -L/usr/local/lib
-LIBS = -lczmq -lzmq
+LDIR = -L/usr/local/lib -L../libbbc
+LIBS = -lm -lbbc
+# LIBS += -lczmq -lzmq
 
-# _OBJ = numeric_ext.o \
-# 	   string_ext.o \
-# 	   date_ext.o \
-# 	   arrayi.o \
-# 	   arrayu.o \
-# 	   util.o \
-# 	   entropy.o \
-# 	   rng.o \
-# 	   timer.o \
-# 	   matrixd.o \
-# 	   queue.o \
-# 	   hash.o \
-# 	   arrayset.o \
-# 	   coord2d.o \
-# 	   listu.o \
-# 	   listx.o \
-# 	   route.o \
-# 	   vrp.o \
-# 	   evol.o \
-# 	   tspi.o \
-# 	   tsp.o
-
-_MODULES = numeric_ext \
-	       string_ext \
-	       date_ext \
-	       arrayi \
-	       arrayu \
-	       arrayset \
-		   hash \
-		   listu \
-		   listx \
-		   matrixd \
-	       matrixu \
-	       queue \
-	       deps/pcg/entropy \
-	       rng \
-	       timer \
-	       evol \
-	       coord2d \
+_MODULES = coord2d \
 	       route \
 	       solution \
 	       vrp \
-	       util \
 	       tspi \
 	       tsp \
 	       cvrp \
 	       vrptw
 
-
-
-_OBJ = $(_MODULES:=.o)
-OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
-# _LIBSRC = numeric_ext.c string_ext.c date_ext.c arrayi.c arrayu.c util.c deps/pcg/entropy.c rng.c timer.c matrixd.c queue.c hash.c arrayset.c coord2d.c listu.c listx.c route.c vrp.c evol.c tspi.c tsp.c
+_OBJS = $(_MODULES:=.o)
+OBJS = $(patsubst %,$(ODIR)/%,$(_OBJS))
 _LIBSRC = $(_MODULES:=.c)
 LIBSRC = $(patsubst %,$(SRCDIR)/%,$(_LIBSRC))
 LIBTARGET = liber.a
-TESTSRC = $(SRCDIR)/selftest.c $(LIBSRC)
+TESTOBJS = $(OBJS) $(ODIR)/selftest.o
 TESTTARGET = $(TARGETDIR)/selftest
 EXESRC = $(SRCDIR)/main.c $(LIBSRC)
+EXEOBJS = $(OBJS) $(ODIR)/main.o
 EXETARGET = $(TARGETDIR)/er
 DEMOSRC = $(DEMODIR)/demo.c
 DEMOTARGET = $(TARGETDIR)/demo
 
-FILES_IN = abc def
-FILES_OUT = $(FILES_IN:=.o)
-
-
 .PHONY: clib cdll test exe demo pylib clean
 
 $(ODIR)/%.o: $(SRCDIR)/%.c
+	@mkdir -p $(@D)
 	$(CC) -c $< -o $@ $(CFLAGS)
 
-test:
-	$(CC) $(TESTSRC) -o $(TESTTARGET) $(CFLAGS) $(LDIR) $(LIBS)
+test: $(TESTOBJS)
+	$(CC) -o $(TESTTARGET) $(TESTOBJS) $(CFLAGS) $(LDIR) $(LIBS)
 	$(TESTTARGET)
 
-clib: $(OBJ)
-	ar rcs $(LIBTARGET) $(ODIR)/*.o
+clib: $(OBJS)
+	ar rcs $(LIBTARGET) $(OBJS)
 
-cdll: $(OBJ)
+cdll: $(OBJS)
 	$(CC) -shared -o $@ $^ -Wl,--out-implib,$(LIBTARGET) $(LDIR) $(LIBS)
 
-exe:
-	$(CC) $(EXESRC) -o $(EXETARGET) $(CFLAGS) $(LDIR) $(LIBS)
+exe: $(EXEOBJS)
+	$(CC) -o $(EXESRC) $(EXEOBJS) $(CFLAGS) $(LDIR) $(LIBS)
 
 demo: clib
 	$(CC) -o $(DEMOTARGET) $(DEMOSRC) -Wall -O2 -L. $(LIBTARGET)

@@ -9,7 +9,8 @@
 #define __ER_H_INCLUDED__
 
 // External dependencies
-#include <czmq.h>
+// #include <czmq.h>
+#include "libbbc.h"
 
 // version macros for compile-time API detection
 #define ER_VERSION_MAJOR 0
@@ -24,16 +25,6 @@
     ER_VERSION_PATCH)
 
 // Public class structures
-typedef struct _arrayset_t arrayset_t;
-typedef struct _hash_t hash_t;
-typedef struct _listu_t listu_t;
-typedef struct _listx_t listx_t;
-typedef struct _matrixd_t matrixd_t;
-typedef struct _matrixu_t matrixu_t;
-typedef struct _queue_t queue_t;
-typedef struct _rng_t rng_t;
-typedef struct _timer_t timer_t;
-typedef struct _evol_t evol_t;
 
 // Coordinate systems
 typedef enum {
@@ -76,32 +67,7 @@ typedef size_t (*vrp_arc_duration_t) (const void *model,
 
 typedef struct _vrp_t vrp_t;
 
-// Common function types
-typedef size_t (*hashfunc_t) (const void *obj);
-typedef void (*destructor_t) (void **obj_p);
-typedef int (*comparator_t) (const void *obj1, const void *obj2);
-typedef bool (*matcher_t) (const void *obj1, const void *obj2);
-typedef void *(*duplicator_t) (const void *obj);
-typedef void (*copier_t) (void *dest, const void *src);
-typedef void (*printer_t) (const void *obj);
-
-
 // Public API headers
-#include "numeric_ext.h"
-#include "string_ext.h"
-#include "date_ext.h"
-#include "arrayi.h"
-#include "arrayu.h"
-#include "arrayset.h"
-#include "hash.h"
-#include "listu.h"
-#include "listx.h"
-#include "matrixd.h"
-#include "matrixu.h"
-#include "queue.h"
-#include "rng.h"
-#include "timer.h"
-#include "evol.h"
 #include "coord2d.h"
 #include "route.h"
 #include "solution.h"

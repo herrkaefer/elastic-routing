@@ -12,8 +12,7 @@
 extern "C" {
 #endif
 
-// Distance between two points
-// Two points should be under the same coordinate system
+// Distance between two points under the same coordinate system
 double coord2d_distance (const coord2d_t *p1,
                          const coord2d_t *p2,
                          coord2d_sys_t coord_sys);

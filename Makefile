@@ -1,4 +1,4 @@
-IDIR = -I/usr/local/include -I../libbbc/include
+IDIR = -I/usr/local/include -I../libcube/include
 ODIR = build
 SRCDIR = src
 DEMODIR = demo
@@ -12,8 +12,8 @@ CFLAGS += -std=c99
 
 # LDIR = -L./lib3rd/libyaml
 # LIBS = -lyaml
-LDIR = -L/usr/local/lib -L../libbbc
-LIBS = -lm -lbbc
+LDIR = -L/usr/local/lib -L../libcube
+LIBS = -lm -lcube
 # LIBS += -lczmq -lzmq
 
 _MODULES = coord2d \

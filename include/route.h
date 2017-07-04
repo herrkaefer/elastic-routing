@@ -1,6 +1,8 @@
 /*  =========================================================================
     route - node sequence
 
+    A route is represented by a sequence of node IDs.
+
     Copyright (c) 2016, Yang LIU <gloolar@gmail.com>
     =========================================================================
 */
@@ -14,6 +16,8 @@ extern "C" {
 
 
 // Constructor
+// alloc_size is the pre-allocated length of the route,
+// or 0 to use a default value.
 route_t *route_new (size_t alloc_size);
 
 // Constructor: create route object from node id array
@@ -148,7 +152,7 @@ double route_exchange_nodes_delta_distance (const route_t *self,
                                             const void *context,
                                             vrp_arc_distance_t dist_fn);
 
-// Exchange two nodes of two different routes.
+// Exchange two nodes on two different routes, at idx1 and idx2 respectively.
 void route_exchange_nodes (route_t *self, route_t *route,
                            size_t idx1, size_t idx2);
 
@@ -160,7 +164,7 @@ double route_exchange_tails_delta_distance (const route_t *self,
                                             const void *context,
                                             vrp_arc_distance_t dist_fn);
 
-// 2-opt* operation of two routes. i.e. swap tails of routes
+// 2-opt* operation of two routes. i.e. swap tails of routes.
 // (+++, idx1, ***) ==> (+++, idx1, ...)
 // (---, idx2, ...) ==> (---, idx2, ***)
 void route_exchange_tails (route_t *self, route_t *route,

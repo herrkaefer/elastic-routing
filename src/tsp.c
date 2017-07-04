@@ -61,7 +61,7 @@ static listx_t *tsp_sweep (tsp_t *self, size_t max_expected) {
     listx_t *list = listx_new ();
 
     size_t route_len = route_size (self->template);
-    size_t num_nodes_to_sort = self->unfixed_begin - self->unfixed_end + 1;
+    size_t num_nodes_to_sort = self->unfixed_end - self->unfixed_begin + 1;
 
     // Get polar coordinates of nodes to sort
     coord2d_t *polars =
@@ -178,7 +178,7 @@ static double tsp_post_optimize (tsp_t *self, route_t *route) {
 // Solve small model
 static solution_t *tsp_solve_small_model (tsp_t *self) {
     print_info ("solve a small model...\n");
-    solution_t *sol = solution_new (NULL);
+    solution_t *sol = solution_new ();
     size_t num_nodes = tsp_num_nodes (self);
 
     // Case 1: no nodes
@@ -244,6 +244,7 @@ tsp_t *tsp_new_from_generic (vrp_t *vrp) {
         listu_append (self->template, self->start_node);
 
     // Add nodes by scanning the pending requests (duplicate nodes removed)
+    // For each request, add one of sender and receiver node.
     const listu_t *request_ids = vrp_pending_request_ids (vrp);
     size_t num_requests = listu_size (request_ids);
     for (size_t idx = 0; idx < num_requests; idx++) {
@@ -341,8 +342,8 @@ solution_t *tsp_solve (tsp_t *self) {
     print_info ("route cost after evol: %.2f\n", route_cost);
 
     // Post optimization
-    double delta_cost = tsp_post_optimize (self, route);
-    double improvement = -delta_cost / route_cost;
+    double saving = tsp_post_optimize (self, route);
+    double improvement = saving / route_cost;
     route_cost = route_total_distance (route,
                                        self->vrp,
                                        (vrp_arc_distance_t) vrp_arc_distance);
@@ -350,8 +351,7 @@ solution_t *tsp_solve (tsp_t *self) {
     print_info ("post-optimization improved: %.2f%%\n", improvement * 100);
 
     // Return route as generic solution representation.
-    // Set model reference as NULL because this model is not a generic one.
-    solution_t *sol = solution_new (self->vrp);
+    solution_t *sol = solution_new ();
     solution_append_route (sol, route);
 
     return sol;

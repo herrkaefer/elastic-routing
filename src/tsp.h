@@ -1,7 +1,8 @@
 /*  =========================================================================
     tsp - classic TSP model derived from generic model
 
-    TSP model:
+    TSP (travelling salesman problem) model:
+
         Mimimizing total distance of one route (a number of visiting reqeuests
         accomplished by one vehicle).
 

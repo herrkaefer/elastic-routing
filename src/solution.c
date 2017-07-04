@@ -13,7 +13,7 @@ struct _solution_t {
     listx_t *routes; // list of route_t objects
     listu_t *vehicles; // list of vehicles cooresponding to routes
 
-    // auxiliaries
+    // Auxiliaries
     bool feasible;
     double total_distance;
 };

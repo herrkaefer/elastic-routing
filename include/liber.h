@@ -10,7 +10,7 @@
 
 // External dependencies
 // #include <czmq.h>
-#include "libbbc.h"
+#include "libcube.h"
 
 // version macros for compile-time API detection
 #define ER_VERSION_MAJOR 0

@@ -76,10 +76,9 @@ typedef struct {
     size_t start_node_id;
     size_t end_node_id;
 
-    // coord2d_t coord; // current position
+    // coord2d_t coord; // position track
 
-    // attached route
-    size_t route_id;
+    size_t route_id; // attached route
 } s_vehicle_t;
 
 
@@ -93,7 +92,7 @@ static s_vehicle_t *s_vehicle_new (const char *ext_id) {
 
     self->id = ID_NONE;
     strcpy (self->ext_id, ext_id);
-    self->max_capacity = DOUBLE_MAX;
+    self->max_capacity = DOUBLE_MAX; // no capacity constraint
     self->capacity = self->max_capacity;
     self->start_node_id = ID_NONE;
     self->end_node_id = ID_NONE;
@@ -119,8 +118,12 @@ static void s_vehicle_free (s_vehicle_t **self_p) {
 
 // ---------------------------------------------------------------------------
 // Request
+// A request is a task which can be generally described as:
+// sender -- (quantity) --> receiver
+// Sender and receiver can optionally be specified multiple time windows and
+// service durations.
 
-// request state is not deliverately considered yet
+// @todo Request state is not deliverately considered yet
 typedef enum {
     RS_PENDING, // added, not planned
     RS_PLANNED, // planned, waiting for execution
@@ -130,19 +133,28 @@ typedef enum {
     RS_DELIVERING,
     RS_BEFORE_VISIT,
     RS_VISITING,
-    RS_COMPLETED, // exeuted
+    RS_COMPLETED, // task exeuted
 } request_state_t;
 
 
-// RT_PD: pair-nodes task (quantity >= 0):
-//     pickup at sender and delivery to receiver.
-// RT_VISIT: single-node task (quantity >= 0).
-//     One of sender and receiver is set, and the other is ID_NONE.
-//     sender_id != ID_NONE and quantity > 0:
-//     pickup (goods are always on vehicle after pickup);
-//     receiver_id != ID_NONE and quantity > 0:
-//     delivery (goods are already on vehicle)
-//     quantity == 0: visiting node (sender or receiver) with no goods
+/* Request type
+
+- RT_PD: pair-nodes task (quantity >= 0).
+         Both sender_id and receiver_id are not ID_NONE.
+
+    - quantity > 0: pickup goods at sender and delivery to receiver.
+    - quantity == 0: visiting sender and receiver sequentially
+
+- RT_VISIT: single-node task (quantity >= 0).
+            One of sender and receiver is set, and the other is set ID_NONE.
+
+    - sender_id != ID_NONE and quantity > 0:
+        pickup (goods are ALWAYS on vehicle after pickup at sender);
+    - receiver_id != ID_NONE and quantity > 0:
+        delivery (goods are ALREADY on vehicle)
+    - quantity == 0:
+        visiting single node (sender or receiver) with no goods
+*/
 typedef enum {
     RT_NONE,
     RT_PD,
@@ -176,7 +188,7 @@ typedef struct {
     size_t delivery_duration; // service duration for delivery (num of time units)
 
     // Solution related
-    // vehicle attached to. One request is only attached to one vehicle.
+    // vehicle attached to. One request is attached to one vehicle at most.
     size_t vehicle_id;
 } s_request_t;
 
@@ -252,16 +264,14 @@ struct _vrp_t {
 
     rng_t *rng;
 
-    // Node IDs in roadgraph, sorted ascendingly
-    listu_t *node_ids;
-    // Vehicle IDs, sorted ascendingly
-    listu_t *vehicle_ids;
-    // IDs of nodes which play a role of sender in request, sorted ascendingly
-    listu_t *sender_ids;
-    // IDs of nodes which play a role of receiver in request, sorted ascendingly
-    listu_t *receiver_ids;
-    // IDs of requests which state is pending, sorted ascendingly
-    listu_t *pending_request_ids;
+    listu_t *node_ids; // node IDs in roadgraph, sorted ascendingly
+    listu_t *vehicle_ids; // vehicle IDs, sorted ascendingly
+    listu_t *sender_ids; // IDs of nodes which play a role of sender in request,
+                         // sorted ascendingly
+    listu_t *receiver_ids; // IDs of nodes which play a role of receiver in
+                           // request, sorted ascendingly
+    listu_t *pending_request_ids; // IDs of requests which state is pending,
+                                  // sorted ascendingly
 };
 
 
@@ -283,7 +293,7 @@ vrp_t *vrp_new (void) {
                        NULL);
 
     self->distances = NULL; // lazy creation
-    self->durations = NULL;
+    self->durations = NULL; // lazy creation
     self->coord_sys = CS_NONE;
 
     // Fleet
@@ -303,8 +313,8 @@ vrp_t *vrp_new (void) {
                        NULL);
 
     // Constraints
-    self->max_route_distance = DOUBLE_MAX;
-    self->max_route_duration = SIZE_MAX;
+    self->max_route_distance = DOUBLE_MAX; // no constraint
+    self->max_route_duration = SIZE_MAX; // no constraint
 
     // Auxiliaries
     self->rng = rng_new ();
@@ -685,8 +695,10 @@ void vrp_set_arc_distance (vrp_t *self,
                            double distance) {
     assert (self);
     assert (distance >= 0);
-    if (self->distances == NULL)
-        self->distances = matrixd_new (2, 2);
+    if (self->distances == NULL) {
+        size_t order = max3 (from_node_id + 1, to_node_id + 1, 2);
+        self->distances = matrixd_new (order, order);
+    }
     matrixd_set (self->distances, from_node_id, to_node_id, distance);
 }
 
@@ -697,14 +709,17 @@ void vrp_set_arc_duration (vrp_t *self,
                            size_t duration) {
     assert (self);
     assert (duration >= 0);
-    if (self->durations == NULL)
-        self->durations = matrixu_new (2, 2);
+    if (self->durations == NULL) {
+        size_t order = max3 (from_node_id + 1, to_node_id + 1, 2);
+        self->durations = matrixu_new (order, order);
+    }
     matrixu_set (self->durations, from_node_id, to_node_id, duration);
 }
 
 
 void vrp_generate_beeline_distances (vrp_t *self) {
     assert (self);
+    assert (self->coord_sys != ID_NONE);
 
     size_t num_nodes = vrp_num_nodes (self);
     assert (num_nodes == listu_size (self->node_ids));
@@ -731,6 +746,7 @@ void vrp_generate_beeline_distances (vrp_t *self) {
 void vrp_generate_durations (vrp_t *self, double speed) {
     assert (self);
     assert (speed > 0);
+    assert (self->distances != NULL);
 
     size_t num_nodes = vrp_num_nodes (self);
     size_t cnt1, cnt2;
@@ -1013,10 +1029,8 @@ size_t vrp_add_request (vrp_t *self,
                         double quantity) {
     assert (self);
     assert (request_ext_id); // @todo should ext_id be required?
-    assert (sender == ID_NONE ||
-            vrp_node_exists (self, sender));
-    assert (receiver == ID_NONE ||
-            vrp_node_exists (self, receiver));
+    assert (sender == ID_NONE || vrp_node_exists (self, sender));
+    assert (receiver == ID_NONE || vrp_node_exists (self, receiver));
 
     // At least one of sender and reciver should be specified
     assert (sender != ID_NONE || receiver != ID_NONE);
@@ -1654,7 +1668,7 @@ solution_t *vrp_solve (vrp_t *self) {
         vrptw_free (&model);
     }
     else
-        print_error ("Unsupported model. Not solved.\n");
+        print_error ("Unsupported model. Problem Not solved.\n");
 
     return sol;
 }

@@ -63,7 +63,7 @@ void vrp_generate_durations (vrp_t *self, double speed);
 coord2d_sys_t vrp_coord_sys (vrp_t *self);
 
 // Query node by external id.
-// Return node ID if node exists, ID_NONE if not.
+// Return node ID if node exists, ID_NONE otherwise.
 size_t vrp_query_node (vrp_t *self, const char *node_ext_id);
 
 // Check if node exists by id

@@ -361,7 +361,11 @@ solution_t *tsp_solve (tsp_t *self) {
 void tsp_test (bool verbose) {
     print_info ("* tsp: \n");
 
-    // 1. manually created problem
+    vrp_t *vrp = NULL;
+    tsp_t *tsp = NULL;
+    solution_t *sol = NULL;
+
+    // 1. manually created problem, solved as TSP specifically
 
     coord2d_t node_coords[] = {
         (coord2d_t) {0, 0},
@@ -376,7 +380,7 @@ void tsp_test (bool verbose) {
     size_t num_nodes = sizeof (node_coords) / sizeof (coord2d_t);
 
     // Create generic model
-    vrp_t *vrp = vrp_new ();
+    vrp = vrp_new ();
 
     // Set roadgraph and add visiting request for each node
     vrp_set_coord_sys (vrp, CS_CARTESIAN2D);
@@ -396,11 +400,11 @@ void tsp_test (bool verbose) {
     vrp_add_vehicle (vrp, ext_id, DOUBLE_MAX, start_node, end_node);
 
     // Create TSP model from generic model
-    tsp_t *tsp = tsp_new_from_generic (vrp);
+    tsp = tsp_new_from_generic (vrp);
     assert (tsp);
 
     // Solve
-    solution_t *sol = tsp_solve (tsp);
+    sol = tsp_solve (tsp);
     assert (sol);
     solution_print (sol);
 
@@ -412,7 +416,8 @@ void tsp_test (bool verbose) {
     solution_free (&sol);
     assert (sol == NULL);
 
-    // 2. problem derived from generic model
+    // 2. benchmark problem, solved top-down (recognized as a TSP sub-model by
+    // generic model and then solved)
 
     char filename[] =
         "benchmark/tsplib/tsp/berlin52.tsp";
